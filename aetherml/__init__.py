@@ -72,10 +72,10 @@ def _compose_agents(
         "engine_selection": EngineSelectionAgent(),
         "etl": ETLAgent(config=ETLConfig(null_strategy="drop")),
         "eda": EDAAgent(engine=engine),
-        "feature_engineering": FeatureEngineeringAgent(),
-        "target_detection": TargetDetectionAgent(),
-        "model_selection": ModelSelectionAgent(),
-        "evaluation": EvaluationAgent(),
+        "target_detection": TargetDetectionAgent(engine=engine),
+        "feature_engineering": FeatureEngineeringAgent(engine=engine),
+        "model_selection": ModelSelectionAgent(engine=engine),
+        "evaluation": EvaluationAgent(engine=engine),
         "explainability": ExplainabilityAgent(),
         "rag": RAGAgent(),
         "reporting": ReportingAgent(),
@@ -152,6 +152,8 @@ def _extract_summary(state: dict[str, Any]) -> dict[str, Any]:
     processed = state.get("processed_data")
     validated = state.get("validated_data")
     profile = state.get("data_profile")
+    best_pipeline = state.get("best_pipeline")
+    evaluation_report = state.get("evaluation_report")
 
     return {
         "row_count": state.get("row_count"),
@@ -182,6 +184,40 @@ def _extract_summary(state: dict[str, Any]) -> dict[str, Any]:
         "categorical_columns": (
             profile.get("categorical_columns")
             if profile is not None
+            else None
+        ),
+        "target_column": state.get("target_column"),
+        "task_type": state.get("task_type"),
+        "target_detection_confidence": state.get("target_detection_confidence"),
+        "ambiguity_reason": state.get("ambiguity_reason"),
+        "n_features": (
+            len(state["feature_names"])
+            if state.get("feature_names") is not None
+            else None
+        ),
+        "best_model_type": (
+            best_pipeline.get("model_type")
+            if best_pipeline is not None
+            else None
+        ),
+        "best_model_score": (
+            best_pipeline.get("score")
+            if best_pipeline is not None
+            else None
+        ),
+        "hpo_truncated": (
+            best_pipeline.get("truncated")
+            if best_pipeline is not None
+            else None
+        ),
+        "evaluation_metrics": (
+            evaluation_report.get("metrics")
+            if evaluation_report is not None
+            else None
+        ),
+        "evaluation_ambiguity_caveat": (
+            evaluation_report.get("ambiguity_caveat")
+            if evaluation_report is not None
             else None
         ),
     }

@@ -38,6 +38,10 @@ from aetherml.workflow.nodes import make_node
 from aetherml.workflow.router import (
     route_after_eda,
     route_after_etl,
+    route_after_evaluation,
+    route_after_feature_engineering,
+    route_after_model_selection,
+    route_after_target_detection,
     route_after_upload,
     route_after_validation,
 )
@@ -46,13 +50,15 @@ from aetherml.workflow.state import WorkflowState
 logger = logging.getLogger(__name__)
 
 # Canonical pipeline order — stages must appear in this sequence.
+# Target detection must run before feature engineering (FE needs to
+# know which column is the target to exclude it from transforms).
 PIPELINE_ORDER: list[str] = [
     "upload",
     "etl",
     "validation",
     "eda",
-    "feature_engineering",
     "target_detection",
+    "feature_engineering",
     "model_selection",
     "evaluation",
     "explainability",
@@ -66,6 +72,10 @@ _STAGE_ROUTERS: dict[str, Any] = {
     "etl": route_after_etl,
     "validation": route_after_validation,
     "eda": route_after_eda,
+    "target_detection": route_after_target_detection,
+    "feature_engineering": route_after_feature_engineering,
+    "model_selection": route_after_model_selection,
+    "evaluation": route_after_evaluation,
 }
 
 

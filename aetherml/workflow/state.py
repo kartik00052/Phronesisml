@@ -15,29 +15,31 @@ Design rationale:
   not every agent runs.
 
 Field ownership map:
-    raw_data              → upload agent
-    data_path             → upload agent (input)
-    file_format           → upload agent
-    row_count             → upload agent
-    validated_data        → validation agent
-    validation_report     → validation agent
-    active_engine         → engine_selection agent
-    processed_data        → etl agent
-    transform_log         → etl agent
-    data_profile          → eda agent (merged profiling)
-    eda_report            → eda agent
-    features              → feature_engineering agent
-    feature_names         → feature_engineering agent
-    target_column         → target_detection agent
-    task_type             → target_detection agent
-    candidate_models      → model_selection agent (merged automl)
-    best_pipeline         → model_selection agent
-    trained_model         → model_selection agent
-    evaluation_report     → evaluation agent
-    explanation_report    → explainability agent
-    rag_context           → rag agent
-    final_report          → reporting agent
-    artifact_uri          → storage agent
+    raw_data                        → upload agent
+    data_path                       → upload agent (input)
+    file_format                     → upload agent
+    row_count                       → upload agent
+    validated_data                  → validation agent
+    validation_report               → validation agent
+    active_engine                   → engine_selection agent
+    processed_data                  → etl agent
+    transform_log                   → etl agent
+    data_profile                    → eda agent (merged profiling)
+    eda_report                      → eda agent
+    target_column                   → target_detection agent
+    task_type                       → target_detection agent
+    target_detection_confidence     → target_detection agent
+    ambiguity_reason                → target_detection agent
+    features                        → feature_engineering agent
+    feature_names                   → feature_engineering agent
+    candidate_models                → model_selection agent (merged automl)
+    best_pipeline                   → model_selection agent
+    trained_model                   → model_selection agent
+    evaluation_report               → evaluation agent
+    explanation_report              → explainability agent
+    rag_context                     → rag agent
+    final_report                    → reporting agent
+    artifact_uri                    → storage agent
 """
 
 from __future__ import annotations
@@ -126,7 +128,18 @@ class WorkflowState(BaseModel):
     )
     task_type: str | None = Field(
         default=None,
-        description="[target_detection] Detected task type (classification, regression, …).",
+        description=(
+            "[target_detection] Detected task type "
+            "(classification, regression, ambiguous)."
+        ),
+    )
+    target_detection_confidence: float | None = Field(
+        default=None,
+        description="[target_detection] Confidence score (0.0–1.0) for the detected target.",
+    )
+    ambiguity_reason: str | None = Field(
+        default=None,
+        description="[target_detection] Human-readable explanation when confidence < threshold.",
     )
 
     # ── Model selection agent (merged automl) ───────────────────────

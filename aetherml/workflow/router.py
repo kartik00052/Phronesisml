@@ -68,11 +68,64 @@ def route_after_validation(state: Any) -> Literal["proceed", "__end__"]:
 def route_after_eda(state: Any) -> Literal["proceed", "__end__"]:
     """Route after the EDA node.
 
-    In the current pipeline, EDA is the last implemented stage.
-    Future agents will be added here as they are implemented.
+    If EDA produced a data profile, proceed to target detection.
+    Otherwise, end the workflow.
     """
     if getattr(state, "data_profile", None) is not None:
-        logger.info("EDA succeeded — pipeline complete.")
-    else:
-        logger.warning("EDA produced no data profile.")
+        logger.info("EDA succeeded — proceeding.")
+        return "proceed"
+    logger.warning("EDA produced no data profile — ending workflow.")
+    return "__end__"
+
+
+def route_after_target_detection(state: Any) -> Literal["proceed", "__end__"]:
+    """Route after the Target Detection node.
+
+    If target detection found a target column, proceed to feature
+    engineering.  Even ambiguous detections proceed — the ambiguity
+    is surfaced to the user but does not block the pipeline.
+    """
+    if getattr(state, "target_column", None) is not None:
+        logger.info("Target detection succeeded — proceeding.")
+        return "proceed"
+    logger.warning("No target column detected — ending workflow.")
+    return "__end__"
+
+
+def route_after_feature_engineering(state: Any) -> Literal["proceed", "__end__"]:
+    """Route after the Feature Engineering node.
+
+    If feature engineering produced features, proceed to model
+    selection.  Otherwise, end the workflow.
+    """
+    if getattr(state, "features", None) is not None:
+        logger.info("Feature engineering succeeded — proceeding to model selection.")
+        return "proceed"
+    logger.warning("Feature engineering produced no features — ending workflow.")
+    return "__end__"
+
+
+def route_after_model_selection(state: Any) -> Literal["proceed", "__end__"]:
+    """Route after the Model Selection node.
+
+    If a trained model was produced, proceed to evaluation.
+    Otherwise, end the workflow.
+    """
+    if getattr(state, "trained_model", None) is not None:
+        logger.info("Model selection succeeded — proceeding to evaluation.")
+        return "proceed"
+    logger.warning("No trained model produced — ending workflow.")
+    return "__end__"
+
+
+def route_after_evaluation(state: Any) -> Literal["proceed", "__end__"]:
+    """Route after the Evaluation node.
+
+    If evaluation produced a report, proceed to the next stage
+    (explainability when implemented).  Otherwise, end the workflow.
+    """
+    if getattr(state, "evaluation_report", None) is not None:
+        logger.info("Evaluation succeeded — proceeding.")
+        return "proceed"
+    logger.warning("Evaluation produced no report — ending workflow.")
     return "__end__"

@@ -72,3 +72,57 @@ def duplicate_rows_df() -> pd.DataFrame:
             "age": [30, 25, 30, 35],
         }
     )
+
+
+@pytest.fixture
+def classification_df() -> pd.DataFrame:
+    """Return a DataFrame with a clear classification target."""
+    return pd.DataFrame(
+        {
+            "feature_a": [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0],
+            "feature_b": [10, 20, 30, 40, 50, 60, 70, 80],
+            "label": ["A", "B", "A", "B", "A", "B", "A", "B"],
+        }
+    )
+
+
+@pytest.fixture
+def regression_df() -> pd.DataFrame:
+    """Return a DataFrame with a clear regression target."""
+    return pd.DataFrame(
+        {
+            "feature_a": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "feature_b": [10, 20, 30, 40, 50],
+            "target": [100.0, 200.0, 300.0, 400.0, 500.0],
+        }
+    )
+
+
+@pytest.fixture
+def ambiguous_target_df() -> pd.DataFrame:
+    """Return a DataFrame with an ambiguous numeric target (2-5 unique values).
+
+    The 'grade' column is numeric with only 3 unique values (1, 2, 3),
+    making it ambiguous between classification and regression.
+    Feature columns are constant (1 unique value each) so they get
+    zero confidence and 'grade' is the only candidate.
+    """
+    return pd.DataFrame(
+        {
+            "feature_a": [1.0] * 10,
+            "feature_b": [10] * 10,
+            "grade": [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
+        }
+    )
+
+
+@pytest.fixture
+def features_only_df() -> pd.DataFrame:
+    """Return a DataFrame with only feature columns (no target)."""
+    return pd.DataFrame(
+        {
+            "feature_a": [1.0, 2.0, 3.0, 4.0, 5.0],
+            "feature_b": [10, 20, 30, 40, 50],
+            "feature_c": ["A", "B", "A", "B", "A"],
+        }
+    )
