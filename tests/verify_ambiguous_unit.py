@@ -20,11 +20,13 @@ async def main() -> None:
     # Ambiguous: 'grade' is numeric with exactly 3 unique values
     # Feature columns are constant (1 unique each) so they get zero
     # confidence and 'grade' is the only candidate.
-    df = pd.DataFrame({
-        "feature_a": [1.0] * 10,
-        "feature_b": [10] * 10,
-        "grade": [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
-    })
+    df = pd.DataFrame(
+        {
+            "feature_a": [1.0] * 10,
+            "feature_b": [10] * 10,
+            "grade": [1, 2, 3, 1, 2, 3, 1, 2, 3, 1],
+        }
+    )
 
     profile = profile_dataset(df, engine)
     state = SimpleNamespace(

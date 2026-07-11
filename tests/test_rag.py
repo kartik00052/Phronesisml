@@ -135,7 +135,9 @@ class TestRetriever:
         ]
 
         result = retrieve_context(
-            mock_client, mock_wrapper, "test query",
+            mock_client,
+            mock_wrapper,
+            "test query",
             max_results=5,
             similarity_threshold=0.3,
         )
@@ -311,7 +313,9 @@ class TestIngestText:
         mock_wrapper.embed.return_value = [[0.1]]
 
         ingest_text(
-            mock_client, mock_wrapper, "test",
+            mock_client,
+            mock_wrapper,
+            "test",
             metadata={"custom": "value"},
         )
 
@@ -367,7 +371,8 @@ class TestGetRagContext:
     """Test the get_rag_context function."""
 
     def setup_method(self) -> None:
-        from aetherml.rag.context import _qdrant_client_cache, _embedding_wrapper_cache
+        from aetherml.rag.context import _embedding_wrapper_cache, _qdrant_client_cache
+
         _qdrant_client_cache.clear()
         _embedding_wrapper_cache.clear()
 
@@ -468,9 +473,7 @@ class TestImportIsolation:
     def test_no_qdrant_imports_in_reporting_agent(self) -> None:
         from pathlib import Path
 
-        agent_file = (
-            Path(__file__).parent.parent / "aetherml" / "agents" / "reporting" / "agent.py"
-        )
+        agent_file = Path(__file__).parent.parent / "aetherml" / "agents" / "reporting" / "agent.py"
         lines = agent_file.read_text().splitlines()
         in_import_block = False
         for line in lines:
@@ -478,28 +481,20 @@ class TestImportIsolation:
             if stripped.startswith("from aetherml") or stripped.startswith("import "):
                 in_import_block = True
             if in_import_block and "qdrant_client" in stripped.lower():
-                raise AssertionError(
-                    f"Qdrant client import found in reporting agent: {stripped}"
-                )
+                raise AssertionError(f"Qdrant client import found in reporting agent: {stripped}")
             if in_import_block and "database.qdrant" in stripped.lower():
-                raise AssertionError(
-                    f"Qdrant database import found in reporting agent: {stripped}"
-                )
+                raise AssertionError(f"Qdrant database import found in reporting agent: {stripped}")
             if in_import_block and not stripped.startswith(("from", "import")) and stripped:
                 in_import_block = False
 
     def test_no_rag_imports_in_report_builder(self) -> None:
         from pathlib import Path
 
-        builder_file = (
-            Path(__file__).parent.parent / "aetherml" / "ml" / "reports" / "builder.py"
-        )
+        builder_file = Path(__file__).parent.parent / "aetherml" / "ml" / "reports" / "builder.py"
         lines = builder_file.read_text().splitlines()
         for line in lines:
             stripped = line.strip()
             if stripped.startswith("#") or stripped.startswith('"'):
                 continue
             for kw in ["qdrant", "rag", "aetherml.rag", "aetherml.database"]:
-                assert kw not in stripped.lower(), (
-                    f"RAG/Qdrant import found in builder: {stripped}"
-                )
+                assert kw not in stripped.lower(), f"RAG/Qdrant import found in builder: {stripped}"

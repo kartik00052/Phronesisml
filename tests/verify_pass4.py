@@ -11,8 +11,12 @@ async def main() -> None:
     result = await aetherml.run_pipeline(
         data_path="tests/fixtures/sample.csv",
         stages=[
-            "upload", "etl", "validation", "eda",
-            "target_detection", "feature_engineering",
+            "upload",
+            "etl",
+            "validation",
+            "eda",
+            "target_detection",
+            "feature_engineering",
         ],
     )
     print("Pipeline result:")

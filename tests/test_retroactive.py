@@ -10,7 +10,6 @@ These tests cover specific behavior that was modified without dedicated tests:
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -18,7 +17,6 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
-
 
 # ── Upload agent: file-size guard ─────────────────────────────────────
 
@@ -76,8 +74,9 @@ class TestUploadFileSizeGuard:
             max_file_size_bytes=1_000_000,
         )
 
-        with patch("aetherml.agents.upload.agent.os.path.getsize", return_value=100) as mock_getsize:
-            result = await agent.run(state)
+        patch_target = "aetherml.agents.upload.agent.os.path.getsize"
+        with patch(patch_target, return_value=100) as mock_getsize:
+            await agent.run(state)
             # getsize called once for the size guard check
             assert mock_getsize.call_count == 1
 
@@ -90,11 +89,13 @@ class TestRAGClientCaching:
 
     def setup_method(self) -> None:
         import aetherml.rag.context as ctx
+
         ctx._qdrant_client_cache.clear()
         ctx._embedding_wrapper_cache.clear()
 
     def teardown_method(self) -> None:
         import aetherml.rag.context as ctx
+
         ctx._qdrant_client_cache.clear()
         ctx._embedding_wrapper_cache.clear()
 
@@ -186,10 +187,12 @@ class TestDataExtensionsFilter:
 
     def test_nonexistent_path_returns_zero(self) -> None:
         from aetherml.engines.engine_selector import _estimate_file_size
+
         assert _estimate_file_size("/nonexistent/path/xyz.csv") == 0
 
     def test_empty_directory_returns_zero(self, tmp_path: Path) -> None:
         from aetherml.engines.engine_selector import _estimate_file_size
+
         assert _estimate_file_size(tmp_path) == 0
 
 
@@ -200,14 +203,16 @@ class TestTargetDetectionNunique:
     """Test that detect_target uses vectorized nunique() correctly."""
 
     def test_nunique_vectorized(self, pandas_engine: Any) -> None:
-        from aetherml.ml.target_detection.detector import detect_target
         from aetherml.data.profilers.stats import profile_dataset
+        from aetherml.ml.target_detection.detector import detect_target
 
-        df = pd.DataFrame({
-            "feature_a": [1.0, 2.0, 3.0, 4.0, 5.0],
-            "feature_b": [10, 20, 30, 40, 50],
-            "label": ["A", "B", "A", "B", "A"],
-        })
+        df = pd.DataFrame(
+            {
+                "feature_a": [1.0, 2.0, 3.0, 4.0, 5.0],
+                "feature_b": [10, 20, 30, 40, 50],
+                "label": ["A", "B", "A", "B", "A"],
+            }
+        )
         profile = profile_dataset(df, pandas_engine)
 
         # PandasEngine.collect() returns the DataFrame as-is
@@ -244,10 +249,13 @@ class TestQdrantZipStrict:
 
         with (
             patch.object(client, "_get_client") as mock_get,
-            patch.dict("sys.modules", {
-                "qdrant_client": mock_qdrant_client,
-                "qdrant_client.models": mock_models,
-            }),
+            patch.dict(
+                "sys.modules",
+                {
+                    "qdrant_client": mock_qdrant_client,
+                    "qdrant_client.models": mock_models,
+                },
+            ),
         ):
             mock_get.return_value = MagicMock()
             # Mismatched lengths — TypeError is raised by zip(strict=True)
@@ -271,10 +279,13 @@ class TestQdrantZipStrict:
 
         with (
             patch.object(client, "_get_client") as mock_get,
-            patch.dict("sys.modules", {
-                "qdrant_client": mock_qdrant_client,
-                "qdrant_client.models": mock_models,
-            }),
+            patch.dict(
+                "sys.modules",
+                {
+                    "qdrant_client": mock_qdrant_client,
+                    "qdrant_client.models": mock_models,
+                },
+            ),
         ):
             mock_qdrant = MagicMock()
             mock_get.return_value = mock_qdrant

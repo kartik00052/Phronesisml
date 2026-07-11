@@ -109,6 +109,7 @@ class TestExplainabilityAgentProtocol:
 
     def test_isinstance_base_agent(self) -> None:
         from aetherml.agents.base import BaseAgent
+
         agent = ExplainabilityAgent(engine=PandasEngine())
         assert isinstance(agent, BaseAgent)
 
@@ -386,6 +387,7 @@ class TestImportChecks:
 
     def test_no_llm_imports_in_shap_explainer(self) -> None:
         from pathlib import Path
+
         base = Path(__file__).parent.parent / "aetherml" / "ml" / "explainability"
         shap_file = base / "shap_explainer.py"
         lines = shap_file.read_text().splitlines()
@@ -398,6 +400,7 @@ class TestImportChecks:
 
     def test_no_llm_imports_in_explainability_agent(self) -> None:
         from pathlib import Path
+
         base = Path(__file__).parent.parent / "aetherml" / "agents" / "explainability"
         agent_file = base / "agent.py"
         lines = agent_file.read_text().splitlines()

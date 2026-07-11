@@ -1,8 +1,8 @@
 """AetherML — public SDK surface.
 
 This is the canonical entry point for programmatic use of AetherML.
-All public API is exposed here; ``interfaces/cli/`` and ``interfaces/api/``
-consume this surface.
+All public API is exposed here; ``interfaces/cli/`` consumes this
+surface.
 
 Usage::
 
@@ -27,6 +27,8 @@ __version__ = "0.1.0"
 __all__ = [
     "AetherMLConfig",
     "AetherMLError",
+    "ConfigurationError",
+    "WorkflowError",
     "WorkflowState",
     "__version__",
     "run_pipeline",

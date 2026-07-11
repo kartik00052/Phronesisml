@@ -427,7 +427,9 @@ class TestAmbiguityPropagation:
 
         # Step 1: Model Selection with ambiguous task type
         ms_agent = ModelSelectionAgent(
-            engine=pandas_engine, max_trials=3, max_time_seconds=30,
+            engine=pandas_engine,
+            max_trials=3,
+            max_time_seconds=30,
         )
         ms_state = _make_state(
             features=df,

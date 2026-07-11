@@ -42,9 +42,7 @@ class TestValidationAgentRun:
     """Test ValidationAgent.run() with various state inputs."""
 
     @pytest.mark.asyncio
-    async def test_normal_input(
-        self, pandas_engine: PandasEngine, sample_df: pd.DataFrame
-    ) -> None:
+    async def test_normal_input(self, pandas_engine: PandasEngine, sample_df: pd.DataFrame) -> None:
         agent = ValidationAgent(engine=pandas_engine)
         state = _make_state(processed_data=sample_df)
         result = await agent.run(state)
@@ -129,9 +127,7 @@ class TestValidationAgentRun:
 class TestValidateDataframe:
     """Test the underlying validate_dataframe function."""
 
-    def test_normal_data(
-        self, pandas_engine: PandasEngine, sample_df: pd.DataFrame
-    ) -> None:
+    def test_normal_data(self, pandas_engine: PandasEngine, sample_df: pd.DataFrame) -> None:
         df, report = validate_dataframe(sample_df, pandas_engine)
         assert report["passed"] is True
         assert report["shape"]["rows"] == 5

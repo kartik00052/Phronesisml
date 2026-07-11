@@ -117,65 +117,87 @@ class TestEngineerFeatures:
         df = all_null_column_df.copy()
         df.loc[0, "age"] = None
 
-        result_df, log = engineer_features(
-            df, pandas_engine, null_strategy="fill", fill_value=0
-        )
+        result_df, log = engineer_features(df, pandas_engine, null_strategy="fill", fill_value=0)
         assert result_df.loc[0, "age"] == 0
 
     def test_outlier_flagged(
-        self, pandas_engine: PandasEngine,
+        self,
+        pandas_engine: PandasEngine,
     ) -> None:
         """Outliers should be flagged, not dropped by default."""
-        df = pd.DataFrame({
-            "feature_a": [1.0, 2.0, 3.0, 4.0, 100.0],  # 100.0 is an outlier
-            "target": [0, 1, 0, 1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "feature_a": [1.0, 2.0, 3.0, 4.0, 100.0],  # 100.0 is an outlier
+                "target": [0, 1, 0, 1, 0],
+            }
+        )
         result_df, log = engineer_features(
-            df, pandas_engine, target_column="target",
-            detect_outliers=True, drop_outlier_rows=False,
+            df,
+            pandas_engine,
+            target_column="target",
+            detect_outliers=True,
+            drop_outlier_rows=False,
         )
         assert "outlier_flag" in result_df.columns
         assert result_df["outlier_flag"].sum() > 0
 
     def test_outlier_dropped(
-        self, pandas_engine: PandasEngine,
+        self,
+        pandas_engine: PandasEngine,
     ) -> None:
         """When configured, outlier rows should be dropped."""
-        df = pd.DataFrame({
-            "feature_a": [1.0, 2.0, 3.0, 4.0, 100.0],
-            "target": [0, 1, 0, 1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "feature_a": [1.0, 2.0, 3.0, 4.0, 100.0],
+                "target": [0, 1, 0, 1, 0],
+            }
+        )
         result_df, log = engineer_features(
-            df, pandas_engine, target_column="target",
-            detect_outliers=True, drop_outlier_rows=True,
+            df,
+            pandas_engine,
+            target_column="target",
+            detect_outliers=True,
+            drop_outlier_rows=True,
         )
         assert len(result_df) < 5
 
     def test_scaling(
-        self, pandas_engine: PandasEngine,
+        self,
+        pandas_engine: PandasEngine,
     ) -> None:
         """Numeric features should be min-max scaled to [0, 1]."""
-        df = pd.DataFrame({
-            "feature_a": [10.0, 20.0, 30.0, 40.0, 50.0],
-            "target": [0, 1, 0, 1, 0],
-        })
+        df = pd.DataFrame(
+            {
+                "feature_a": [10.0, 20.0, 30.0, 40.0, 50.0],
+                "target": [0, 1, 0, 1, 0],
+            }
+        )
         result_df, log = engineer_features(
-            df, pandas_engine, target_column="target", scale_numeric=True,
+            df,
+            pandas_engine,
+            target_column="target",
+            scale_numeric=True,
             select_features=False,
         )
         assert result_df["feature_a"].min() == 0.0
         assert result_df["feature_a"].max() == 1.0
 
     def test_target_excluded_from_scaling(
-        self, pandas_engine: PandasEngine,
+        self,
+        pandas_engine: PandasEngine,
     ) -> None:
         """The target column should not be scaled."""
-        df = pd.DataFrame({
-            "feature_a": [10.0, 20.0, 30.0, 40.0, 50.0],
-            "target": [100.0, 200.0, 300.0, 400.0, 500.0],
-        })
+        df = pd.DataFrame(
+            {
+                "feature_a": [10.0, 20.0, 30.0, 40.0, 50.0],
+                "target": [100.0, 200.0, 300.0, 400.0, 500.0],
+            }
+        )
         result_df, log = engineer_features(
-            df, pandas_engine, target_column="target", scale_numeric=True,
+            df,
+            pandas_engine,
+            target_column="target",
+            scale_numeric=True,
             select_features=False,
         )
         # Target is excluded from result, so verify it wasn't scaled via the log
@@ -187,21 +209,22 @@ class TestEngineerFeatures:
         self, pandas_engine: PandasEngine, classification_df: pd.DataFrame
     ) -> None:
         """Categorical features should be label-encoded."""
-        result_df, log = engineer_features(
-            classification_df, pandas_engine, target_column="label"
-        )
+        result_df, log = engineer_features(classification_df, pandas_engine, target_column="label")
         # 'label' is excluded, but if there were other categoricals they'd be encoded
         assert result_df["feature_a"].dtype != "object"
 
     def test_feature_selection_removes_low_variance(
-        self, pandas_engine: PandasEngine,
+        self,
+        pandas_engine: PandasEngine,
     ) -> None:
         """Features with near-zero variance should be dropped."""
-        df = pd.DataFrame({
-            "good_feature": [1.0, 2.0, 3.0, 4.0, 5.0],
-            "constant_feature": [5.0, 5.0, 5.0, 5.0, 5.0],
-            "target": [1.0, 2.0, 3.0, 4.0, 5.0],
-        })
+        df = pd.DataFrame(
+            {
+                "good_feature": [1.0, 2.0, 3.0, 4.0, 5.0],
+                "constant_feature": [5.0, 5.0, 5.0, 5.0, 5.0],
+                "target": [1.0, 2.0, 3.0, 4.0, 5.0],
+            }
+        )
         result_df, log = engineer_features(
             df, pandas_engine, target_column="target", select_features=True
         )

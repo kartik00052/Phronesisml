@@ -144,7 +144,9 @@ class TestModelSelectionAgentRun:
     ) -> None:
         """Should train a classification model and return results."""
         agent = ModelSelectionAgent(
-            engine=pandas_engine, max_trials=5, max_time_seconds=30,
+            engine=pandas_engine,
+            max_trials=5,
+            max_time_seconds=30,
         )
         state = _make_state(
             features=small_classification_data,
@@ -169,7 +171,9 @@ class TestModelSelectionAgentRun:
     ) -> None:
         """Should train a regression model and return results."""
         agent = ModelSelectionAgent(
-            engine=pandas_engine, max_trials=5, max_time_seconds=30,
+            engine=pandas_engine,
+            max_trials=5,
+            max_time_seconds=30,
         )
         state = _make_state(
             features=small_regression_data,
@@ -191,7 +195,9 @@ class TestModelSelectionAgentRun:
     ) -> None:
         """Should handle ambiguous task type by trying both sets of models."""
         agent = ModelSelectionAgent(
-            engine=pandas_engine, max_trials=5, max_time_seconds=30,
+            engine=pandas_engine,
+            max_trials=5,
+            max_time_seconds=30,
         )
         state = _make_state(
             features=small_classification_data,

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import patch
 
 import pytest
 
@@ -51,6 +50,7 @@ class TestReportingAgentProtocol:
 
     def test_isinstance_base_agent(self) -> None:
         from aetherml.agents.base import BaseAgent
+
         agent = ReportingAgent()
         assert isinstance(agent, BaseAgent)
 
@@ -457,9 +457,8 @@ class TestImportChecks:
 
     def test_no_llm_imports_in_builder(self) -> None:
         from pathlib import Path
-        builder_file = (
-            Path(__file__).parent.parent / "aetherml" / "ml" / "reports" / "builder.py"
-        )
+
+        builder_file = Path(__file__).parent.parent / "aetherml" / "ml" / "reports" / "builder.py"
         lines = builder_file.read_text().splitlines()
         for line in lines:
             stripped = line.strip()

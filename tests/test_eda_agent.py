@@ -41,9 +41,7 @@ class TestEDAAgentRun:
     """Test EDAAgent.run() with various state inputs."""
 
     @pytest.mark.asyncio
-    async def test_normal_input(
-        self, pandas_engine: PandasEngine, sample_df: pd.DataFrame
-    ) -> None:
+    async def test_normal_input(self, pandas_engine: PandasEngine, sample_df: pd.DataFrame) -> None:
         agent = EDAAgent(engine=pandas_engine)
         state = _make_state(validated_data=sample_df)
         result = await agent.run(state)
@@ -118,9 +116,7 @@ class TestEDAAgentRun:
 class TestProfileDataset:
     """Test the underlying profile_dataset function."""
 
-    def test_numeric_stats(
-        self, pandas_engine: PandasEngine, sample_df: pd.DataFrame
-    ) -> None:
+    def test_numeric_stats(self, pandas_engine: PandasEngine, sample_df: pd.DataFrame) -> None:
         profile = profile_dataset(sample_df, pandas_engine)
         age_stats = profile["numeric_summary"]["age"]
         assert "mean" in age_stats
@@ -129,18 +125,14 @@ class TestProfileDataset:
         assert "max" in age_stats
         assert "50%" in age_stats  # median
 
-    def test_categorical_stats(
-        self, pandas_engine: PandasEngine, sample_df: pd.DataFrame
-    ) -> None:
+    def test_categorical_stats(self, pandas_engine: PandasEngine, sample_df: pd.DataFrame) -> None:
         profile = profile_dataset(sample_df, pandas_engine)
         dept_stats = profile["categorical_summary"]["department"]
         assert "cardinality" in dept_stats
         assert dept_stats["cardinality"] == 2  # Engineering, Marketing
         assert "top_values" in dept_stats
 
-    def test_shape_and_memory(
-        self, pandas_engine: PandasEngine, sample_df: pd.DataFrame
-    ) -> None:
+    def test_shape_and_memory(self, pandas_engine: PandasEngine, sample_df: pd.DataFrame) -> None:
         profile = profile_dataset(sample_df, pandas_engine)
         assert profile["shape"] == {"rows": 5, "columns": 4}
         assert profile["memory_bytes"] > 0

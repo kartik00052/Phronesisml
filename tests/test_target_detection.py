@@ -143,9 +143,7 @@ class TestDetectTarget:
         result = detect_target(ambiguous_target_df, pandas_engine, profile)
 
         # Find the grade candidate
-        grade_candidate = [
-            c for c in result["candidates"] if c["column"] == "grade"
-        ][0]
+        grade_candidate = [c for c in result["candidates"] if c["column"] == "grade"][0]
         assert grade_candidate["task_type"] == "ambiguous"
         assert grade_candidate["ambiguity_reason"] is not None
         assert "3 unique values" in grade_candidate["ambiguity_reason"]
@@ -160,13 +158,16 @@ class TestDetectTarget:
         assert result["confidence"] <= 0.5
 
     def test_constant_column_not_target(
-        self, pandas_engine: PandasEngine,
+        self,
+        pandas_engine: PandasEngine,
     ) -> None:
         """A column with only one unique value should not be detected as target."""
-        df = pd.DataFrame({
-            "feature": [1.0, 2.0, 3.0, 4.0, 5.0],
-            "constant": [5, 5, 5, 5, 5],
-        })
+        df = pd.DataFrame(
+            {
+                "feature": [1.0, 2.0, 3.0, 4.0, 5.0],
+                "constant": [5, 5, 5, 5, 5],
+            }
+        )
         profile = profile_dataset(df, pandas_engine)
         result = detect_target(df, pandas_engine, profile)
         assert result["target_column"] != "constant"
