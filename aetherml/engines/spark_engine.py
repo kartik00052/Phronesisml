@@ -1,10 +1,8 @@
-"""PySpark-based data engine (stub).
+"""PySpark-based data engine.
 
 Implements ``BaseEngine`` with PySpark for large-scale / distributed
-datasets.  This is a **stub** in the current pass — it satisfies the
-interface contract but raises ``NotImplementedError`` on actual
-execution.  Full implementation is deferred to a future pass when
-distributed processing requirements are validated.
+datasets.  Uses lazy Spark DataFrames natively — ``lazy()`` is a no-op
+and ``collect()`` converts to Pandas.
 
 Design notes:
 - PySpark DataFrames are already lazy (execution is triggered by
@@ -12,6 +10,11 @@ Design notes:
   no-op and ``collect()`` converts to Pandas.
 - The Spark session is NOT created at import time — it is created
   on first use via ``_get_or_create_session()``.
+- PySpark is an optional dependency: ``pip install aetherml[spark]``.
+  If not installed, all methods raise ``ImportError`` with install
+  instructions.
+- Default master is ``local[*]`` — no remote cluster required for
+  development and testing.
 """
 
 from __future__ import annotations
@@ -26,7 +29,10 @@ from aetherml.exceptions import EngineError
 
 
 class SparkEngine(BaseEngine):
-    """Data engine backed by PySpark (stub implementation)."""
+    """Data engine backed by PySpark.
+
+    Requires ``pyspark`` to be installed: ``pip install aetherml[spark]``.
+    """
 
     engine_type = EngineType.SPARK
 
