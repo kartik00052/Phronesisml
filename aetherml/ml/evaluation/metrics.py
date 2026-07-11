@@ -85,10 +85,7 @@ def evaluate_model(
     else:
         # Fallback: try classification if values are discrete
         unique_target = np.unique(target)
-        if (
-            len(unique_target) <= 20
-            and np.all(unique_target == unique_target.astype(int))
-        ):
+        if len(unique_target) <= 20 and np.all(unique_target == unique_target.astype(int)):
             metrics = _classification_metrics(target, y_pred)
         else:
             metrics = _regression_metrics(target, y_pred)

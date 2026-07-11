@@ -56,6 +56,7 @@ class UploadAgent:
             max_bytes = getattr(state, "max_file_size_bytes", None)
             if max_bytes is None:
                 from aetherml.configs.settings import AetherMLConfig
+
                 max_bytes = AetherMLConfig().data.max_file_size_bytes
             if os.path.exists(data_path):
                 file_size = os.path.getsize(data_path)
@@ -92,11 +93,21 @@ class UploadAgent:
                 metadata={"columns": list(df.columns)},
             )
         except DataLoadError as exc:
-            return AgentResult(success=False, error=str(exc))
+            return AgentResult(
+                success=False,
+                error=str(exc),
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
         except Exception as exc:
             msg = f"Unexpected error during upload: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
     def get_tools(self) -> list[Tool]:
         return [

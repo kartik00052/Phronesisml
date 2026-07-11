@@ -34,10 +34,13 @@ class AgentResult(BaseModel):
         data: Agent-specific output payload.  The shape varies per agent
               and is documented in each agent's own module docstring.
         error: Human-readable error message when ``success`` is False.
-        exception: Original exception object when ``success`` is False.
-            Preserves the exception type, traceback, and cause chain for
-            diagnostics.  May be ``None`` for configuration/validation
-            errors that do not originate from an exception.
+        error_type: Exception class name when ``success`` is False.
+            E.g. ``"DataLoadError"``, ``"ValueError"``.  Survives JSON
+            serialization for non-Python consumers (FastAPI boundary).
+        error_message: Original exception message when ``success`` is False.
+            May differ from ``error`` (which is the agent-wrapped message).
+        error_context: Optional structured context dict for debugging.
+            Keys and values must be strings to survive serialization.
         metadata: Arbitrary key-value metadata (e.g. row counts, timings).
 
     """
@@ -45,7 +48,9 @@ class AgentResult(BaseModel):
     success: bool = True
     data: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
-    exception: Any = Field(default=None, exclude=True)
+    error_type: str | None = None
+    error_message: str | None = None
+    error_context: dict[str, str] | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -80,8 +85,8 @@ class BaseAgent(Protocol):
         Agents MUST return an ``AgentResult`` — they MUST NOT raise
         exceptions for expected/transient failures (bad data, missing
         columns, model failures).  Instead, return
-        ``AgentResult(success=False, error=..., exception=exc)`` so the
-        workflow can decide whether to continue or abort.
+        ``AgentResult(success=False, error=..., error_type=..., error_message=...)``
+        so the workflow can decide whether to continue or abort.
 
         Agents SHOULD raise only for programming errors (bugs, missing
         dependencies) or truly unrecoverable failures (out of memory).

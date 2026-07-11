@@ -126,6 +126,7 @@ async def run_pipeline(
     try:
         agents = _compose_agents(config, data_path)
         from aetherml.workflow.graph import build_graph
+
         graph = build_graph(agents, stages=stages)
         initial_state = WorkflowState(data_path=data_path)
     except WorkflowError:
@@ -170,65 +171,35 @@ def _extract_summary(state: dict[str, Any]) -> dict[str, Any]:
         "column_count": (
             len(processed.columns)
             if processed is not None
-            else (
-                len(validated.columns)
-                if validated is not None
-                else None
-            )
+            else (len(validated.columns) if validated is not None else None)
         ),
         "transformations": (
-            len(state["transform_log"])
-            if state.get("transform_log") is not None
-            else 0
+            len(state["transform_log"]) if state.get("transform_log") is not None else 0
         ),
         "validation_passed": (
             state["validation_report"].get("passed")
             if state.get("validation_report") is not None
             else None
         ),
-        "numeric_columns": (
-            profile.get("numeric_columns")
-            if profile is not None
-            else None
-        ),
+        "numeric_columns": (profile.get("numeric_columns") if profile is not None else None),
         "categorical_columns": (
-            profile.get("categorical_columns")
-            if profile is not None
-            else None
+            profile.get("categorical_columns") if profile is not None else None
         ),
         "target_column": state.get("target_column"),
         "task_type": state.get("task_type"),
         "target_detection_confidence": state.get("target_detection_confidence"),
         "ambiguity_reason": state.get("ambiguity_reason"),
         "n_features": (
-            len(state["feature_names"])
-            if state.get("feature_names") is not None
-            else None
+            len(state["feature_names"]) if state.get("feature_names") is not None else None
         ),
-        "best_model_type": (
-            best_pipeline.get("model_type")
-            if best_pipeline is not None
-            else None
-        ),
-        "best_model_score": (
-            best_pipeline.get("score")
-            if best_pipeline is not None
-            else None
-        ),
-        "hpo_truncated": (
-            best_pipeline.get("truncated")
-            if best_pipeline is not None
-            else None
-        ),
+        "best_model_type": (best_pipeline.get("model_type") if best_pipeline is not None else None),
+        "best_model_score": (best_pipeline.get("score") if best_pipeline is not None else None),
+        "hpo_truncated": (best_pipeline.get("truncated") if best_pipeline is not None else None),
         "evaluation_metrics": (
-            evaluation_report.get("metrics")
-            if evaluation_report is not None
-            else None
+            evaluation_report.get("metrics") if evaluation_report is not None else None
         ),
         "evaluation_ambiguity_caveat": (
-            evaluation_report.get("ambiguity_caveat")
-            if evaluation_report is not None
-            else None
+            evaluation_report.get("ambiguity_caveat") if evaluation_report is not None else None
         ),
         "explanation_sampled": (
             state["explanation_report"].get("sampled")
@@ -241,8 +212,6 @@ def _extract_summary(state: dict[str, Any]) -> dict[str, Any]:
             else None
         ),
         "final_report_length": (
-            len(state["final_report"])
-            if state.get("final_report") is not None
-            else None
+            len(state["final_report"]) if state.get("final_report") is not None else None
         ),
     }

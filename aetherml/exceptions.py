@@ -62,14 +62,24 @@ class AgentError(AetherMLError):
     """Raised when an agent execution fails.
 
     Attributes:
-        cause: Original exception object from the agent, preserving
-            type, traceback, and cause chain for diagnostics.
+        error_type: Exception class name from the agent (e.g. ``"DataLoadError"``).
+        error_message: Original exception message from the agent.
+        error_context: Optional structured context dict for debugging.
 
     """
 
-    def __init__(self, message: str, *, cause: BaseException | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        error_type: str | None = None,
+        error_message: str | None = None,
+        error_context: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(message)
-        self.cause = cause
+        self.error_type = error_type
+        self.error_message = error_message
+        self.error_context = error_context
 
 
 class AgentNotImplementedError(AgentError):

@@ -84,9 +84,12 @@ class ExplainabilityAgent:
                 error="No trained_model in workflow state. Run model selection first.",
             )
 
-        data = state.features if state.features is not None else (
-            state.validated_data if state.validated_data is not None
-            else state.processed_data
+        data = (
+            state.features
+            if state.features is not None
+            else (
+                state.validated_data if state.validated_data is not None else state.processed_data
+            )
         )
         if data is None:
             return AgentResult(
@@ -102,9 +105,7 @@ class ExplainabilityAgent:
 
         # ── Resolve feature names ────────────────────────────────────
         if feature_names is None:
-            feature_names = [
-                c for c in collected.columns if c != target_column
-            ]
+            feature_names = [c for c in collected.columns if c != target_column]
 
         # ── Build feature matrix ─────────────────────────────────────
         X = collected[feature_names].values
@@ -124,11 +125,18 @@ class ExplainabilityAgent:
             return AgentResult(
                 success=False,
                 error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
             )
         except Exception as exc:
             msg = f"SHAP computation failed: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
         # ── Log results ──────────────────────────────────────────────
         logger.info(
@@ -160,8 +168,7 @@ class ExplainabilityAgent:
                     "max_samples": {
                         "type": "integer",
                         "description": (
-                            f"Max rows for SHAP computation "
-                            f"(default: {DEFAULT_MAX_SAMPLES})."
+                            f"Max rows for SHAP computation (default: {DEFAULT_MAX_SAMPLES})."
                         ),
                     },
                 },

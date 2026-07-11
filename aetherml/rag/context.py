@@ -71,6 +71,7 @@ def get_rag_context(
     try:
         if cache_key not in _qdrant_client_cache:
             from aetherml.database.qdrant.client import QdrantClient
+
             client = QdrantClient(
                 url=qdrant_url,
                 api_key=qdrant_api_key,
@@ -89,6 +90,7 @@ def get_rag_context(
     try:
         if embedding_model not in _embedding_wrapper_cache:
             from aetherml.rag.embeddings.wrapper import EmbeddingWrapper
+
             _embedding_wrapper_cache[embedding_model] = EmbeddingWrapper(model_name=embedding_model)
         embedding_wrapper = _embedding_wrapper_cache[embedding_model]
     except Exception as exc:
@@ -99,6 +101,7 @@ def get_rag_context(
     # ── Ingest pipeline state ───────────────────────────────────────
     try:
         from aetherml.rag.knowledge_base.store import ingest_pipeline_state
+
         ingest_pipeline_state(client, embedding_wrapper, state)
     except Exception as exc:
         logger.warning("Pipeline state ingestion failed: %s", exc)

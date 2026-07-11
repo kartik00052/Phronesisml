@@ -130,10 +130,7 @@ class PolarsEngine(BaseEngine):
         return df.columns
 
     def dtypes(self, df: pl.DataFrame) -> dict[str, str]:
-        return {
-            col: str(dtype)
-            for col, dtype in zip(df.columns, df.dtypes, strict=True)
-        }
+        return {col: str(dtype) for col, dtype in zip(df.columns, df.dtypes, strict=True)}
 
     def head(self, df: pl.DataFrame, n: int = 5) -> pd.DataFrame:
         return df.head(n).to_pandas()

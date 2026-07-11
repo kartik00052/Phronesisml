@@ -56,7 +56,9 @@ def make_node(agent: BaseAgent) -> Any:
             msg = f"Agent '{agent.name}' failed: {result.error}"
             raise AgentError(
                 msg,
-                cause=result.exception,
+                error_type=result.error_type,
+                error_message=result.error_message,
+                error_context=result.error_context,
             )
 
         logger.info("Agent '%s' completed successfully.", agent.name)

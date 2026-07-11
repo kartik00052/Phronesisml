@@ -117,18 +117,22 @@ def ingest_text(
     for i, chunk in enumerate(chunks):
         doc_id = _make_doc_id(source, i, chunk)
         ids.append(doc_id)
-        payloads.append({
-            "text": chunk,
-            "source": source,
-            "chunk_index": i,
-            "total_chunks": len(chunks),
-            **payload_meta,
-        })
+        payloads.append(
+            {
+                "text": chunk,
+                "source": source,
+                "chunk_index": i,
+                "total_chunks": len(chunks),
+                **payload_meta,
+            }
+        )
 
     success = client.upsert(ids=ids, vectors=embeddings, payloads=payloads)
     if success:
         logger.info(
-            "Ingested %d chunks from source=%s", len(chunks), source,
+            "Ingested %d chunks from source=%s",
+            len(chunks),
+            source,
         )
         return len(chunks)
     return 0
@@ -160,7 +164,9 @@ def ingest_pipeline_state(
     if target and task_type:
         text = f"Target column: {target}. Task type: {task_type}."
         total += ingest_text(
-            client, embedding_wrapper, text,
+            client,
+            embedding_wrapper,
+            text,
             source="pipeline_target",
             metadata={"stage": "target_detection"},
         )
@@ -174,7 +180,9 @@ def ingest_pipeline_state(
         if caveat:
             text += f" Caveat: {caveat}"
         total += ingest_text(
-            client, embedding_wrapper, text,
+            client,
+            embedding_wrapper,
+            text,
             source="pipeline_evaluation",
             metadata={"stage": "evaluation"},
         )
@@ -188,7 +196,9 @@ def ingest_pipeline_state(
             if score is not None:
                 text += f" Score: {score}."
             total += ingest_text(
-                client, embedding_wrapper, text,
+                client,
+                embedding_wrapper,
+                text,
                 source="pipeline_model_selection",
                 metadata={"stage": "model_selection"},
             )
@@ -200,7 +210,9 @@ def ingest_pipeline_state(
         top_str = ", ".join(f"{k}: {v:.4f}" for k, v in top)
         text = f"Top feature importances: {top_str}."
         total += ingest_text(
-            client, embedding_wrapper, text,
+            client,
+            embedding_wrapper,
+            text,
             source="pipeline_explainability",
             metadata={"stage": "explainability"},
         )

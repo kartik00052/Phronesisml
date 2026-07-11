@@ -41,11 +41,15 @@ def _setup_logging(verbose: bool) -> None:
 def run(
     data_path: str = typer.Argument(..., help="Path to the input dataset (CSV, Parquet, JSON)."),
     engine: str | None = typer.Option(
-        None, "--engine", "-e",
+        None,
+        "--engine",
+        "-e",
         help="Force a specific engine (pandas, polars, spark). Default: auto-select.",
     ),
     null_strategy: str = typer.Option(
-        "drop", "--nulls", "-n",
+        "drop",
+        "--nulls",
+        "-n",
         help="Null handling strategy: drop, fill, flag.",
     ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),

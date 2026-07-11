@@ -66,9 +66,12 @@ class EvaluationAgent:
                 error="No trained_model in workflow state. Run model selection first.",
             )
 
-        data = state.features if state.features is not None else (
-            state.validated_data if state.validated_data is not None
-            else state.processed_data
+        data = (
+            state.features
+            if state.features is not None
+            else (
+                state.validated_data if state.validated_data is not None else state.processed_data
+            )
         )
         if data is None:
             return AgentResult(
@@ -113,7 +116,12 @@ class EvaluationAgent:
         except Exception as exc:
             msg = f"Model evaluation failed: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
         # ── Log results ──────────────────────────────────────────────
         metrics = report.get("metrics", {})

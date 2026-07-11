@@ -40,17 +40,9 @@ class SparkEngine(BaseEngine):
         try:
             from pyspark.sql import SparkSession
         except ImportError as exc:
-            msg = (
-                "PySpark is not installed. "
-                "Install it with: pip install aetherml[spark]"
-            )
+            msg = "PySpark is not installed. Install it with: pip install aetherml[spark]"
             raise ImportError(msg) from exc
-        self._session = (
-            SparkSession.builder
-            .master(self._master)
-            .appName("AetherML")
-            .getOrCreate()
-        )
+        self._session = SparkSession.builder.master(self._master).appName("AetherML").getOrCreate()
         return self._session
 
     # ── I/O ─────────────────────────────────────────────────────────
@@ -105,8 +97,7 @@ class SparkEngine(BaseEngine):
 
         cols = [group_by] if isinstance(group_by, str) else group_by
         agg_exprs = [
-            F.col(col).__getattribute__(op)().alias(f"{col}_{op}")
-            for col, op in aggs.items()
+            F.col(col).__getattribute__(op)().alias(f"{col}_{op}") for col, op in aggs.items()
         ]
         return df.groupBy(cols).agg(*agg_exprs)
 

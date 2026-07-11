@@ -40,10 +40,19 @@ from aetherml.engines.base_engine import BaseEngine
 logger = logging.getLogger(__name__)
 
 # Columns whose names are strong target hints (case-insensitive match).
-_TARGET_NAME_HINTS = frozenset({
-    "target", "label", "y", "outcome", "class", "answer",
-    "target_variable", "response", "dependent",
-})
+_TARGET_NAME_HINTS = frozenset(
+    {
+        "target",
+        "label",
+        "y",
+        "outcome",
+        "class",
+        "answer",
+        "target_variable",
+        "response",
+        "dependent",
+    }
+)
 
 # Confidence below this threshold → ambiguous detection.
 AMBIGUITY_THRESHOLD = 0.6
@@ -117,8 +126,7 @@ def detect_target(
                 f"{', '.join(best['signals'])}."
             )
         logger.warning(
-            "Target detection ambiguous: best candidate '%s' has "
-            "confidence %.2f < %.2f.",
+            "Target detection ambiguous: best candidate '%s' has confidence %.2f < %.2f.",
             best["column"],
             best["confidence"],
             AMBIGUITY_THRESHOLD,
@@ -245,10 +253,24 @@ def _no_target_found() -> dict[str, Any]:
 
 
 # Re-export the numeric dtype set fromprofilers for consistency
-_NUMERIC_DTYPES = frozenset({
-    "int8", "int16", "int32", "int64",
-    "uint8", "uint16", "uint32", "uint64",
-    "float16", "float32", "float64",
-    "Int8", "Int16", "Int32", "Int64",
-    "Float32", "Float64",
-})
+_NUMERIC_DTYPES = frozenset(
+    {
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "float16",
+        "float32",
+        "float64",
+        "Int8",
+        "Int16",
+        "Int32",
+        "Int64",
+        "Float32",
+        "Float64",
+    }
+)

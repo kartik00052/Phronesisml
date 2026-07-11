@@ -79,10 +79,7 @@ class FeatureEngineeringAgent:
                 target_column=target_column,
             )
 
-            feature_names = [
-                c for c in self._engine.columns(features)
-                if c != target_column
-            ]
+            feature_names = [c for c in self._engine.columns(features) if c != target_column]
 
             logger.info(
                 "Feature engineering complete: %d rows, %d features.",
@@ -104,7 +101,12 @@ class FeatureEngineeringAgent:
         except Exception as exc:
             msg = f"Unexpected error during feature engineering: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
     def get_tools(self) -> list[Tool]:
         return [

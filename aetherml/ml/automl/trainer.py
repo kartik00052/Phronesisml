@@ -91,7 +91,11 @@ def train_models(
     target = df[target_column].values
 
     features_train, features_test, target_train, target_test = _split_data(
-        features, target, task_type, test_size, random_state,
+        features,
+        target,
+        task_type,
+        test_size,
+        random_state,
     )
 
     # ── Search state ─────────────────────────────────────────────────
@@ -249,7 +253,8 @@ def _split_data(
         np.ndarray[Any, Any],
         np.ndarray[Any, Any],
     ] = train_test_split(
-        features, target,
+        features,
+        target,
         test_size=test_size,
         random_state=random_state,
         stratify=stratify,

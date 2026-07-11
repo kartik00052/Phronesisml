@@ -141,8 +141,7 @@ class WorkflowState(BaseModel):
     task_type: str | None = Field(
         default=None,
         description=(
-            "[target_detection] Detected task type "
-            "(classification, regression, ambiguous)."
+            "[target_detection] Detected task type (classification, regression, ambiguous)."
         ),
     )
     target_detection_confidence: float | None = Field(

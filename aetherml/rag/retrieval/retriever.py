@@ -71,11 +71,13 @@ def retrieve_context(
         if not text:
             continue
 
-        results.append({
-            "text": text,
-            "source": payload.get("source", "unknown"),
-            "score": score,
-        })
+        results.append(
+            {
+                "text": text,
+                "source": payload.get("source", "unknown"),
+                "score": score,
+            }
+        )
 
         if len(results) >= max_results:
             break

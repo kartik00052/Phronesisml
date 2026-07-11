@@ -58,7 +58,12 @@ class ReportingAgent:
         except Exception as exc:
             msg = f"Report assembly failed: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
         logger.info(
             "Report assembled: %d characters, %d lines.",

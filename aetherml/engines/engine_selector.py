@@ -31,13 +31,31 @@ logger = logging.getLogger(__name__)
 _PANDAS_MAX = 100 * 1024 * 1024  # 100 MB
 
 
+_DATA_EXTENSIONS = frozenset(
+    {
+        ".csv",
+        ".parquet",
+        ".json",
+        ".jsonl",
+        ".tsv",
+        ".xlsx",
+        ".xls",
+        ".avro",
+        ".orc",
+    }
+)
+
+
 def _estimate_file_size(path: str | Path) -> int:
     """Return file size in bytes, or 0 if the path is not a regular file."""
     p = Path(path)
     if p.is_file():
         return p.stat().st_size
     if p.is_dir():
-        total = sum(f.stat().st_size for f in p.rglob("*") if f.is_file())
+        total = 0
+        for f in p.rglob("*"):
+            if f.is_file() and f.suffix.lower() in _DATA_EXTENSIONS:
+                total += f.stat().st_size
         return total
     return 0
 

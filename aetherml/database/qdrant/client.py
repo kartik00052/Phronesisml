@@ -71,10 +71,7 @@ class QdrantClient:
         try:
             from qdrant_client import QdrantClient as _QdrantClient
         except ImportError as exc:
-            msg = (
-                "qdrant-client is not installed. "
-                "Install it with: pip install qdrant-client"
-            )
+            msg = "qdrant-client is not installed. Install it with: pip install qdrant-client"
             logger.warning(msg)
             raise ImportError(msg) from exc
 

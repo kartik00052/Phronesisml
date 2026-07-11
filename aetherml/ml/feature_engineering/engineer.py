@@ -37,13 +37,27 @@ from aetherml.exceptions import DataTransformError
 logger = logging.getLogger(__name__)
 
 # Dtypes that the engine reports as numeric
-_NUMERIC_DTYPES = frozenset({
-    "int8", "int16", "int32", "int64",
-    "uint8", "uint16", "uint32", "uint64",
-    "float16", "float32", "float64",
-    "Int8", "Int16", "Int32", "Int64",
-    "Float32", "Float64",
-})
+_NUMERIC_DTYPES = frozenset(
+    {
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "float16",
+        "float32",
+        "float64",
+        "Int8",
+        "Int16",
+        "Int32",
+        "Int64",
+        "Float32",
+        "Float64",
+    }
+)
 
 # Variance threshold: features with variance below this are dropped.
 _VARIANCE_THRESHOLD = 0.01
@@ -103,7 +117,10 @@ def engineer_features(
 
     # ── Step 1: Handle remaining nulls ───────────────────────────────
     result, null_log = _handle_remaining_nulls(
-        result, feature_cols, null_strategy, fill_value,
+        result,
+        feature_cols,
+        null_strategy,
+        fill_value,
     )
     transform_log.append(null_log)
 
@@ -120,14 +137,18 @@ def engineer_features(
     # ── Step 4: Outlier detection ────────────────────────────────────
     if detect_outliers:
         result, outlier_log = _detect_outliers(
-            result, numeric_cols, drop_outlier_rows,
+            result,
+            numeric_cols,
+            drop_outlier_rows,
         )
         transform_log.append(outlier_log)
 
     # ── Step 5: Feature selection ────────────────────────────────────
     if select_features and target_column is not None:
         result, select_log = _select_features(
-            result, feature_cols, target_column,
+            result,
+            feature_cols,
+            target_column,
         )
         transform_log.append(select_log)
 
@@ -167,6 +188,7 @@ def _handle_remaining_nulls(
 
     if strategy == "fill":
         import pandas as pd
+
         with pd.option_context("future.no_silent_downcasting", True):
             df[target_cols] = df[target_cols].fillna(fill_value).infer_objects(copy=False)
     elif strategy == "flag":
@@ -290,7 +312,8 @@ def _select_features(
     absolute correlation with the target below ``_CORRELATION_THRESHOLD``.
     """
     numeric_features = [
-        c for c in feature_cols
+        c
+        for c in feature_cols
         if c in df.columns and df[c].dtype in ("float64", "int64", "float32", "int32")
     ]
 

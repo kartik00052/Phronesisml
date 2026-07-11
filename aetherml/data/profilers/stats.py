@@ -24,13 +24,27 @@ from aetherml.engines.base_engine import BaseEngine
 logger = logging.getLogger(__name__)
 
 # Dtypes that the engine reports as numeric
-_NUMERIC_DTYPES = frozenset({
-    "int8", "int16", "int32", "int64",
-    "uint8", "uint16", "uint32", "uint64",
-    "float16", "float32", "float64",
-    "Int8", "Int16", "Int32", "Int64",
-    "Float32", "Float64",
-})
+_NUMERIC_DTYPES = frozenset(
+    {
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint32",
+        "uint64",
+        "float16",
+        "float32",
+        "float64",
+        "Int8",
+        "Int16",
+        "Int32",
+        "Int64",
+        "Float32",
+        "Float64",
+    }
+)
 
 
 def profile_dataset(
@@ -97,9 +111,7 @@ def _profile_numeric(collected_df: Any, columns: list[str]) -> dict[str, Any]:
         for stat_name in ("count", "mean", "std", "min", "25%", "50%", "75%", "max"):
             if stat_name in stats.index:
                 val = stats.loc[stat_name, col]
-                col_stats[stat_name] = (
-                    float(val) if hasattr(val, "item") else val
-                )
+                col_stats[stat_name] = float(val) if hasattr(val, "item") else val
         col_stats["null_count"] = int(collected_df[col].isnull().sum())
         result[col] = col_stats
 
@@ -120,10 +132,7 @@ def _profile_categorical(collected_df: Any, columns: list[str]) -> dict[str, Any
     for col in columns:
         series = collected_df[col]
         value_counts = series.value_counts()
-        top_values = {
-            str(val): int(count)
-            for val, count in value_counts.head(10).items()
-        }
+        top_values = {str(val): int(count) for val, count in value_counts.head(10).items()}
         result[col] = {
             "cardinality": int(series.nunique()),
             "null_count": int(series.isnull().sum()),

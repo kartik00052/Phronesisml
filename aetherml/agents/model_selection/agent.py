@@ -85,9 +85,12 @@ class ModelSelectionAgent:
         ``trained_model``
         """
         # ── Resolve input data ───────────────────────────────────────
-        data = state.features if state.features is not None else (
-            state.validated_data if state.validated_data is not None
-            else state.processed_data
+        data = (
+            state.features
+            if state.features is not None
+            else (
+                state.validated_data if state.validated_data is not None else state.processed_data
+            )
         )
         if data is None:
             return AgentResult(
@@ -153,7 +156,12 @@ class ModelSelectionAgent:
         except Exception as exc:
             msg = f"Model training failed: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
         # ── Build output ─────────────────────────────────────────────
         candidate_dicts = [candidate_to_dict(c) for c in candidates]
@@ -194,21 +202,17 @@ class ModelSelectionAgent:
             Tool(
                 name="select_and_train",
                 description=(
-                    "Recommend candidate models and train the best "
-                    "via resource-bounded HPO."
+                    "Recommend candidate models and train the best via resource-bounded HPO."
                 ),
                 parameters={
                     "max_trials": {
                         "type": "integer",
-                        "description": (
-                            f"Max HPO trials (default: {DEFAULT_MAX_TRIALS})."
-                        ),
+                        "description": (f"Max HPO trials (default: {DEFAULT_MAX_TRIALS})."),
                     },
                     "max_time_seconds": {
                         "type": "integer",
                         "description": (
-                            f"Max HPO time in seconds "
-                            f"(default: {DEFAULT_MAX_TIME_SECONDS})."
+                            f"Max HPO time in seconds (default: {DEFAULT_MAX_TIME_SECONDS})."
                         ),
                     },
                 },
@@ -216,10 +220,25 @@ class ModelSelectionAgent:
         ]
 
 
-_NUMERIC_DTYPES = frozenset({
-    "int8", "int16", "int32", "int64",
-    "uint8", "uint16", "uint24", "uint32", "uint64",
-    "float16", "float32", "float64",
-    "Int8", "Int16", "Int32", "Int64",
-    "Float32", "Float64",
-})
+_NUMERIC_DTYPES = frozenset(
+    {
+        "int8",
+        "int16",
+        "int32",
+        "int64",
+        "uint8",
+        "uint16",
+        "uint24",
+        "uint32",
+        "uint64",
+        "float16",
+        "float32",
+        "float64",
+        "Int8",
+        "Int16",
+        "Int32",
+        "Int64",
+        "Float32",
+        "Float64",
+    }
+)

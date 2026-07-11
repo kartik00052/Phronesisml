@@ -40,25 +40,29 @@ logger = logging.getLogger(__name__)
 DEFAULT_MAX_SAMPLES = 100
 
 # Tree-based model class name prefixes (case-insensitive check).
-_TREE_MODEL_KEYWORDS = frozenset({
-    "forest",
-    "boosting",
-    "tree",
-    "xgb",
-    "lgbm",
-    "catboost",
-    "extra tree",
-})
+_TREE_MODEL_KEYWORDS = frozenset(
+    {
+        "forest",
+        "boosting",
+        "tree",
+        "xgb",
+        "lgbm",
+        "catboost",
+        "extra tree",
+    }
+)
 
 # Linear model class name prefixes (case-insensitive check).
-_LINEAR_MODEL_KEYWORDS = frozenset({
-    "linear",
-    "logistic",
-    "ridge",
-    "lasso",
-    "elastic",
-    "sgd",
-})
+_LINEAR_MODEL_KEYWORDS = frozenset(
+    {
+        "linear",
+        "logistic",
+        "ridge",
+        "lasso",
+        "elastic",
+        "sgd",
+    }
+)
 
 
 def compute_shap_explanations(
@@ -87,10 +91,7 @@ def compute_shap_explanations(
     try:
         import shap
     except ImportError as exc:
-        msg = (
-            "SHAP library is required for explainability. "
-            "Install it with: pip install shap"
-        )
+        msg = "SHAP library is required for explainability. Install it with: pip install shap"
         raise ImportError(msg) from exc
 
     # ── Enforce resource bound ───────────────────────────────────────
@@ -119,7 +120,9 @@ def compute_shap_explanations(
 
     # ── Compute global feature importance ────────────────────────────
     feature_importance = _compute_global_importance(
-        shap_values, feature_names, model,
+        shap_values,
+        feature_names,
+        model,
     )
 
     logger.info(

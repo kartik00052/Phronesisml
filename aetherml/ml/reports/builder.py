@@ -28,12 +28,19 @@ substitutes the sections.
 from __future__ import annotations
 
 import logging
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "full_report.md"
+
+
+@lru_cache(maxsize=1)
+def _read_template() -> str:
+    """Read and cache the report template from disk."""
+    return _TEMPLATE_PATH.read_text(encoding="utf-8")
 
 
 def build_report(state: Any, narrative: str | None = None) -> str:
@@ -54,7 +61,7 @@ def build_report(state: Any, narrative: str | None = None) -> str:
     status = getattr(state, "status", "unknown")
 
     try:
-        template = _TEMPLATE_PATH.read_text(encoding="utf-8")
+        template = _read_template()
     except OSError as exc:
         logger.warning("Report template missing or unreadable: %s", exc)
         return (

@@ -105,7 +105,12 @@ class TargetDetectionAgent:
         except Exception as exc:
             msg = f"Unexpected error during target detection: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
     def get_tools(self) -> list[Tool]:
         return [

@@ -45,8 +45,7 @@ class DataConfig(BaseModel):
     max_memory_bytes: int = Field(
         default=500 * 1024 * 1024,  # 500 MB
         description=(
-            "Memory threshold (bytes) above which Spark is preferred "
-            "over in-process engines."
+            "Memory threshold (bytes) above which Spark is preferred over in-process engines."
         ),
     )
     max_file_size_bytes: int = Field(
@@ -67,15 +66,11 @@ class QdrantConfig(BaseModel):
 
     url: str = Field(
         default="http://localhost:6333",
-        description=(
-            "Qdrant server URL. Read from AETHERML_QDRANT_URL env var if not set."
-        ),
+        description=("Qdrant server URL. Read from AETHERML_QDRANT_URL env var if not set."),
     )
     api_key: str | None = Field(
         default=None,
-        description=(
-            "API key for Qdrant Cloud. Read from AETHERML_QDRANT_API_KEY env var."
-        ),
+        description=("API key for Qdrant Cloud. Read from AETHERML_QDRANT_API_KEY env var."),
     )
     collection_name: str = Field(
         default="aetherml_knowledge",

@@ -129,11 +129,21 @@ class ETLAgent:
                 metadata={"columns": list(df.columns)},
             )
         except DataTransformError as exc:
-            return AgentResult(success=False, error=str(exc))
+            return AgentResult(
+                success=False,
+                error=str(exc),
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
         except Exception as exc:
             msg = f"Unexpected error during ETL: {exc}"
             logger.exception(msg)
-            return AgentResult(success=False, error=msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
 
     def get_tools(self) -> list[Tool]:
         return [
