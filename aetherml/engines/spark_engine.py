@@ -22,6 +22,7 @@ from typing import Any
 import pandas as pd
 
 from aetherml.engines.base_engine import BaseEngine, EngineType
+from aetherml.exceptions import EngineError
 
 
 class SparkEngine(BaseEngine):
@@ -67,7 +68,7 @@ class SparkEngine(BaseEngine):
         fmt = format_map.get(suffix)
         if fmt is None:
             msg = f"Unsupported file format: {suffix}"
-            raise ValueError(msg)
+            raise EngineError(msg)
         reader = spark.read.format(fmt)
         if fmt == "csv":
             reader = reader.option("header", "true").option("inferSchema", "true")
@@ -80,7 +81,7 @@ class SparkEngine(BaseEngine):
         fmt = format_map.get(suffix)
         if fmt is None:
             msg = f"Unsupported file format for writing: {suffix}"
-            raise ValueError(msg)
+            raise EngineError(msg)
         writer = df.write.format(fmt)
         if fmt == "csv":
             writer = writer.option("header", "true")
@@ -134,7 +135,8 @@ class SparkEngine(BaseEngine):
         return (df.count(), len(df.columns))
 
     def columns(self, df: Any) -> list[str]:
-        return df.columns
+        result: list[str] = df.columns
+        return result
 
     def dtypes(self, df: Any) -> dict[str, str]:
         return {field.name: str(field.dataType) for field in df.schema.fields}

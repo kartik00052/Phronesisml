@@ -16,24 +16,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.eda.agent import EDAAgent
-from aetherml.agents.engine_selection.agent import EngineSelectionAgent
-from aetherml.agents.etl.agent import ETLAgent, ETLConfig
-from aetherml.agents.evaluation.agent import EvaluationAgent
-from aetherml.agents.explainability.agent import ExplainabilityAgent
-from aetherml.agents.feature_engineering.agent import FeatureEngineeringAgent
-from aetherml.agents.model_selection.agent import ModelSelectionAgent
-from aetherml.agents.rag.agent import RAGAgent
-from aetherml.agents.reporting.agent import ReportingAgent
-from aetherml.agents.storage.agent import StorageAgent
-from aetherml.agents.target_detection.agent import TargetDetectionAgent
-from aetherml.agents.upload.agent import UploadAgent
-from aetherml.agents.validation.agent import ValidationAgent
 from aetherml.configs.settings import AetherMLConfig
-from aetherml.engines.engine_selector import select_engine
-from aetherml.exceptions import AetherMLError, WorkflowError
-from aetherml.workflow.graph import build_graph
+from aetherml.exceptions import AetherMLError, ConfigurationError, WorkflowError
 from aetherml.workflow.state import WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -52,21 +36,36 @@ __all__ = [
 def _compose_agents(
     config: AetherMLConfig,
     data_path: str,
-) -> dict[str, BaseAgent]:
+) -> dict[str, Any]:
     """Manually compose all agents via constructor injection.
 
     This is the composition root — the only place where concrete agent
     and engine classes are instantiated.  The rest of the SDK depends
     on abstractions (``BaseAgent``, ``BaseEngine``).
 
-    TODO: In a future pass, this will become a proper DI container
-    with configurable agent lifecycles.
+    All agent imports are deferred to this function so that
+    ``import aetherml`` does not pull in every dependency eagerly.
     """
+    from aetherml.agents.eda.agent import EDAAgent
+    from aetherml.agents.engine_selection.agent import EngineSelectionAgent
+    from aetherml.agents.etl.agent import ETLAgent, ETLConfig
+    from aetherml.agents.evaluation.agent import EvaluationAgent
+    from aetherml.agents.explainability.agent import ExplainabilityAgent
+    from aetherml.agents.feature_engineering.agent import FeatureEngineeringAgent
+    from aetherml.agents.model_selection.agent import ModelSelectionAgent
+    from aetherml.agents.rag.agent import RAGAgent
+    from aetherml.agents.reporting.agent import ReportingAgent
+    from aetherml.agents.storage.agent import StorageAgent
+    from aetherml.agents.target_detection.agent import TargetDetectionAgent
+    from aetherml.agents.upload.agent import UploadAgent
+    from aetherml.agents.validation.agent import ValidationAgent
+    from aetherml.engines.engine_selector import select_engine
+
     # Select the computation engine
     engine = select_engine(config=config, data_path=data_path)
 
     # Instantiate agents with their dependencies
-    agents: dict[str, BaseAgent] = {
+    agents: dict[str, Any] = {
         "upload": UploadAgent(engine=engine),
         "validation": ValidationAgent(engine=engine),
         "engine_selection": EngineSelectionAgent(),
@@ -126,18 +125,28 @@ async def run_pipeline(
 
     logger.info("AetherML pipeline starting — data_path=%s", data_path)
 
-    # 1. Compose agents
-    agents = _compose_agents(config, data_path)
-
-    # 2. Build workflow graph
-    graph = build_graph(agents, stages=stages)
-
-    # 3. Build initial state
-    initial_state = WorkflowState(data_path=data_path)
+    # 1–3. Compose agents, build graph, build initial state
+    try:
+        agents = _compose_agents(config, data_path)
+        from aetherml.workflow.graph import build_graph
+        graph = build_graph(agents, stages=stages)
+        initial_state = WorkflowState(data_path=data_path)
+    except WorkflowError:
+        raise
+    except ConfigurationError as exc:
+        msg = f"Pipeline configuration failed: {exc}"
+        logger.exception(msg)
+        raise WorkflowError(msg) from exc
+    except Exception as exc:
+        msg = f"Pipeline setup failed: {exc}"
+        logger.exception(msg)
+        raise WorkflowError(msg) from exc
 
     # 4. Execute
     try:
         final_state = await graph.ainvoke(initial_state)
+    except WorkflowError:
+        raise
     except Exception as exc:
         msg = f"Workflow execution failed: {exc}"
         logger.exception(msg)

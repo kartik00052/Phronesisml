@@ -32,12 +32,17 @@ class AgentResult(BaseModel):
         data: Agent-specific output payload.  The shape varies per agent
               and is documented in each agent's own module docstring.
         error: Human-readable error message when ``success`` is False.
+        exception: Original exception object when ``success`` is False.
+            Preserves the exception type, traceback, and cause chain for
+            diagnostics.  May be ``None`` for configuration/validation
+            errors that do not originate from an exception.
         metadata: Arbitrary key-value metadata (e.g. row counts, timings).
     """
 
     success: bool = True
     data: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
+    exception: Any = Field(default=None, exclude=True)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -68,6 +73,15 @@ class BaseAgent(Protocol):
 
     async def run(self, state: Any) -> AgentResult:  # noqa: ANN401
         """Execute the agent's core logic against the current workflow state.
+
+        Agents MUST return an ``AgentResult`` — they MUST NOT raise
+        exceptions for expected/transient failures (bad data, missing
+        columns, model failures).  Instead, return
+        ``AgentResult(success=False, error=..., exception=exc)`` so the
+        workflow can decide whether to continue or abort.
+
+        Agents SHOULD raise only for programming errors (bugs, missing
+        dependencies) or truly unrecoverable failures (out of memory).
 
         Args:
             state: The shared ``WorkflowState`` instance.

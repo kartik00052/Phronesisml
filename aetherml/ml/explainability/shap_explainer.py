@@ -63,7 +63,7 @@ _LINEAR_MODEL_KEYWORDS = frozenset({
 
 def compute_shap_explanations(
     model: Any,
-    X: np.ndarray,
+    X: np.ndarray[Any, Any],
     feature_names: list[str],
     max_samples: int = DEFAULT_MAX_SAMPLES,
 ) -> dict[str, Any]:
@@ -139,7 +139,7 @@ def compute_shap_explanations(
 
 def _create_explainer(
     model: Any,
-    X: np.ndarray,
+    X: np.ndarray[Any, Any],
     shap: Any,
 ) -> tuple[str, Any]:
     """Create the appropriate SHAP explainer based on model type.

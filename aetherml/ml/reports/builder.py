@@ -27,8 +27,11 @@ substitutes the sections.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 _TEMPLATE_PATH = Path(__file__).parent / "templates" / "full_report.md"
 
@@ -49,7 +52,16 @@ def build_report(state: Any, narrative: str | None = None) -> str:
     run_id = getattr(state, "run_id", "unknown")
     status = getattr(state, "status", "unknown")
 
-    template = _TEMPLATE_PATH.read_text(encoding="utf-8")
+    try:
+        template = _TEMPLATE_PATH.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.warning("Report template missing or unreadable: %s", exc)
+        return (
+            f"# AetherML Report — {run_id}\n\n"
+            f"**Status:** {status}\n\n"
+            "_Report template could not be loaded. "
+            "Check that aetherml is installed correctly._\n"
+        )
 
     return template.format(
         run_id=run_id,

@@ -198,4 +198,4 @@ class WorkflowState(BaseModel):
         description="[storage] URI where the model / artifacts were persisted.",
     )
 
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = {"arbitrary_types_allowed": True, "extra": "allow"}

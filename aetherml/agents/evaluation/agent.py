@@ -84,9 +84,6 @@ class EvaluationAgent:
 
         task_type = getattr(state, "task_type", None)
         feature_names = getattr(state, "feature_names", None)
-        if feature_names is None:
-            collected = self._engine.collect(data)
-            feature_names = [c for c in collected.columns if c != target_column]
 
         best_pipeline = getattr(state, "best_pipeline", None)
         best_params = best_pipeline.get("params", {}) if best_pipeline else {}
@@ -94,8 +91,11 @@ class EvaluationAgent:
         target_detection_confidence = getattr(state, "target_detection_confidence", None)
         ambiguity_reason = getattr(state, "ambiguity_reason", None)
 
-        # ── Collect data to pandas ───────────────────────────────────
+        # ── Collect data to pandas (once) ────────────────────────────
         collected = self._engine.collect(data)
+
+        if feature_names is None:
+            feature_names = [c for c in collected.columns if c != target_column]
 
         # ── Evaluate ─────────────────────────────────────────────────
         try:

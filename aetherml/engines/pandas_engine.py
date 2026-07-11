@@ -17,6 +17,7 @@ from typing import Any
 import pandas as pd
 
 from aetherml.engines.base_engine import BaseEngine, EngineType
+from aetherml.exceptions import EngineError
 
 
 class _LazyPandas:
@@ -47,7 +48,7 @@ class PandasEngine(BaseEngine):
         reader = read_ops.get(suffix)
         if reader is None:
             msg = f"Unsupported file format: {suffix}"
-            raise ValueError(msg)
+            raise EngineError(msg)
         return reader(path, **kwargs)
 
     def write(self, df: pd.DataFrame, path: str | Path, **kwargs: Any) -> None:
@@ -62,7 +63,7 @@ class PandasEngine(BaseEngine):
         writer = write_ops.get(suffix)
         if writer is None:
             msg = f"Unsupported file format for writing: {suffix}"
-            raise ValueError(msg)
+            raise EngineError(msg)
         writer(df, path, **kwargs)
 
     # ── Transformations ─────────────────────────────────────────────
@@ -104,7 +105,8 @@ class PandasEngine(BaseEngine):
     # ── Introspection ───────────────────────────────────────────────
 
     def shape(self, df: pd.DataFrame) -> tuple[int, int]:
-        return df.shape  # type: ignore[return-value]
+        result: tuple[int, int] = df.shape
+        return result
 
     def columns(self, df: pd.DataFrame) -> list[str]:
         return list(df.columns)

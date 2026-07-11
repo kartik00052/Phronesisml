@@ -34,6 +34,7 @@ from typing import Any
 from langgraph.graph import END, StateGraph
 
 from aetherml.agents.base import BaseAgent
+from aetherml.exceptions import ConfigurationError
 from aetherml.workflow.nodes import make_node
 from aetherml.workflow.router import (
     route_after_eda,
@@ -107,7 +108,7 @@ def build_graph(
     for stage in stages:
         if stage not in valid_names:
             msg = f"Unknown stage: {stage!r}. Valid stages: {sorted(valid_names)}"
-            raise ValueError(msg)
+            raise ConfigurationError(msg)
 
     # Build the ordered list of nodes to wire
     ordered_stages = [s for s in PIPELINE_ORDER if s in stages]
@@ -119,13 +120,13 @@ def build_graph(
         agent = agents.get(stage_name)
         if agent is None:
             msg = f"Agent for stage '{stage_name}' not provided."
-            raise ValueError(msg)
+            raise ConfigurationError(msg)
         graph.add_node(stage_name, make_node(agent))
 
     # ── Wire edges ──────────────────────────────────────────────────
     if not ordered_stages:
         msg = "No stages to wire — empty pipeline."
-        raise ValueError(msg)
+        raise ConfigurationError(msg)
 
     graph.set_entry_point(ordered_stages[0])
 

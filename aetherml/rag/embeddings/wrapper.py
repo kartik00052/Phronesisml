@@ -63,8 +63,9 @@ class EmbeddingWrapper:
 
         try:
             model = self._get_model()
-            embeddings = model.encode(texts, show_progress_bar=False)
-            return embeddings.tolist()
+            embeddings: Any = model.encode(texts, show_progress_bar=False)
+            result: list[list[float]] = embeddings.tolist()
+            return result
         except Exception as exc:
             logger.warning("Embedding generation failed: %s", exc)
             return None
@@ -88,6 +89,11 @@ class EmbeddingWrapper:
         """Return the embedding dimension for the configured model."""
         try:
             model = self._get_model()
-            return model.get_sentence_embedding_dimension()
-        except Exception:
+            dim: int = model.get_sentence_embedding_dimension()
+            return dim
+        except Exception as exc:
+            logger.warning(
+                "Could not determine embedding dimension, defaulting to 384: %s",
+                exc,
+            )
             return 384

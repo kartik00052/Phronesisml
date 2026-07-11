@@ -8,6 +8,8 @@ Design:
 - Stateless: all inputs come from ``WorkflowState``.
 - Engine-agnostic: delegates I/O to ``data.loaders.file_loader`` which
   uses whatever engine is active.
+- Size guard: rejects files exceeding ``max_file_size_bytes`` before
+  loading into memory.
 - Returns: dict with keys ``raw_data``, ``file_format``, ``row_count``
   that LangGraph merges into the workflow state.
 """
@@ -15,6 +17,7 @@ Design:
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any
 
 from aetherml.agents.base import AgentResult, Tool
@@ -48,6 +51,26 @@ class UploadAgent:
             )
 
         try:
+            # Size guard: reject files exceeding the configured limit.
+            max_bytes = getattr(state, "max_file_size_bytes", None)
+            if max_bytes is None:
+                from aetherml.configs.settings import AetherMLConfig
+                max_bytes = AetherMLConfig().data.max_file_size_bytes
+            if os.path.exists(data_path):
+                file_size = os.path.getsize(data_path)
+                if file_size > max_bytes:
+                    size_mb = file_size / (1024 * 1024)
+                    limit_mb = max_bytes / (1024 * 1024)
+                    return AgentResult(
+                        success=False,
+                        error=(
+                            f"File too large: {size_mb:.1f} MB exceeds "
+                            f"limit of {limit_mb:.1f} MB. "
+                            "Increase data.max_file_size_bytes in config "
+                            "or reduce the dataset size."
+                        ),
+                    )
+
             file_format = detect_format(data_path)
             df = load_file(data_path, self._engine)
             row_count = len(df)

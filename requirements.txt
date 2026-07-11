@@ -1,0 +1,20 @@
+# AetherML — Pinned dependency lock file
+# Generated from the installed environment. Regenerate with:
+#   pip install -e ".[dev]" && pip freeze > requirements.txt
+#
+# Core
+pydantic==2.13.3
+typer==0.26.7
+rich==13.9.4
+langgraph==0.6.11
+pandas==2.3.1
+polars==1.42.1
+scikit-learn==1.6.1
+numpy==2.2.6
+
+# Dev / Test
+pytest==8.4.2
+pytest-asyncio==0.26.0
+pytest-cov==5.0.0
+ruff==0.15.21
+mypy==1.20.2

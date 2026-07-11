@@ -129,8 +129,10 @@ def engineer_features(
         )
         transform_log.append(select_log)
 
-    # Collect the final feature names
-    final_cols = [c for c in result.columns if c != target_column]
+    # Collect the final feature names (exclude target from result)
+    if target_column is not None and target_column in result.columns:
+        result = result.drop(columns=[target_column])
+    final_cols = list(result.columns)
 
     logger.info(
         "Feature engineering complete: %d rows, %d features (from %d columns).",
@@ -162,17 +164,15 @@ def _handle_remaining_nulls(
         return df, {"action": "fill_nulls", "columns_affected": 0}
 
     if strategy == "fill":
-        result = df.copy()
-        result[target_cols] = result[target_cols].fillna(fill_value)
+        df[target_cols] = df[target_cols].fillna(fill_value)
     elif strategy == "flag":
-        result = df.copy()
         for col in target_cols:
-            result[f"{col}_is_null"] = result[col].isnull().astype(int)
+            df[f"{col}_is_null"] = df[col].isnull().astype(int)
     else:
         msg = f"Unknown null strategy for FE: {strategy!r}. Use 'fill' or 'flag'."
         raise DataTransformError(msg)
 
-    return result, {
+    return df, {
         "action": "fill_nulls",
         "strategy": strategy,
         "columns_affected": len(target_cols),
@@ -186,16 +186,15 @@ def _encode_features(
     """Label-encode categorical feature columns (excluding target)."""
     import pandas as pd
 
-    result = df.copy()
     encoding_maps: dict[str, dict[Any, int]] = {}
 
     for col in categorical_cols:
-        if result[col].dtype == "object":
-            codes, uniques = pd.factorize(result[col])
-            result[col] = codes
+        if df[col].dtype == "object":
+            codes, uniques = pd.factorize(df[col])
+            df[col] = codes
             encoding_maps[col] = {v: int(i) for i, v in enumerate(uniques)}
 
-    return result, {
+    return df, {
         "action": "encode_features",
         "columns_encoded": list(encoding_maps.keys()),
         "encoding_maps": encoding_maps,
@@ -207,23 +206,21 @@ def _scale_numeric(
     numeric_cols: list[str],
 ) -> tuple[Any, dict[str, Any]]:
     """Min-max scale numeric feature columns."""
-    result = df.copy()
     scaling_params: dict[str, dict[str, float]] = {}
 
     for col in numeric_cols:
-        col_min = float(result[col].min())
-        col_max = float(result[col].max())
+        col_min = float(df[col].min())
+        col_max = float(df[col].max())
         col_range = col_max - col_min
 
         if col_range == 0:
-            # Constant column — set to 0
-            result[col] = 0.0
+            df[col] = 0.0
         else:
-            result[col] = (result[col] - col_min) / col_range
+            df[col] = (df[col] - col_min) / col_range
 
         scaling_params[col] = {"min": col_min, "max": col_max}
 
-    return result, {
+    return df, {
         "action": "scale_numeric",
         "columns_scaled": numeric_cols,
         "scaling_params": scaling_params,
@@ -243,14 +240,13 @@ def _detect_outliers(
     if not numeric_cols:
         return df, {"action": "detect_outliers", "outliers_flagged": 0, "rows_dropped": 0}
 
-    result = df.copy()
-    outlier_mask = result[numeric_cols].apply(_is_outlier_iqr)
+    outlier_mask = df[numeric_cols].apply(_is_outlier_iqr)
     outlier_rows = outlier_mask.any(axis=1)
     n_outliers = int(outlier_rows.sum())
 
     if drop and n_outliers > 0:
-        result = result[~outlier_rows]
-        return result, {
+        df = df[~outlier_rows]
+        return df, {
             "action": "detect_outliers",
             "method": "iqr",
             "outliers_detected": n_outliers,
@@ -259,9 +255,9 @@ def _detect_outliers(
 
     # Flag outliers
     if n_outliers > 0:
-        result["outlier_flag"] = outlier_rows.astype(int)
+        df["outlier_flag"] = outlier_rows.astype(int)
 
-    return result, {
+    return df, {
         "action": "detect_outliers",
         "method": "iqr",
         "outliers_detected": n_outliers,
@@ -301,9 +297,13 @@ def _select_features(
     variances = df[numeric_features].var()
     low_var = [c for c in numeric_features if variances.get(c, 0) < _VARIANCE_THRESHOLD]
 
-    # Correlation with target
-    correlations = df[numeric_features].corrwith(df[target_column]).abs()
-    low_corr = [c for c in numeric_features if correlations.get(c, 0) < _CORRELATION_THRESHOLD]
+    # Correlation with target — only if target is numeric
+    low_corr: list[str] = []
+    target_col_obj = df[target_column]
+    target_is_numeric = target_col_obj.dtype in ("float64", "int64", "float32", "int32", "float16")
+    if target_is_numeric:
+        correlations = df[numeric_features].corrwith(target_col_obj).abs()
+        low_corr = [c for c in numeric_features if correlations.get(c, 0) < _CORRELATION_THRESHOLD]
 
     # Union of features to drop
     to_drop = list(set(low_var + low_corr))

@@ -47,6 +47,21 @@ class QdrantClient:
         self._timeout_seconds = timeout_seconds
         self._client: Any = None
 
+    def close(self) -> None:
+        """Release the underlying Qdrant connection."""
+        if self._client is not None:
+            try:
+                self._client.close()
+            except Exception as exc:
+                logger.debug("Qdrant connection close failed: %s", exc)
+            self._client = None
+
+    def __enter__(self) -> QdrantClient:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
     def _get_client(self) -> Any:
         """Lazily initialise and return the underlying Qdrant client."""
         if self._client is not None:
@@ -100,6 +115,11 @@ class QdrantClient:
 
             return True
 
+        except ImportError:
+            raise
+        except (ConnectionError, TimeoutError, OSError) as exc:
+            logger.warning("Qdrant ensure_collection failed (infra): %s", exc)
+            return False
         except Exception as exc:
             logger.warning("Qdrant ensure_collection failed: %s", exc)
             return False
@@ -125,8 +145,8 @@ class QdrantClient:
             from qdrant_client.models import PointStruct
 
             points = [
-                PointStruct(id=ids[i], vector=vectors[i], payload=payloads[i])
-                for i in range(len(ids))
+                PointStruct(id=i, vector=v, payload=p)
+                for i, v, p in zip(ids, vectors, payloads, strict=True)
             ]
 
             client.upsert(
@@ -135,6 +155,11 @@ class QdrantClient:
             )
             return True
 
+        except ImportError:
+            raise
+        except (ConnectionError, TimeoutError, OSError) as exc:
+            logger.warning("Qdrant upsert failed (infra): %s", exc)
+            return False
         except Exception as exc:
             logger.warning("Qdrant upsert failed: %s", exc)
             return False
@@ -170,6 +195,11 @@ class QdrantClient:
                 for hit in results
             ]
 
+        except ImportError:
+            raise
+        except (ConnectionError, TimeoutError, OSError) as exc:
+            logger.warning("Qdrant search failed (infra): %s", exc)
+            return []
         except Exception as exc:
             logger.warning("Qdrant search failed: %s", exc)
             return []
@@ -185,6 +215,11 @@ class QdrantClient:
             client.delete_collection(collection_name=self._collection_name)
             return True
 
+        except ImportError:
+            raise
+        except (ConnectionError, TimeoutError, OSError) as exc:
+            logger.warning("Qdrant delete_collection failed (infra): %s", exc)
+            return False
         except Exception as exc:
             logger.warning("Qdrant delete_collection failed: %s", exc)
             return False

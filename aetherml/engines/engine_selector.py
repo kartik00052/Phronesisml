@@ -15,6 +15,7 @@ The thresholds are configurable via ``DataConfig.max_memory_bytes``.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -22,8 +23,9 @@ from aetherml.configs.settings import AetherMLConfig
 from aetherml.engines.base_engine import BaseEngine, EngineType
 from aetherml.engines.pandas_engine import PandasEngine
 from aetherml.engines.polars_engine import PolarsEngine
-from aetherml.engines.spark_engine import SparkEngine
 from aetherml.exceptions import EngineSelectionError
+
+logger = logging.getLogger(__name__)
 
 # Thresholds in bytes
 _PANDAS_MAX = 100 * 1024 * 1024  # 100 MB
@@ -71,7 +73,8 @@ def select_engine(
         pandas_eng = PandasEngine()
         try:
             memory_bytes = pandas_eng.memory_usage(df)
-        except Exception:
+        except Exception as exc:
+            logger.warning("Memory usage measurement failed, defaulting to 0: %s", exc)
             memory_bytes = 0
     elif data_path is not None:
         memory_bytes = _estimate_file_size(data_path)
@@ -96,6 +99,8 @@ def _build_engine(engine_type: EngineType, config: AetherMLConfig) -> BaseEngine
     if engine_type == EngineType.POLARS:
         return PolarsEngine()
     if engine_type == EngineType.SPARK:
+        from aetherml.engines.spark_engine import SparkEngine
+
         return SparkEngine(master=config.engine.spark_master)
     msg = f"Unknown engine type: {engine_type}"
     raise EngineSelectionError(msg)

@@ -21,6 +21,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Module-level caches for expensive client/model instances
+_qdrant_client_cache: dict[str, Any] = {}
+_embedding_wrapper_cache: dict[str, Any] = {}
+
 
 def get_rag_context(
     state: Any,
@@ -62,15 +66,19 @@ def get_rag_context(
     }
 
     # ── Connect to Qdrant ───────────────────────────────────────────
+    cache_key = f"{qdrant_url}:{qdrant_collection}"
     try:
-        from aetherml.database.qdrant.client import QdrantClient
-        client = QdrantClient(
-            url=qdrant_url,
-            api_key=qdrant_api_key,
-            collection_name=qdrant_collection,
-            timeout_seconds=qdrant_timeout,
-        )
-        client.ensure_collection()
+        if cache_key not in _qdrant_client_cache:
+            from aetherml.database.qdrant.client import QdrantClient
+            client = QdrantClient(
+                url=qdrant_url,
+                api_key=qdrant_api_key,
+                collection_name=qdrant_collection,
+                timeout_seconds=qdrant_timeout,
+            )
+            client.ensure_collection()
+            _qdrant_client_cache[cache_key] = client
+        client = _qdrant_client_cache[cache_key]
     except Exception as exc:
         logger.warning("Qdrant connection failed — RAG disabled: %s", exc)
         result["status"] = "failed: qdrant_unreachable"
@@ -78,8 +86,10 @@ def get_rag_context(
 
     # ── Load embedding model ────────────────────────────────────────
     try:
-        from aetherml.rag.embeddings.wrapper import EmbeddingWrapper
-        embedding_wrapper = EmbeddingWrapper(model_name=embedding_model)
+        if embedding_model not in _embedding_wrapper_cache:
+            from aetherml.rag.embeddings.wrapper import EmbeddingWrapper
+            _embedding_wrapper_cache[embedding_model] = EmbeddingWrapper(model_name=embedding_model)
+        embedding_wrapper = _embedding_wrapper_cache[embedding_model]
     except Exception as exc:
         logger.warning("Embedding model load failed — RAG disabled: %s", exc)
         result["status"] = "failed: embedding_model_unavailable"

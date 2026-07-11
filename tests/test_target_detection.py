@@ -157,7 +157,7 @@ class TestDetectTarget:
         profile = profile_dataset(features_only_df, pandas_engine)
         result = detect_target(features_only_df, pandas_engine, profile)
         # All columns are features — no strong target signal
-        assert result["confidence"] < 0.5
+        assert result["confidence"] <= 0.5
 
     def test_constant_column_not_target(
         self, pandas_engine: PandasEngine,

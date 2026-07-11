@@ -43,7 +43,16 @@ class WorkflowError(AetherMLError):
 
 
 class AgentError(AetherMLError):
-    """Raised when an agent execution fails."""
+    """Raised when an agent execution fails.
+
+    Attributes:
+        cause: Original exception object from the agent, preserving
+            type, traceback, and cause chain for diagnostics.
+    """
+
+    def __init__(self, message: str, *, cause: BaseException | None = None) -> None:
+        super().__init__(message)
+        self.cause = cause
 
 
 class AgentNotImplementedError(AgentError):

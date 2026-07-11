@@ -109,13 +109,13 @@ class ModelSelectionAgent:
             )
 
         feature_names = getattr(state, "feature_names", None)
+
+        # ── Collect data to pandas (once) ────────────────────────────
+        collected = self._engine.collect(data)
+
         if feature_names is None:
             # Fallback: all columns except target
-            collected = self._engine.collect(data)
             feature_names = [c for c in collected.columns if c != target_column]
-
-        # ── Collect data to pandas ───────────────────────────────────
-        collected = self._engine.collect(data)
 
         # ── Recommend models ─────────────────────────────────────────
         n_rows = len(collected)

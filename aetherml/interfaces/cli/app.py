@@ -13,6 +13,7 @@ import asyncio
 import logging
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -75,7 +76,7 @@ async def _run_pipeline(
     data_path: str,
     engine: str | None,
     null_strategy: str,
-) -> dict:
+) -> dict[str, Any]:
     """Internal async pipeline runner — calls the SDK public API."""
     from aetherml import run_pipeline  # noqa: F811
 

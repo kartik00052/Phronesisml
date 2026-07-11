@@ -91,9 +91,9 @@ def regression_df() -> pd.DataFrame:
     """Return a DataFrame with a clear regression target."""
     return pd.DataFrame(
         {
-            "feature_a": [1.0, 2.0, 3.0, 4.0, 5.0],
-            "feature_b": [10, 20, 30, 40, 50],
-            "target": [100.0, 200.0, 300.0, 400.0, 500.0],
+            "feature_a": list(range(1, 11)),
+            "feature_b": [x * 10 for x in range(1, 11)],
+            "target": [x * 10.5 for x in range(1, 11)],
         }
     )
 

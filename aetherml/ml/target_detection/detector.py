@@ -84,11 +84,12 @@ def detect_target(
 
     # ── Build candidate list ─────────────────────────────────────────
     candidates: list[dict[str, Any]] = []
+    nunique_series = collected.nunique()
     for col in engine.columns(df):
         if col not in all_summaries:
             continue
         dtype_str = dtypes.get(col, "")
-        n_unique = int(collected[col].nunique())
+        n_unique = int(nunique_series.get(col, 0))
         is_numeric = dtype_str in _NUMERIC_DTYPES
         col_summary = all_summaries.get(col, {})
 

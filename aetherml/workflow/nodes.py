@@ -45,10 +45,18 @@ def make_node(agent: BaseAgent) -> Any:
         except AgentNotImplementedError:
             logger.warning("Agent '%s' is not implemented — skipping.", agent.name)
             return {}
+        except Exception as exc:
+            logger.exception("Agent '%s' raised an unhandled exception.", agent.name)
+            raise AgentError(
+                f"Agent '{agent.name}' raised an unexpected error: {exc}"
+            ) from exc
 
         if not result.success:
             logger.error("Agent '%s' failed: %s", agent.name, result.error)
-            raise AgentError(f"Agent '{agent.name}' failed: {result.error}")
+            raise AgentError(
+                f"Agent '{agent.name}' failed: {result.error}",
+                cause=result.exception,
+            )
 
         logger.info("Agent '%s' completed successfully.", agent.name)
         return result.data

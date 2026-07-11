@@ -223,12 +223,17 @@ def train_models(
 
 
 def _split_data(
-    features: np.ndarray,
-    target: np.ndarray,
+    features: np.ndarray[Any, Any],
+    target: np.ndarray[Any, Any],
     task_type: str,
     test_size: float,
     random_state: int,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+    np.ndarray[Any, Any],
+]:
     """Split data into train/test sets.
 
     Uses stratified split for classification, random split for regression
@@ -237,19 +242,25 @@ def _split_data(
     from sklearn.model_selection import train_test_split
 
     stratify = target if task_type == "classification" else None
-    return train_test_split(
+    result: tuple[
+        np.ndarray[Any, Any],
+        np.ndarray[Any, Any],
+        np.ndarray[Any, Any],
+        np.ndarray[Any, Any],
+    ] = train_test_split(
         features, target,
         test_size=test_size,
         random_state=random_state,
         stratify=stratify,
     )
+    return result
 
 
-def _import_estimator(estimator_path: str) -> type:
+def _import_estimator(estimator_path: str) -> type[Any]:
     """Dynamically import an sklearn estimator class from its dotted path."""
     module_path, class_name = estimator_path.rsplit(".", 1)
     module = importlib.import_module(module_path)
-    return getattr(module, class_name)
+    return getattr(module, class_name)  # type: ignore[no-any-return]
 
 
 def _build_param_grid(

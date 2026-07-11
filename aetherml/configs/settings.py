@@ -41,6 +41,13 @@ class DataConfig(BaseModel):
             "over in-process engines."
         ),
     )
+    max_file_size_bytes: int = Field(
+        default=2 * 1024 * 1024 * 1024,  # 2 GB
+        description=(
+            "Maximum file size (bytes) allowed for upload. "
+            "Files exceeding this limit are rejected before loading."
+        ),
+    )
 
 
 class LLMConfig(BaseModel):

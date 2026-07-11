@@ -29,6 +29,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+from typing import Any
 
 from aetherml.configs.settings import LLMConfig
 from aetherml.exceptions import LLMAuthenticationError, LLMTimeoutError
@@ -52,6 +53,21 @@ class GemmaClient:
         self._model_id = config.model_id
         self._timeout = config.timeout_seconds
         self._max_retries = config.max_retries
+
+    async def close(self) -> None:
+        """Release any resources held by the client.
+
+        Currently a no-op since the HTTP backend is a placeholder.
+        When a real httpx/aiohttp client is added, this method should
+        call ``client.aclose()``.
+        """
+        # Placeholder for future httpx.AsyncClient cleanup.
+
+    async def __aenter__(self) -> GemmaClient:
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        await self.close()
 
     async def generate(self, prompt: str, *, system_instruction: str | None = None) -> str:
         """Send a prompt to the LLM and return the response text.

@@ -366,6 +366,11 @@ class TestIngestPipelineState:
 class TestGetRagContext:
     """Test the get_rag_context function."""
 
+    def setup_method(self) -> None:
+        from aetherml.rag.context import _qdrant_client_cache, _embedding_wrapper_cache
+        _qdrant_client_cache.clear()
+        _embedding_wrapper_cache.clear()
+
     def test_qdrant_unreachable(self) -> None:
         from aetherml.rag.context import get_rag_context
 

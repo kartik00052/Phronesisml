@@ -202,6 +202,9 @@ class ReportingAgent:
             logger.warning(msg)
             return None, f"failed: {msg}"
 
+        if self._llm_config is None:
+            return None, "failed: LLM config not provided"
+
         client = GemmaClient(self._llm_config)
 
         try:

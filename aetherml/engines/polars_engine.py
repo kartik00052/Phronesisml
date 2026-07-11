@@ -13,12 +13,16 @@ Polars query planner before execution.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, TypeAlias
 
 import pandas as pd
 import polars as pl
 
 from aetherml.engines.base_engine import BaseEngine, EngineType
+from aetherml.exceptions import EngineError
+
+# Polars join "how" parameter literal type.
+_HowType: TypeAlias = Literal["inner", "left", "right", "full", "semi", "anti", "cross", "outer"]
 
 
 class PolarsEngine(BaseEngine):
@@ -41,8 +45,9 @@ class PolarsEngine(BaseEngine):
         reader = read_ops.get(suffix)
         if reader is None:
             msg = f"Unsupported file format: {suffix}"
-            raise ValueError(msg)
-        return reader(path, **kwargs)
+            raise EngineError(msg)
+        result: pl.DataFrame = reader(path, **kwargs)
+        return result
 
     def write(self, df: pl.DataFrame, path: str | Path, **kwargs: Any) -> None:
         path = Path(path)
@@ -57,7 +62,7 @@ class PolarsEngine(BaseEngine):
         writer = write_ops.get(suffix)
         if writer is None:
             msg = f"Unsupported file format for writing: {suffix}"
-            raise ValueError(msg)
+            raise EngineError(msg)
         writer(df, path, **kwargs)
 
     # ── Transformations ─────────────────────────────────────────────
@@ -75,7 +80,8 @@ class PolarsEngine(BaseEngine):
         func: Any,
         **kwargs: Any,
     ) -> pl.DataFrame | pl.LazyFrame:
-        return func(df, **kwargs)
+        result: pl.DataFrame | pl.LazyFrame = func(df, **kwargs)
+        return result
 
     def aggregate(
         self,
@@ -94,7 +100,13 @@ class PolarsEngine(BaseEngine):
         how: str = "inner",
     ) -> pl.DataFrame | pl.LazyFrame:
         on_list = [on] if isinstance(on, str) else on
-        return left.join(right, on=on_list, how=how)
+        how_literal = how  # str → _HowType checked at runtime
+        if isinstance(left, pl.LazyFrame) and isinstance(right, pl.LazyFrame):
+            return left.join(right, on=on_list, how=how_literal)  # type: ignore[arg-type]
+        if isinstance(left, pl.DataFrame) and isinstance(right, pl.DataFrame):
+            return left.join(right, on=on_list, how=how_literal)  # type: ignore[arg-type]
+        msg = f"Cannot join {type(left).__name__} with {type(right).__name__}"
+        raise EngineError(msg)
 
     # ── Lazy / Collect ──────────────────────────────────────────────
 
@@ -104,7 +116,7 @@ class PolarsEngine(BaseEngine):
         if isinstance(df, pl.DataFrame):
             return df.to_pandas()
         msg = f"Expected Polars DataFrame or LazyFrame, got {type(df).__name__}"
-        raise TypeError(msg)
+        raise EngineError(msg)
 
     def lazy(self, df: pl.DataFrame) -> pl.LazyFrame:
         return df.lazy()
@@ -127,4 +139,4 @@ class PolarsEngine(BaseEngine):
         return df.head(n).to_pandas()
 
     def memory_usage(self, df: pl.DataFrame) -> int:
-        return df.estimated_size("bytes")
+        return int(df.estimated_size("bytes"))

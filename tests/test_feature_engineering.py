@@ -160,7 +160,8 @@ class TestEngineerFeatures:
             "target": [0, 1, 0, 1, 0],
         })
         result_df, log = engineer_features(
-            df, pandas_engine, target_column="target", scale_numeric=True
+            df, pandas_engine, target_column="target", scale_numeric=True,
+            select_features=False,
         )
         assert result_df["feature_a"].min() == 0.0
         assert result_df["feature_a"].max() == 1.0
@@ -174,11 +175,13 @@ class TestEngineerFeatures:
             "target": [100.0, 200.0, 300.0, 400.0, 500.0],
         })
         result_df, log = engineer_features(
-            df, pandas_engine, target_column="target", scale_numeric=True
+            df, pandas_engine, target_column="target", scale_numeric=True,
+            select_features=False,
         )
-        # Target should retain original values
-        assert result_df["target"].min() == 100.0
-        assert result_df["target"].max() == 500.0
+        # Target is excluded from result, so verify it wasn't scaled via the log
+        scaled_cols = log["steps"][1].get("columns_scaled", [])
+        assert "target" not in scaled_cols
+        assert "feature_a" in scaled_cols
 
     def test_categorical_encoded(
         self, pandas_engine: PandasEngine, classification_df: pd.DataFrame
@@ -197,7 +200,7 @@ class TestEngineerFeatures:
         df = pd.DataFrame({
             "good_feature": [1.0, 2.0, 3.0, 4.0, 5.0],
             "constant_feature": [5.0, 5.0, 5.0, 5.0, 5.0],
-            "target": [0, 1, 0, 1, 0],
+            "target": [1.0, 2.0, 3.0, 4.0, 5.0],
         })
         result_df, log = engineer_features(
             df, pandas_engine, target_column="target", select_features=True

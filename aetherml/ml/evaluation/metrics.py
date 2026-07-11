@@ -144,7 +144,10 @@ def evaluate_model(
     return report
 
 
-def _classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, Any]:
+def _classification_metrics(
+    y_true: np.ndarray[Any, Any],
+    y_pred: np.ndarray[Any, Any],
+) -> dict[str, Any]:
     """Compute classification metrics: accuracy, precision, recall, F1, confusion matrix."""
     from sklearn.metrics import (
         accuracy_score,
@@ -169,7 +172,10 @@ def _classification_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str,
     }
 
 
-def _regression_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> dict[str, Any]:
+def _regression_metrics(
+    y_true: np.ndarray[Any, Any],
+    y_pred: np.ndarray[Any, Any],
+) -> dict[str, Any]:
     """Compute regression metrics: RMSE, MAE, R²."""
     from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
