@@ -49,13 +49,11 @@ def _compose_agents(
     ``import aetherml`` does not pull in every dependency eagerly.
     """
     from aetherml.agents.eda.agent import EDAAgent
-    from aetherml.agents.engine_selection.agent import EngineSelectionAgent
     from aetherml.agents.etl.agent import ETLAgent, ETLConfig
     from aetherml.agents.evaluation.agent import EvaluationAgent
     from aetherml.agents.explainability.agent import ExplainabilityAgent
     from aetherml.agents.feature_engineering.agent import FeatureEngineeringAgent
     from aetherml.agents.model_selection.agent import ModelSelectionAgent
-    from aetherml.agents.rag.agent import RAGAgent
     from aetherml.agents.reporting.agent import ReportingAgent
     from aetherml.agents.storage.agent import StorageAgent
     from aetherml.agents.target_detection.agent import TargetDetectionAgent
@@ -70,15 +68,16 @@ def _compose_agents(
     agents: dict[str, Any] = {
         "upload": UploadAgent(engine=engine),
         "validation": ValidationAgent(engine=engine),
-        "engine_selection": EngineSelectionAgent(),
         "etl": ETLAgent(config=ETLConfig(null_strategy="drop")),
         "eda": EDAAgent(engine=engine),
         "target_detection": TargetDetectionAgent(engine=engine),
-        "feature_engineering": FeatureEngineeringAgent(engine=engine),
+        "feature_engineering": FeatureEngineeringAgent(
+            engine=engine,
+            feature_selection_config=config.feature_selection,
+        ),
         "model_selection": ModelSelectionAgent(engine=engine),
         "evaluation": EvaluationAgent(engine=engine),
         "explainability": ExplainabilityAgent(engine=engine),
-        "rag": RAGAgent(),
         "reporting": ReportingAgent(),
         "storage": StorageAgent(),
     }

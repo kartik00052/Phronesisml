@@ -10,6 +10,8 @@ Design:
   uses whatever engine is active.
 - Size guard: rejects files exceeding ``max_file_size_bytes`` before
   loading into memory.
+- Excel-aware: auto-selects the best non-empty sheet from multi-sheet
+  Excel files, and logs which sheet was chosen.
 - Returns: dict with keys ``raw_data``, ``file_format``, ``row_count``
   that LangGraph merges into the workflow state.
 """
@@ -18,14 +20,17 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import Any
 
 from aetherml.agents.base import AgentResult, Tool
-from aetherml.data.loaders.file_loader import detect_format, load_file
+from aetherml.data.loaders.file_loader import detect_format, list_excel_sheets, load_file
 from aetherml.engines.base_engine import BaseEngine
 from aetherml.exceptions import DataLoadError
 
 logger = logging.getLogger(__name__)
+
+_EXCEL_EXTENSIONS = {".xlsx", ".xls"}
 
 
 class UploadAgent:
@@ -74,9 +79,26 @@ class UploadAgent:
                     )
 
             file_format = detect_format(data_path)
+
+            # Log Excel sheet info before loading
+            metadata: dict[str, Any] = {}
+            if Path(data_path).suffix.lower() in _EXCEL_EXTENSIONS:
+                try:
+                    sheets = list_excel_sheets(data_path)
+                    metadata["excel_sheets"] = sheets
+                    logger.info(
+                        "Excel file has %d sheet(s): %s",
+                        len(sheets),
+                        [(s["name"], s["rows"]) for s in sheets],
+                    )
+                except DataLoadError:
+                    # Dependency missing or unreadable — load_file will raise
+                    pass
+
             df = load_file(data_path, self._engine)
             row_count = len(df)
 
+            metadata["columns"] = list(df.columns)
             logger.info(
                 "Upload complete: %s format, %d rows, %d columns",
                 file_format,
@@ -90,7 +112,7 @@ class UploadAgent:
                     "file_format": file_format,
                     "row_count": row_count,
                 },
-                metadata={"columns": list(df.columns)},
+                metadata=metadata,
             )
         except DataLoadError as exc:
             return AgentResult(

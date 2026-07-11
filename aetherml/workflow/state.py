@@ -23,7 +23,7 @@ Field ownership map:
     row_count                       → upload agent
     validated_data                  → validation agent
     validation_report               → validation agent
-    active_engine                   → engine_selection agent
+    active_engine                   → [not wired] engine_selection agent (isolated)
     processed_data                  → etl agent
     transform_log                   → etl agent
     data_profile                    → eda agent (merged profiling)
@@ -39,7 +39,7 @@ Field ownership map:
     trained_model                   → model_selection agent
     evaluation_report               → evaluation agent
     explanation_report              → explainability agent
-    rag_context                     → rag agent
+    rag_context                     → [not wired] rag agent (isolated)
     final_report                    → reporting agent
     artifact_uri                    → storage agent
 """

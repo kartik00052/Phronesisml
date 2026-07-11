@@ -119,14 +119,29 @@ class ExplainabilityAgent:
                 max_samples=self._max_samples,
             )
         except ImportError as exc:
-            # SHAP not installed — graceful degradation
+            # SHAP not installed — graceful degradation: return empty
+            # explanation so the pipeline continues.  This is not a
+            # failure; SHAP is an optional dependency.
             msg = f"SHAP library not available: {exc}"
             logger.warning(msg)
             return AgentResult(
-                success=False,
-                error=msg,
-                error_type=type(exc).__name__,
-                error_message=str(exc),
+                success=True,
+                data={
+                    "explanation_report": {
+                        "feature_importance": {},
+                        "explainer_type": "none",
+                        "sampled": False,
+                        "n_samples_used": 0,
+                        "max_samples": self._max_samples,
+                    },
+                },
+                metadata={
+                    "explainer_type": "none",
+                    "n_features": 0,
+                    "sampled": False,
+                    "n_samples_used": 0,
+                    "shap_available": False,
+                },
             )
         except Exception as exc:
             msg = f"SHAP computation failed: {exc}"

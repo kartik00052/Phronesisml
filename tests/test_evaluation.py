@@ -275,11 +275,12 @@ class TestEvaluationAgentRun:
             features=None,
             validated_data=None,
             processed_data=None,
+            target_column="label",
         )
         result = await agent.run(state)
 
         assert result.success is False
-        assert "no features" in result.error.lower()
+        assert "validated_data" in result.error.lower()
 
 
 # ── Metrics unit tests ────────────────────────────────────────────────
@@ -493,4 +494,11 @@ def _make_state(**kwargs: Any) -> Any:
         "evaluation_report": None,
     }
     defaults.update(kwargs)
+    # Simulate real pipeline: upstream data always exists when features do
+    if (
+        defaults["features"] is not None
+        and defaults["validated_data"] is None
+        and defaults["processed_data"] is None
+    ):
+        defaults["validated_data"] = defaults["features"]
     return SimpleNamespace(**defaults)

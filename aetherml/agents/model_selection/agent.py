@@ -85,19 +85,6 @@ class ModelSelectionAgent:
         ``trained_model``
         """
         # ── Resolve input data ───────────────────────────────────────
-        data = (
-            state.features
-            if state.features is not None
-            else (
-                state.validated_data if state.validated_data is not None else state.processed_data
-            )
-        )
-        if data is None:
-            return AgentResult(
-                success=False,
-                error="No features, validated_data, or processed_data in workflow state.",
-            )
-
         target_column = getattr(state, "target_column", None)
         if target_column is None:
             return AgentResult(
@@ -114,8 +101,29 @@ class ModelSelectionAgent:
 
         feature_names = getattr(state, "feature_names", None)
 
-        # ── Collect data to pandas (once) ────────────────────────────
-        collected = self._engine.collect(data)
+        # Feature Engineering drops the target column from state.features.
+        # To train, we need both features AND target in one DataFrame.
+        # Reconstruct by joining engineered features with the target
+        # from upstream validated/processed data.
+        upstream = (
+            state.validated_data if state.validated_data is not None else state.processed_data
+        )
+        if upstream is None:
+            return AgentResult(
+                success=False,
+                error="No validated_data or processed_data in workflow state.",
+            )
+
+        if state.features is not None:
+            features_df = self._engine.collect(state.features)
+            upstream_df = self._engine.collect(upstream)
+            if target_column in upstream_df.columns:
+                collected = features_df.copy()
+                collected[target_column] = upstream_df[target_column].values
+            else:
+                collected = features_df
+        else:
+            collected = self._engine.collect(upstream)
 
         if feature_names is None:
             # Fallback: all columns except target
@@ -124,7 +132,7 @@ class ModelSelectionAgent:
         # ── Recommend models ─────────────────────────────────────────
         n_rows = len(collected)
         n_features = len(feature_names)
-        dtypes = self._engine.dtypes(data)
+        dtypes = self._engine.dtypes(state.features if state.features is not None else upstream)
         n_numeric = sum(1 for f in feature_names if dtypes.get(f, "") in _NUMERIC_DTYPES)
         n_categorical = n_features - n_numeric
 

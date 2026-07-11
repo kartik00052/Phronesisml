@@ -218,7 +218,7 @@ class TestModelSelectionAgentRun:
         result = await agent.run(state)
 
         assert result.success is False
-        assert "no features" in result.error.lower()
+        assert "target_column" in result.error.lower()
 
     @pytest.mark.asyncio
     async def test_no_target_column(self, pandas_engine: PandasEngine) -> None:
@@ -653,4 +653,11 @@ def _make_state(**kwargs: Any) -> Any:
         "evaluation_report": None,
     }
     defaults.update(kwargs)
+    # Simulate real pipeline: upstream data always exists when features do
+    if (
+        defaults["features"] is not None
+        and defaults["validated_data"] is None
+        and defaults["processed_data"] is None
+    ):
+        defaults["validated_data"] = defaults["features"]
     return SimpleNamespace(**defaults)

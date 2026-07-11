@@ -146,7 +146,8 @@ class TestExplainabilityAgentRun:
         assert "features" in result.error.lower() or "processed_data" in result.error.lower()
 
     @pytest.mark.asyncio
-    async def test_shap_not_installed_returns_failure(self) -> None:
+    async def test_shap_not_installed_returns_graceful_degradation(self) -> None:
+        """Missing SHAP must degrade gracefully, not crash the pipeline."""
         agent = ExplainabilityAgent(engine=PandasEngine())
         X = pd.DataFrame({"a": [1.0, 2.0], "b": [3.0, 4.0]})
         state = _make_state(model=_MockTreeModel(), features=X)
@@ -158,8 +159,11 @@ class TestExplainabilityAgentRun:
             side_effect=ImportError("No module named 'shap'"),
         ):
             result = await agent.run(state)
-            assert not result.success
-            assert "shap" in result.error.lower()
+            # Graceful degradation: success=True with empty report
+            assert result.success is True
+            report = result.data["explanation_report"]
+            assert report["explainer_type"] == "none"
+            assert report["feature_importance"] == {}
 
     @pytest.mark.asyncio
     async def test_successful_run(self) -> None:

@@ -35,6 +35,7 @@ import logging
 from typing import Any
 
 from aetherml.agents.base import AgentResult, Tool
+from aetherml.configs.settings import FeatureSelectionConfig
 from aetherml.engines.base_engine import BaseEngine
 from aetherml.ml.feature_engineering.engineer import engineer_features
 
@@ -46,14 +47,21 @@ class FeatureEngineeringAgent:
 
     Args:
         engine: The active computation engine used for data operations.
+        feature_selection_config: Optional configuration for feature
+            selection thresholds.  If ``None``, uses defaults.
 
     """
 
     name = "feature_engineering"
     description = "Create model-ready features from validated data."
 
-    def __init__(self, engine: BaseEngine) -> None:
+    def __init__(
+        self,
+        engine: BaseEngine,
+        feature_selection_config: FeatureSelectionConfig | None = None,
+    ) -> None:
         self._engine = engine
+        self._fs_config = feature_selection_config or FeatureSelectionConfig()
 
     async def run(self, state: Any) -> AgentResult:
         """Engineer features from ``state.validated_data`` (or ``state.processed_data``).
@@ -71,12 +79,20 @@ class FeatureEngineeringAgent:
             )
 
         target_column = getattr(state, "target_column", None)
+        n_rows = self._engine.shape(data)[0] if data is not None else 0
+        min_features = max(
+            self._fs_config.min_features,
+            min(3, n_rows // 2),
+        )
 
         try:
             features, log_entry = engineer_features(
                 data,
                 self._engine,
                 target_column=target_column,
+                min_features=min_features,
+                variance_threshold=self._fs_config.variance_threshold,
+                correlation_threshold=self._fs_config.correlation_threshold,
             )
 
             feature_names = [c for c in self._engine.columns(features) if c != target_column]

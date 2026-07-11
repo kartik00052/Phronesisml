@@ -66,19 +66,6 @@ class EvaluationAgent:
                 error="No trained_model in workflow state. Run model selection first.",
             )
 
-        data = (
-            state.features
-            if state.features is not None
-            else (
-                state.validated_data if state.validated_data is not None else state.processed_data
-            )
-        )
-        if data is None:
-            return AgentResult(
-                success=False,
-                error="No features, validated_data, or processed_data in workflow state.",
-            )
-
         target_column = getattr(state, "target_column", None)
         if target_column is None:
             return AgentResult(
@@ -95,8 +82,26 @@ class EvaluationAgent:
         target_detection_confidence = getattr(state, "target_detection_confidence", None)
         ambiguity_reason = getattr(state, "ambiguity_reason", None)
 
-        # ── Collect data to pandas (once) ────────────────────────────
-        collected = self._engine.collect(data)
+        # Reconstruct full DataFrame with target for evaluation.
+        upstream = (
+            state.validated_data if state.validated_data is not None else state.processed_data
+        )
+        if upstream is None:
+            return AgentResult(
+                success=False,
+                error="No validated_data or processed_data in workflow state.",
+            )
+
+        if state.features is not None:
+            features_df = self._engine.collect(state.features)
+            upstream_df = self._engine.collect(upstream)
+            if target_column in upstream_df.columns:
+                collected = features_df.copy()
+                collected[target_column] = upstream_df[target_column].values
+            else:
+                collected = features_df
+        else:
+            collected = self._engine.collect(upstream)
 
         if feature_names is None:
             feature_names = [c for c in collected.columns if c != target_column]

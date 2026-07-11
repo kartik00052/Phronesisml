@@ -44,12 +44,21 @@ class PandasEngine(BaseEngine):
             ".jsonl": lambda p, **kw: pd.read_json(p, lines=True, **kw),
             ".feather": pd.read_feather,
             ".xlsx": pd.read_excel,
+            ".xls": pd.read_excel,
+            ".tsv": lambda p, **kw: pd.read_csv(p, sep="\t", **kw),
         }
         reader = read_ops.get(suffix)
         if reader is None:
             msg = f"Unsupported file format: {suffix}"
             raise EngineError(msg)
-        return reader(path, **kwargs)
+        try:
+            return reader(path, **kwargs)
+        except ImportError as exc:
+            msg = (
+                f"Missing dependency for {suffix} files: {exc}. "
+                f"Install the required package (e.g. pip install openpyxl)."
+            )
+            raise EngineError(msg) from exc
 
     def write(self, df: pd.DataFrame, path: str | Path, **kwargs: Any) -> None:
         path = Path(path)

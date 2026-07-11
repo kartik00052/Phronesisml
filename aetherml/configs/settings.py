@@ -14,6 +14,7 @@ __all__ = [
     "AetherMLConfig",
     "DataConfig",
     "EngineConfig",
+    "FeatureSelectionConfig",
     "QdrantConfig",
     "RAGConfig",
 ]
@@ -106,11 +107,43 @@ class RAGConfig(BaseModel):
     )
 
 
+class FeatureSelectionConfig(BaseModel):
+    """Feature selection thresholds for Feature Engineering.
+
+    These control the variance-threshold and correlation-based feature
+    selection in ``_select_features()``.  Adjusting these allows tuning
+    for datasets where the defaults are too aggressive or too lenient.
+    """
+
+    variance_threshold: float = Field(
+        default=0.01,
+        description=(
+            "Features with variance below this are dropped. Lower values retain more features."
+        ),
+    )
+    correlation_threshold: float = Field(
+        default=0.05,
+        description=(
+            "Features with absolute correlation to the target below "
+            "this are dropped (supervised selection).  Lower values "
+            "retain more features."
+        ),
+    )
+    min_features: int = Field(
+        default=1,
+        description=(
+            "Minimum number of features to retain.  Prevents feature "
+            "selection from dropping ALL features on small datasets."
+        ),
+    )
+
+
 class AetherMLConfig(BaseModel):
     """Top-level SDK configuration."""
 
     engine: EngineConfig = Field(default_factory=EngineConfig)
     data: DataConfig = Field(default_factory=DataConfig)
+    feature_selection: FeatureSelectionConfig = Field(default_factory=FeatureSelectionConfig)
     qdrant: QdrantConfig = Field(default_factory=QdrantConfig)
     rag: RAGConfig = Field(default_factory=RAGConfig)
 

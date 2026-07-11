@@ -80,6 +80,9 @@ def engineer_features(
     detect_outliers: bool = True,
     drop_outlier_rows: bool = False,
     select_features: bool = True,
+    min_features: int = 1,
+    variance_threshold: float = _VARIANCE_THRESHOLD,
+    correlation_threshold: float = _CORRELATION_THRESHOLD,
 ) -> tuple[Any, dict[str, Any]]:
     """Run the full feature engineering pipeline.
 
@@ -98,6 +101,13 @@ def engineer_features(
             flagging them.  Default ``False`` (flag only).
         select_features: Whether to apply variance-threshold and
             correlation-based feature selection.
+        min_features: Minimum number of features to retain.  Prevents
+            feature selection from dropping ALL features on small or
+            low-signal datasets.  Default ``1``.
+        variance_threshold: Features with variance below this are
+            dropped.  Default ``0.01``.
+        correlation_threshold: Features with absolute correlation to
+            the target below this are dropped.  Default ``0.05``.
 
     Returns:
         A tuple of ``(transformed_df, log_entry_dict)``.
@@ -149,6 +159,9 @@ def engineer_features(
             result,
             feature_cols,
             target_column,
+            min_features=min_features,
+            variance_threshold=variance_threshold,
+            correlation_threshold=correlation_threshold,
         )
         transform_log.append(select_log)
 
@@ -305,11 +318,17 @@ def _select_features(
     df: Any,
     feature_cols: list[str],
     target_column: str,
+    min_features: int = 1,
+    variance_threshold: float = _VARIANCE_THRESHOLD,
+    correlation_threshold: float = _CORRELATION_THRESHOLD,
 ) -> tuple[Any, dict[str, Any]]:
     """Select features via variance threshold and correlation with target.
 
-    Drops features with variance below ``_VARIANCE_THRESHOLD`` or
-    absolute correlation with the target below ``_CORRELATION_THRESHOLD``.
+    Drops features with variance below ``variance_threshold`` or
+    absolute correlation with the target below ``correlation_threshold``.
+
+    A ``min_features`` floor prevents dropping ALL features on small or
+    random datasets where every feature may appear low-signal.
     """
     numeric_features = [
         c
@@ -322,7 +341,7 @@ def _select_features(
 
     # Variance threshold
     variances = df[numeric_features].var()
-    low_var = [c for c in numeric_features if variances.get(c, 0) < _VARIANCE_THRESHOLD]
+    low_var = [c for c in numeric_features if variances.get(c, 0) < variance_threshold]
 
     # Correlation with target — only if target is numeric
     low_corr: list[str] = []
@@ -332,10 +351,23 @@ def _select_features(
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
             correlations = df[numeric_features].corrwith(target_col_obj).abs()
-        low_corr = [c for c in numeric_features if correlations.get(c, 0) < _CORRELATION_THRESHOLD]
+        low_corr = [c for c in numeric_features if correlations.get(c, 0) < correlation_threshold]
 
     # Union of features to drop
     to_drop = list(set(low_var + low_corr))
+
+    # Enforce min_features floor: never drop more features than this allows
+    n_total = len(numeric_features)
+    n_keep = n_total - len(to_drop)
+    if n_keep < min_features and to_drop:
+        # Keep only the features with highest variance (most signal)
+        ranked = sorted(
+            numeric_features,
+            key=lambda c: variances.get(c, 0),
+            reverse=True,
+        )
+        keep_set = set(ranked[:min_features])
+        to_drop = [c for c in to_drop if c not in keep_set]
 
     if not to_drop:
         return df, {"action": "select_features", "features_dropped": []}

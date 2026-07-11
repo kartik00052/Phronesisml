@@ -1,11 +1,11 @@
 .PHONY: lint format typecheck test check clean
 
 lint:
-	python -m ruff check aetherml/ --no-fix
+	python -m ruff check aetherml/ tests/ --no-fix
 
 format:
-	python -m ruff format aetherml/
-	python -m ruff check aetherml/ --fix
+	python -m ruff format aetherml/ tests/
+	python -m ruff check aetherml/ tests/ --fix
 
 typecheck:
 	python -m mypy aetherml/ --ignore-missing-imports
