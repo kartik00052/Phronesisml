@@ -6,7 +6,13 @@ surface.
 
 Usage::
 
-    # Beginner API (recommended)
+    # Simple API (recommended for quickstart)
+    from aetherml import analyze, train
+
+    profile = analyze("data.csv")
+    result = train("data.csv")
+
+    # OOP API
     from aetherml import AetherML
 
     ml = AetherML("data.csv")
@@ -37,6 +43,34 @@ from aetherml.sdk import (
     TargetInfo,
     ValidationReport,
 )
+from aetherml.simple import (
+    CleanResult,
+    DatasetProfile,
+    ExplainResult,
+    FeatureResult,
+    ModelResult,
+    TargetResult,
+    TrainResult,
+    ValidationResult,
+    analyze,
+    analyze_async,
+    clean,
+    clean_async,
+    detect_target,
+    detect_target_async,
+    engineer,
+    engineer_async,
+    explain,
+    explain_async,
+    report,
+    report_async,
+    select_model,
+    select_model_async,
+    train,
+    train_async,
+    validate,
+    validate_async,
+)
 from aetherml.workflow.state import WorkflowState
 
 logger = logging.getLogger(__name__)
@@ -44,7 +78,34 @@ logger = logging.getLogger(__name__)
 __version__ = "0.1.0"
 
 __all__ = [
-    # ── Beginner API ────────────────────────────────────
+    # ── Simple API ──────────────────────────────────────
+    "analyze",
+    "analyze_async",
+    "clean",
+    "clean_async",
+    "validate",
+    "validate_async",
+    "detect_target",
+    "detect_target_async",
+    "engineer",
+    "engineer_async",
+    "select_model",
+    "select_model_async",
+    "explain",
+    "explain_async",
+    "report",
+    "report_async",
+    "train",
+    "train_async",
+    "CleanResult",
+    "DatasetProfile",
+    "ExplainResult",
+    "FeatureResult",
+    "ModelResult",
+    "TargetResult",
+    "TrainResult",
+    "ValidationResult",
+    # ── OOP API ─────────────────────────────────────────
     "AetherML",
     "DatasetSummary",
     "EDAReport",
@@ -114,6 +175,21 @@ def _compose_agents(
     return agents
 
 
+_FULL_PIPELINE_STAGES: list[str] = [
+    "upload",
+    "etl",
+    "validation",
+    "eda",
+    "target_detection",
+    "feature_engineering",
+    "model_selection",
+    "evaluation",
+    "explainability",
+    "reporting",
+    "storage",
+]
+
+
 async def run_pipeline(
     data_path: str,
     engine_preference: str | None = None,
@@ -135,7 +211,7 @@ async def run_pipeline(
             ``"spark"``).  ``None`` for auto-selection.
         null_strategy: Null handling strategy (``"drop"``, ``"fill"``, ``"flag"``).
         stages: Ordered list of pipeline stages to execute.  If ``None``,
-            defaults to ``["upload", "etl"]``.
+            runs the full pipeline (all 11 stages).
         config: Optional pre-built configuration.  If ``None``, a config is
             constructed from the other arguments.
 
@@ -150,6 +226,8 @@ async def run_pipeline(
         config = AetherMLConfig()
     if engine_preference is not None:
         config.engine.preferred = engine_preference
+    if stages is None:
+        stages = list(_FULL_PIPELINE_STAGES)
 
     logger.info("AetherML pipeline starting — data_path=%s", data_path)
 

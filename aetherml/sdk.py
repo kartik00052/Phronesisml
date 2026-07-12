@@ -723,8 +723,9 @@ class AetherML:
 
     def __repr__(self) -> str:
         stages = len(self._executed_stages)
+        elapsed = f"{self.elapsed:.1f}s" if self.elapsed is not None else "N/A"
         return (
             f"AetherML(path={self._data_path!r}, "
             f"stages_completed={stages}, "
-            f"elapsed={self.elapsed:.1f}s)"
+            f"elapsed={elapsed})"
         )
