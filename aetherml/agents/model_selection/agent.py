@@ -156,9 +156,7 @@ class ModelSelectionAgent:
         if self._model_type is not None:
             candidates = [c for c in candidates if c.name == self._model_type]
             if not candidates:
-                avail = recommend_models(
-                    task_type, n_rows, n_features, n_numeric, n_categorical
-                )
+                avail = recommend_models(task_type, n_rows, n_features, n_numeric, n_categorical)
                 return AgentResult(
                     success=False,
                     error=(
