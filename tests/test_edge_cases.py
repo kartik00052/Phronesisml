@@ -6,7 +6,6 @@ ambiguous targets, multi-sheet Excel, and 500k-row performance.
 
 from __future__ import annotations
 
-import io
 import time
 
 import pandas as pd
@@ -14,7 +13,6 @@ import pytest
 
 from aetherml.exceptions import AetherMLError, WorkflowError
 from aetherml.sdk import AetherML
-
 
 # ── Corrupted file ──────────────────────────────────────────────
 
@@ -63,10 +61,9 @@ class TestUnsupportedExtension:
         p.write_bytes(b"\x89PAR1\x00\x00")
         ml = AetherML(str(p))
         # parquet bytes may or may not parse; just confirm no crash on non-parquet
-        try:
+        import contextlib
+        with contextlib.suppress(Exception):
             ml.load()
-        except Exception:
-            pass  # acceptable
 
 
 # ── Empty datasets ──────────────────────────────────────────────

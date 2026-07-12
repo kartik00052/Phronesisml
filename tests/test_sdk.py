@@ -21,7 +21,6 @@ from aetherml import (
     run_pipeline,
 )
 
-
 # ── Fixtures ─────────────────────────────────────────────────────
 
 
@@ -285,7 +284,7 @@ class TestEDA:
         assert "std" in fa
 
 
-class TestEDA:
+class TestEDADetailed:
     def test_returns_eda_report(self, csv_path: str) -> None:
         ml = AetherML(csv_path)
         e = ml.eda()
@@ -538,11 +537,11 @@ class TestNoRedundantRecomputation:
         original_upload_run = agents["upload"].run
         original_etl_run = agents["etl"].run
 
-        async def count_upload(state):
+        async def count_upload(state: object) -> object:
             upload_calls[0] += 1
             return await original_upload_run(state)
 
-        async def count_etl(state):
+        async def count_etl(state: object) -> object:
             etl_calls[0] += 1
             return await original_etl_run(state)
 

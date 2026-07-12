@@ -13,7 +13,6 @@ import pytest
 
 from aetherml.sdk import AetherML
 
-
 # ── Fixtures ─────────────────────────────────────────────────────
 
 
@@ -239,7 +238,8 @@ class TestRunPopulatesAllFields:
         assert state.trained_model is not None, "trained_model not populated"
         # metrics
         assert state.evaluation_report is not None, "evaluation_report not populated"
-        assert state.evaluation_report.get("metrics") is not None, "metrics not in evaluation_report"
+        metrics = state.evaluation_report.get("metrics")
+        assert metrics is not None, "metrics not in evaluation_report"
         # explanation
         assert state.explanation_report is not None, "explanation_report not populated"
         # report
