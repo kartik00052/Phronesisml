@@ -51,3 +51,6 @@ aetherml_artifacts/
 # Database files
 *.db
 *.sqlite3
+
+# MkDocs
+site/
