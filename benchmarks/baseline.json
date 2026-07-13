@@ -1,0 +1,27 @@
+{
+  "startup": {
+    "import_phronesisml_sec": 0.01638939999975264,
+    "init_phronesis_sec": 9.999999747378752e-06
+  },
+  "graph": {
+    "graph_compile_cold_sec": 0.002178200000344077,
+    "graph_compile_cached_sec": 3.99999953515362e-06,
+    "cache_speedup": 544.55
+  },
+  "workflow": {
+    "full_pipeline_sec": 9.0176962000005,
+    "pipeline_memory_mb": "N/A (psutil not installed)"
+  },
+  "engine": {
+    "engine_select_small_sec": 4.0099999750964344e-05,
+    "engine_selected_small": "PandasEngine",
+    "engine_select_medium_sec": 4.320000152802095e-05,
+    "engine_selected_medium": "PolarsEngine"
+  },
+  "collect": {
+    "collect_cold_sec": 1.2999989849049598e-06,
+    "collect_cached_sec": 2.00001522898674e-07,
+    "cache_speedup": 6.5
+  },
+  "memory_rss_mb": 0.0
+}

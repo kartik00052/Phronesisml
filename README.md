@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/hero-banner.svg" alt="PhronesisML — Practical Wisdom for Machine Learning" width="100%" />
+<img src="https://raw.githubusercontent.com/kartik00052/PhronesisML/main/assets/hero-banner.svg" alt="PhronesisML — Practical Wisdom for Machine Learning" width="100%" />
 
 <h3>
   <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=600&size=24&duration=3000&pause=1200&color=A855F7&center=true&vCenter=true&multiline=true&repeat=true&width=760&height=70&lines=A+transparent%2C+inspectable+alternative+to+AutoML;The+ML+lifecycle%2C+modeled+as+a+graph+of+cooperating+agents" alt="PhronesisML Tagline" />

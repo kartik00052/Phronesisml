@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="100%" role="img" aria-label="PhronesisML — Practical Wisdom for Machine Learning">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0A0E1A"/>
+      <stop offset="100%" stop-color="#131A2C"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#5EE6C7" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#5EE6C7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="facetTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#3FBFA6"/>
+    </linearGradient>
+    <linearGradient id="facetRight" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#F5B942"/>
+    </linearGradient>
+    <linearGradient id="facetBottom" x1="1" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#F5B942"/>
+      <stop offset="100%" stop-color="#6366F1"/>
+    </linearGradient>
+    <linearGradient id="facetLeft" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6366F1"/>
+      <stop offset="100%" stop-color="#14B8A6"/>
+    </linearGradient>
+    <linearGradient id="lineGradL" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#14B8A6" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#14B8A6" stop-opacity="0.7"/>
+    </linearGradient>
+    <linearGradient id="lineGradR" x1="1" y1="0" x2="0" y2="0">
+      <stop offset="0%" stop-color="#6366F1" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#6366F1" stop-opacity="0.7"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="300" fill="url(#bgGrad)"/>
+
+  <circle cx="600" cy="115" r="150" fill="url(#glow)">
+    <animate attributeName="r" values="140;155;140" dur="7s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- flowing data streams -->
+  <path d="M 30 115 C 200 55, 350 175, 528 115" stroke="url(#lineGradL)" stroke-width="2" fill="none"/>
+  <path d="M 30 160 C 220 195, 360 85, 528 128" stroke="url(#lineGradL)" stroke-width="1.2" fill="none" opacity="0.6"/>
+  <path d="M 1170 115 C 1000 175, 850 55, 672 115" stroke="url(#lineGradR)" stroke-width="2" fill="none"/>
+  <path d="M 1170 72 C 980 35, 840 145, 672 102" stroke="url(#lineGradR)" stroke-width="1.2" fill="none" opacity="0.6"/>
+
+  <!-- particles drifting along the streams -->
+  <circle cx="150" cy="92" r="2.6" fill="#7DD8C5">
+    <animate attributeName="opacity" values="0.15;0.9;0.15" dur="3.6s" repeatCount="indefinite" begin="0s"/>
+  </circle>
+  <circle cx="300" cy="150" r="2.2" fill="#7DD8C5">
+    <animate attributeName="opacity" values="0.15;0.9;0.15" dur="3.6s" repeatCount="indefinite" begin="0.9s"/>
+  </circle>
+  <circle cx="455" cy="112" r="2.8" fill="#A5B4FC">
+    <animate attributeName="opacity" values="0.15;0.9;0.15" dur="3.6s" repeatCount="indefinite" begin="1.8s"/>
+  </circle>
+  <circle cx="1050" cy="150" r="2.6" fill="#A5B4FC">
+    <animate attributeName="opacity" values="0.15;0.9;0.15" dur="3.6s" repeatCount="indefinite" begin="0.4s"/>
+  </circle>
+  <circle cx="900" cy="88" r="2.2" fill="#A5B4FC">
+    <animate attributeName="opacity" values="0.15;0.9;0.15" dur="3.6s" repeatCount="indefinite" begin="1.3s"/>
+  </circle>
+  <circle cx="748" cy="118" r="2.8" fill="#F5B942">
+    <animate attributeName="opacity" values="0.15;0.9;0.15" dur="3.6s" repeatCount="indefinite" begin="2.2s"/>
+  </circle>
+
+  <!-- rotating compass ring -->
+  <circle cx="600" cy="115" r="105" fill="none" stroke="#F5B942" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="3 11">
+    <animateTransform attributeName="transform" type="rotate" from="0 600 115" to="360 600 115" dur="50s" repeatCount="indefinite"/>
+  </circle>
+
+  <!-- faceted crystalline compass -->
+  <g>
+    <polygon points="600,38 672,115 600,115" fill="url(#facetTop)"/>
+    <polygon points="672,115 600,192 600,115" fill="url(#facetRight)"/>
+    <polygon points="600,192 528,115 600,115" fill="url(#facetBottom)"/>
+    <polygon points="528,115 600,38 600,115" fill="url(#facetLeft)"/>
+    <path d="M600,38 L672,115 L600,192 L528,115 Z" fill="none" stroke="#EDEFF7" stroke-opacity="0.28" stroke-width="1"/>
+    <line x1="600" y1="38" x2="600" y2="192" stroke="#EDEFF7" stroke-opacity="0.22" stroke-width="1"/>
+    <line x1="528" y1="115" x2="672" y2="115" stroke="#EDEFF7" stroke-opacity="0.22" stroke-width="1"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="600" y="246" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" letter-spacing="1.5" fill="#EDEFF7">Phronesis<tspan fill="#7DD8C5">ML</tspan></text>
+
+  <!-- tagline -->
+  <text x="600" y="273" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="13" letter-spacing="3.5" fill="#8B95B3">PRACTICAL WISDOM FOR MACHINE LEARNING</text>
+</svg>
