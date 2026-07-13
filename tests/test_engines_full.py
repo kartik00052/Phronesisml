@@ -10,10 +10,10 @@ import pandas as pd
 import polars as pl
 import pytest
 
-from aetherml.engines.base_engine import BaseEngine, EngineType
-from aetherml.engines.polars_engine import PolarsEngine
-from aetherml.engines.spark_engine import SparkEngine
-from aetherml.exceptions import EngineError
+from phronesisml.engines.base_engine import BaseEngine, EngineType
+from phronesisml.engines.polars_engine import PolarsEngine
+from phronesisml.engines.spark_engine import SparkEngine
+from phronesisml.exceptions import EngineError
 
 try:
     import pyarrow  # noqa: F401

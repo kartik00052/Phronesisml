@@ -4,10 +4,10 @@ hide:
 ---
 
 <p align="center">
-  <img src="../assets/banner.png" alt="AetherML" width="100%"/>
+  <img src="../assets/banner.png" alt="PhronesisML" width="100%"/>
 </p>
 
-# AetherML
+# PhronesisML
 
 **A transparent, inspectable alternative to AutoML — the ML lifecycle modeled as a graph of cooperating agents.**
 
@@ -18,9 +18,9 @@ hide:
 === "OOP API"
 
     ```python
-    from aetherml import AetherML
+    from phronesisml import Phronesis
 
-    ml = AetherML("data/customers.csv")
+    ml = Phronesis("data/customers.csv")
     ml.run()
     print(ml.report())
     ```
@@ -28,7 +28,7 @@ hide:
 === "Simple API"
 
     ```python
-    from aetherml import analyze, train
+    from phronesisml import analyze, train
 
     profile = analyze("data.csv")
     print(f"{profile.shape[0]} rows, {profile.shape[1]} columns")
@@ -40,14 +40,14 @@ hide:
 === "CLI"
 
     ```bash
-    pip install aetherml[cli]
-    aetherml run data/customers.csv
+    pip install phronesisml[cli]
+    phronesisml run data/customers.csv
     ```
 
 ### Installation
 
 ```bash
-pip install aetherml
+pip install phronesisml
 ```
 
 This installs everything you need for CSV, Excel (.xlsx), Parquet, JSON, and Feather files out of the box.
@@ -55,17 +55,17 @@ This installs everything you need for CSV, Excel (.xlsx), Parquet, JSON, and Fea
 **Optional extras:**
 
 ```bash
-pip install aetherml[api]       # FastAPI REST endpoints
-pip install aetherml[cli]       # CLI commands
-pip install aetherml[explain]   # SHAP explanations
-pip install aetherml[all]       # everything
+pip install phronesisml[api]       # FastAPI REST endpoints
+pip install phronesisml[cli]       # CLI commands
+pip install phronesisml[explain]   # SHAP explanations
+pip install phronesisml[all]       # everything
 ```
 
 ---
 
 ## What It Does
 
-AetherML runs a complete ML pipeline through 11 cooperating agents:
+PhronesisML runs a complete ML pipeline through 11 cooperating agents:
 
 1. **Upload** — Load your dataset (CSV, Excel, Parquet, JSON, Feather)
 2. **ETL** — Clean nulls, cast types, encode categoricals
@@ -87,6 +87,6 @@ Each stage is independently callable. Run the whole thing with `ml.run()`, or st
 
 - [API Reference](api.md) — Every public method documented
 - [Guides](guides/incremental.md) — Step-by-step tutorials
-- [Limitations](limitations.md) — What AetherML does *not* do (honest list)
-- [GitHub](https://github.com/kartik00052/AetherML) — Source code
-- [PyPI](https://pypi.org/project/aetherml/) — Install package
+- [Limitations](limitations.md) — What PhronesisML does *not* do (honest list)
+- [GitHub](https://github.com/kartik00052/PhronesisML) — Source code
+- [PyPI](https://pypi.org/project/phronesisml/) — Install package

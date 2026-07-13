@@ -24,8 +24,8 @@ class TestUploadFileSizeGuard:
 
     @pytest.mark.asyncio
     async def test_rejects_oversized_file(self, tmp_path: Path) -> None:
-        from aetherml.agents.upload.agent import UploadAgent
-        from aetherml.engines.pandas_engine import PandasEngine
+        from phronesisml.agents.upload.agent import UploadAgent
+        from phronesisml.engines.pandas_engine import PandasEngine
 
         big_file = tmp_path / "big.csv"
         big_file.write_text("a,b\n1,2\n")
@@ -42,8 +42,8 @@ class TestUploadFileSizeGuard:
 
     @pytest.mark.asyncio
     async def test_accepts_file_under_limit(self, tmp_path: Path) -> None:
-        from aetherml.agents.upload.agent import UploadAgent
-        from aetherml.engines.pandas_engine import PandasEngine
+        from phronesisml.agents.upload.agent import UploadAgent
+        from phronesisml.engines.pandas_engine import PandasEngine
 
         csv_file = tmp_path / "small.csv"
         csv_file.write_text("a,b\n1,2\n3,4\n")
@@ -60,8 +60,8 @@ class TestUploadFileSizeGuard:
     @pytest.mark.asyncio
     async def test_single_getsize_call(self, tmp_path: Path) -> None:
         """Verify os.path.getsize is called for the size check."""
-        from aetherml.agents.upload.agent import UploadAgent
-        from aetherml.engines.pandas_engine import PandasEngine
+        from phronesisml.agents.upload.agent import UploadAgent
+        from phronesisml.engines.pandas_engine import PandasEngine
 
         csv_file = tmp_path / "test.csv"
         csv_file.write_text("a,b\n1,2\n")
@@ -72,7 +72,7 @@ class TestUploadFileSizeGuard:
             max_file_size_bytes=1_000_000,
         )
 
-        patch_target = "aetherml.agents.upload.agent.os.path.getsize"
+        patch_target = "phronesisml.agents.upload.agent.os.path.getsize"
         with patch(patch_target, return_value=100) as mock_getsize:
             await agent.run(state)
             # getsize called once for the size guard check
@@ -86,7 +86,7 @@ class TestDataExtensionsFilter:
     """Test that _estimate_file_size only counts data files in directories."""
 
     def test_counts_only_data_files(self, tmp_path: Path) -> None:
-        from aetherml.engines.engine_selector import _estimate_file_size
+        from phronesisml.engines.engine_selector import _estimate_file_size
 
         csv_file = tmp_path / "data.csv"
         csv_file.write_text("a,b\n1,2\n")
@@ -103,19 +103,19 @@ class TestDataExtensionsFilter:
         assert total == expected
 
     def test_single_file_ignores_extension(self, tmp_path: Path) -> None:
-        from aetherml.engines.engine_selector import _estimate_file_size
+        from phronesisml.engines.engine_selector import _estimate_file_size
 
         txt_file = tmp_path / "readme.txt"
         txt_file.write_text("hello")
         assert _estimate_file_size(txt_file) == txt_file.stat().st_size
 
     def test_nonexistent_path_returns_zero(self) -> None:
-        from aetherml.engines.engine_selector import _estimate_file_size
+        from phronesisml.engines.engine_selector import _estimate_file_size
 
         assert _estimate_file_size("/nonexistent/path/xyz.csv") == 0
 
     def test_empty_directory_returns_zero(self, tmp_path: Path) -> None:
-        from aetherml.engines.engine_selector import _estimate_file_size
+        from phronesisml.engines.engine_selector import _estimate_file_size
 
         assert _estimate_file_size(tmp_path) == 0
 
@@ -127,8 +127,8 @@ class TestTargetDetectionNunique:
     """Test that detect_target uses vectorized nunique() correctly."""
 
     def test_nunique_vectorized(self, pandas_engine: Any) -> None:
-        from aetherml.data.profilers.stats import profile_dataset
-        from aetherml.ml.target_detection.detector import detect_target
+        from phronesisml.data.profilers.stats import profile_dataset
+        from phronesisml.ml.target_detection.detector import detect_target
 
         df = pd.DataFrame(
             {

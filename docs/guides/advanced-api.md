@@ -8,7 +8,7 @@ The primary advanced entry point. Runs the pipeline with full configurability:
 
 ```python
 import asyncio
-from aetherml import run_pipeline, AetherMLConfig
+from phronesisml import run_pipeline, PhronesisConfig
 
 async def main():
     result = await run_pipeline(
@@ -31,7 +31,7 @@ asyncio.run(main())
 | `engine_preference` | `str \| None` | `None` | Force `"pandas"`, `"polars"`, or `"spark"` |
 | `null_strategy` | `str` | `"drop"` | Null handling: `"drop"`, `"fill"`, `"flag"` |
 | `stages` | `list[str] \| None` | `None` | Subset of stages to run (default: all 11) |
-| `config` | `AetherMLConfig \| None` | `None` | Pre-built config object |
+| `config` | `PhronesisConfig \| None` | `None` | Pre-built config object |
 
 ### Available Stages
 
@@ -41,14 +41,14 @@ feature_engineering, model_selection, evaluation,
 explainability, reporting, storage
 ```
 
-## `AetherMLConfig`
+## `PhronesisConfig`
 
 Configure feature selection, engine preferences, and more:
 
 ```python
-from aetherml import AetherMLConfig
+from phronesisml import PhronesisConfig
 
-config = AetherMLConfig()
+config = PhronesisConfig()
 ```
 
 ## `WorkflowState`

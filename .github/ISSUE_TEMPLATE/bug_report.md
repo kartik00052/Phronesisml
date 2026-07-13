@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug to help us improve AetherML
+about: Report a bug to help us improve PhronesisML
 title: "[BUG] "
 labels: bug
 assignees: ""
@@ -13,9 +13,9 @@ A clear and concise description of what the bug is.
 Minimal code snippet that reproduces the behavior:
 
 ```python
-from aetherml import AetherML
+from phronesisml import Phronesis
 
-ml = AetherML("your_data.csv")
+ml = Phronesis("your_data.csv")
 ml.run()  # or whichever method fails
 ```
 
@@ -28,7 +28,7 @@ What actually happened. Include full traceback if applicable.
 **Environment**
 - OS: [e.g., Windows 11, Ubuntu 22.04]
 - Python version: [e.g., 3.13.3]
-- AetherML version: [e.g., 0.1.0]
+- PhronesisML version: [e.g., 0.2.0]
 - Installation method: [e.g., pip, source]
 
 **Dataset info**

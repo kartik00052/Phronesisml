@@ -1,13 +1,13 @@
-# Contributing to AetherML
+# Contributing to PhronesisML
 
-Thank you for your interest in contributing to AetherML! This guide will help you get started.
+Thank you for your interest in contributing to PhronesisML! This guide will help you get started.
 
 ## Development Setup
 
 1. **Fork and clone the repository:**
    ```bash
-   git clone https://github.com/<your-username>/AetherML.git
-   cd AetherML
+   git clone https://github.com/<your-username>/PhronesisML.git
+   cd PhronesisML
    ```
 
 2. **Create a virtual environment:**
@@ -32,13 +32,13 @@ Thank you for your interest in contributing to AetherML! This guide will help yo
 
 ### Linting
 ```bash
-ruff check aetherml/
-ruff format aetherml/
+ruff check phronesisml/
+ruff format phronesisml/
 ```
 
 ### Type Checking
 ```bash
-mypy aetherml/ --ignore-missing-imports
+mypy phronesisml/ --ignore-missing-imports
 ```
 
 ### Running Tests
@@ -48,7 +48,7 @@ pytest
 
 ### Full Check
 ```bash
-ruff check aetherml/ && mypy aetherml/ --ignore-missing-imports && pytest
+ruff check phronesisml/ && mypy phronesisml/ --ignore-missing-imports && pytest
 ```
 
 ## Branch Strategy
@@ -62,7 +62,7 @@ ruff check aetherml/ && mypy aetherml/ --ignore-missing-imports && pytest
 
 1. Create a feature branch from `main`
 2. Make your changes with tests
-3. Ensure all checks pass: `ruff check aetherml/`, `mypy aetherml/ --ignore-missing-imports`, `pytest`
+3. Ensure all checks pass: `ruff check phronesisml/`, `mypy phronesisml/ --ignore-missing-imports`, `pytest`
 4. Submit a PR with a clear description of the change
 
 ## Commit Messages

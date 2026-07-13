@@ -1,7 +1,7 @@
-site_name: AetherML Documentation
-site_url: https://kartik00052.github.io/AetherML/
-repo_url: https://github.com/kartik00052/AetherML
-repo_name: kartik00052/AetherML
+site_name: PhronesisML Documentation
+site_url: https://kartik00052.github.io/PhronesisML/
+repo_url: https://github.com/kartik00052/PhronesisML
+repo_name: kartik00052/PhronesisML
 edit_uri: edit/main/docs/
 
 theme:

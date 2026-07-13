@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from aetherml.agents.upload.agent import UploadAgent
-from aetherml.engines.pandas_engine import PandasEngine
+from phronesisml.agents.upload.agent import UploadAgent
+from phronesisml.engines.pandas_engine import PandasEngine
 
 
 @pytest.fixture

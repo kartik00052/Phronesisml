@@ -1,6 +1,6 @@
 # Limitations
 
-AetherML is honest about what it does and does not support. This page lists the current known limitations — none of these are hidden or softened.
+PhronesisML is honest about what it does and does not support. This page lists the current known limitations — none of these are hidden or softened.
 
 ## Current Limitations
 
@@ -16,11 +16,11 @@ AetherML is honest about what it does and does not support. This page lists the 
 | **GPU acceleration** | Not supported | All training runs on CPU via scikit-learn. No GPU-accelerated model training (e.g., XGBoost GPU, PyTorch). |
 | **Custom models** | Not supported | Model candidates are hardcoded in the selection agent. You cannot add custom model classes without modifying the source code. |
 | **Streaming data** | Not supported | The pipeline requires a complete file on disk. No support for streaming, incremental, or online learning. |
-| **Large-than-memory (non-Spark)** | Limited | The pandas engine loads the entire dataset into memory. For datasets larger than RAM, use the Spark engine (`pip install aetherml[spark]`). The Polars engine handles memory more efficiently but is not truly distributed. |
+| **Large-than-memory (non-Spark)** | Limited | The pandas engine loads the entire dataset into memory. For datasets larger than RAM, use the Spark engine (`pip install phronesisml[spark]`). The Polars engine handles memory more efficiently but is not truly distributed. |
 
-## What AetherML *Is* vs. *Is Not*
+## What PhronesisML *Is* vs. *Is Not*
 
-| AetherML is | AetherML is not |
+| PhronesisML is | PhronesisML is not |
 |---|---|
 | An ML pipeline **SDK** | A full MLOps platform |
 | A transparent, inspectable pipeline | A black-box AutoML tool |

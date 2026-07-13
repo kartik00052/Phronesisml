@@ -7,10 +7,10 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from aetherml.agents.target_detection.agent import TargetDetectionAgent
-from aetherml.data.profilers.stats import profile_dataset
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.ml.target_detection.detector import AMBIGUITY_THRESHOLD
+from phronesisml.agents.target_detection.agent import TargetDetectionAgent
+from phronesisml.data.profilers.stats import profile_dataset
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.ml.target_detection.detector import AMBIGUITY_THRESHOLD
 
 
 async def main() -> None:

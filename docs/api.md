@@ -1,10 +1,10 @@
 # API Reference
 
-## AetherML (OOP API)
+## Phronesis (OOP API)
 
 The main entry point. Wraps the full LangGraph pipeline behind method-chained calls.
 
-::: aetherml.sdk.AetherML
+::: phronesisml.sdk.Phronesis
     options:
       show_root_heading: true
       members:
@@ -29,14 +29,14 @@ The main entry point. Wraps the full LangGraph pipeline behind method-chained ca
 
 ### Result Types
 
-::: aetherml.sdk.DatasetSummary
-::: aetherml.sdk.ValidationReport
-::: aetherml.sdk.EDAReport
-::: aetherml.sdk.TargetInfo
-::: aetherml.sdk.FeatureReport
-::: aetherml.sdk.ModelInfo
-::: aetherml.sdk.EvaluationMetrics
-::: aetherml.sdk.ExplanationReport
+::: phronesisml.sdk.DatasetSummary
+::: phronesisml.sdk.ValidationReport
+::: phronesisml.sdk.EDAReport
+::: phronesisml.sdk.TargetInfo
+::: phronesisml.sdk.FeatureReport
+::: phronesisml.sdk.ModelInfo
+::: phronesisml.sdk.EvaluationMetrics
+::: phronesisml.sdk.ExplanationReport
 
 ---
 
@@ -44,26 +44,26 @@ The main entry point. Wraps the full LangGraph pipeline behind method-chained ca
 
 Zero-friction one-liner functions. Each runs the relevant pipeline stages and returns a frozen dataclass.
 
-::: aetherml.simple.analyze
-::: aetherml.simple.clean
-::: aetherml.simple.validate
-::: aetherml.simple.detect_target
-::: aetherml.simple.engineer
-::: aetherml.simple.select_model
-::: aetherml.simple.explain
-::: aetherml.simple.report
-::: aetherml.simple.train
+::: phronesisml.simple.analyze
+::: phronesisml.simple.clean
+::: phronesisml.simple.validate
+::: phronesisml.simple.detect_target
+::: phronesisml.simple.engineer
+::: phronesisml.simple.select_model
+::: phronesisml.simple.explain
+::: phronesisml.simple.report
+::: phronesisml.simple.train
 
 ### Simple API Result Types
 
-::: aetherml.simple.DatasetProfile
-::: aetherml.simple.CleanResult
-::: aetherml.simple.ValidationResult
-::: aetherml.simple.TargetResult
-::: aetherml.simple.FeatureResult
-::: aetherml.simple.ModelResult
-::: aetherml.simple.ExplainResult
-::: aetherml.simple.TrainResult
+::: phronesisml.simple.DatasetProfile
+::: phronesisml.simple.CleanResult
+::: phronesisml.simple.ValidationResult
+::: phronesisml.simple.TargetResult
+::: phronesisml.simple.FeatureResult
+::: phronesisml.simple.ModelResult
+::: phronesisml.simple.ExplainResult
+::: phronesisml.simple.TrainResult
 
 ---
 
@@ -71,6 +71,6 @@ Zero-friction one-liner functions. Each runs the relevant pipeline stages and re
 
 Low-level entry point for full control over pipeline stages and configuration.
 
-::: aetherml.run_pipeline
-::: aetherml.AetherMLConfig
-::: aetherml.WorkflowState
+::: phronesisml.run_pipeline
+::: phronesisml.PhronesisConfig
+::: phronesisml.WorkflowState

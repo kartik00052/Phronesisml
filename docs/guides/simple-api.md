@@ -19,7 +19,7 @@ The Simple API provides one-liner functions that run relevant pipeline stages an
 ## Basic Usage
 
 ```python
-from aetherml import analyze, train
+from phronesisml import analyze, train
 
 # Profile a dataset
 profile = analyze("data.csv")
@@ -56,7 +56,7 @@ Strategies: `"drop"` (default), `"fill"`, `"flag"`.
 Every function has an `_async` variant for use inside FastAPI or Jupyter async mode:
 
 ```python
-from aetherml import analyze_async
+from phronesisml import analyze_async
 
 profile = await analyze_async("data.csv")
 ```

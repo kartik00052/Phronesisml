@@ -1,20 +1,20 @@
 # REST API
 
-AetherML exposes a FastAPI-based REST API for running the ML pipeline over HTTP.
+PhronesisML exposes a FastAPI-based REST API for running the ML pipeline over HTTP.
 
 !!! info
-    Install the API extras first: `pip install aetherml[api]`
+    Install the API extras first: `pip install phronesisml[api]`
 
 ## Starting the Server
 
 ```bash
-aetherml run --help  # CLI
+phronesisml run --help  # CLI
 ```
 
 Or programmatically:
 
 ```python
-from aetherml.interfaces.api.app import app
+from phronesisml.interfaces.api.app import app
 import uvicorn
 
 uvicorn.run(app, host="0.0.0.0", port=8000)

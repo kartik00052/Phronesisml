@@ -1,14 +1,14 @@
-"""Unit tests for AetherML configuration settings."""
+"""Unit tests for Phronesis configuration settings."""
 
 from __future__ import annotations
 
 import pytest
 from pydantic import ValidationError
 
-from aetherml.configs.settings import (
-    AetherMLConfig,
+from phronesisml.configs.settings import (
     DataConfig,
     EngineConfig,
+    PhronesisConfig,
 )
 
 
@@ -47,44 +47,44 @@ class TestDataConfigDefaults:
         assert cfg.max_file_size_bytes == 2 * 1024 * 1024 * 1024
 
 
-class TestAetherMLConfigComposition:
+class TestPhronesisConfigComposition:
     def test_default_sub_configs(self) -> None:
-        cfg = AetherMLConfig()
+        cfg = PhronesisConfig()
         assert isinstance(cfg.engine, EngineConfig)
         assert isinstance(cfg.data, DataConfig)
 
     def test_nested_defaults(self) -> None:
-        cfg = AetherMLConfig()
+        cfg = PhronesisConfig()
         assert cfg.engine.preferred is None
         assert cfg.data.default_format == "auto"
 
     def test_custom_sub_config(self) -> None:
         engine = EngineConfig(preferred="polars")
-        cfg = AetherMLConfig(engine=engine)
+        cfg = PhronesisConfig(engine=engine)
         assert cfg.engine.preferred == "polars"
         # Other sub-configs still default
         assert cfg.data.default_format == "auto"
 
 
-class TestAetherMLConfigExtraIgnore:
+class TestPhronesisConfigExtraIgnore:
     def test_unknown_fields_dropped(self) -> None:
-        cfg = AetherMLConfig(unknown_field="hello", another=42)
+        cfg = PhronesisConfig(unknown_field="hello", another=42)
         assert not hasattr(cfg, "unknown_field")
         assert not hasattr(cfg, "another")
 
     def test_valid_fields_preserved(self) -> None:
-        cfg = AetherMLConfig(engine=EngineConfig(preferred="spark"))
+        cfg = PhronesisConfig(engine=EngineConfig(preferred="spark"))
         assert cfg.engine.preferred == "spark"
 
 
-class TestAetherMLConfigValidation:
+class TestPhronesisConfigValidation:
     def test_wrong_type_for_data_raises(self) -> None:
         with pytest.raises(ValidationError):
-            AetherMLConfig(data="not a dict")  # type: ignore[arg-type]
+            PhronesisConfig(data="not a dict")  # type: ignore[arg-type]
 
     def test_wrong_type_for_engine_raises(self) -> None:
         with pytest.raises(ValidationError):
-            AetherMLConfig(engine=123)  # type: ignore[arg-type]
+            PhronesisConfig(engine=123)  # type: ignore[arg-type]
 
 
 class TestEngineConfigPreferredValidation:

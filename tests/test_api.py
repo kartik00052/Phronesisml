@@ -1,4 +1,4 @@
-"""Comprehensive tests for the AetherML Enterprise REST API."""
+"""Comprehensive tests for the Phronesis Enterprise REST API."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from aetherml import __version__
-from aetherml.interfaces.api.app import app
-from aetherml.interfaces.api.jobs import job_store
-from aetherml.interfaces.api.models import (
+from phronesisml import __version__
+from phronesisml.interfaces.api.app import app
+from phronesisml.interfaces.api.jobs import job_store
+from phronesisml.interfaces.api.models import (
     ALLOWED_EXTENSIONS,
     APIResponse,
     CapabilitiesData,
@@ -89,7 +89,7 @@ class TestVersionEndpoint:
 
     def test_sdk_field(self, client: Any) -> None:
         data = client.get("/version").json()["data"]
-        assert data["sdk"] == "aetherml"
+        assert data["sdk"] == "Phronesis"
 
 
 class TestCapabilitiesEndpoint:
@@ -205,7 +205,7 @@ class TestFileUploadValidation:
 
     def test_csv_accepted(self, client: Any) -> None:
         with patch(
-            "aetherml.interfaces.api.routes._run_and_cleanup",
+            "phronesisml.interfaces.api.routes._run_and_cleanup",
             new_callable=AsyncMock,
             return_value={"ok": True},
         ):
@@ -217,7 +217,7 @@ class TestFileUploadValidation:
 
     def test_xlsx_accepted(self, client: Any) -> None:
         with patch(
-            "aetherml.interfaces.api.routes._run_and_cleanup",
+            "phronesisml.interfaces.api.routes._run_and_cleanup",
             new_callable=AsyncMock,
             return_value={"ok": True},
         ):
@@ -229,7 +229,7 @@ class TestFileUploadValidation:
 
     def test_json_accepted(self, client: Any) -> None:
         with patch(
-            "aetherml.interfaces.api.routes._run_and_cleanup",
+            "phronesisml.interfaces.api.routes._run_and_cleanup",
             new_callable=AsyncMock,
             return_value={"ok": True},
         ):
@@ -263,7 +263,7 @@ class TestPipelineEndpoints:
     )
     def test_all_endpoints_return_200_with_valid_file(self, client: Any, endpoint: str) -> None:
         with patch(
-            "aetherml.interfaces.api.routes._run_and_cleanup",
+            "phronesisml.interfaces.api.routes._run_and_cleanup",
             new_callable=AsyncMock,
             return_value={"result": "ok"},
         ):
@@ -287,7 +287,7 @@ class TestPipelineEndpoints:
     )
     def test_all_endpoints_return_job_id(self, client: Any, endpoint: str) -> None:
         with patch(
-            "aetherml.interfaces.api.routes._run_and_cleanup",
+            "phronesisml.interfaces.api.routes._run_and_cleanup",
             new_callable=AsyncMock,
             return_value={"result": "ok"},
         ):
@@ -318,7 +318,7 @@ class TestJobSystem:
 
     def test_list_jobs_returns_created_job(self, client: Any) -> None:
         with patch(
-            "aetherml.interfaces.api.routes._run_and_cleanup",
+            "phronesisml.interfaces.api.routes._run_and_cleanup",
             new_callable=AsyncMock,
             return_value={"result": "ok"},
         ):
@@ -366,7 +366,7 @@ class TestModels:
         data = VersionData(version="0.1.0", python="3.11.0")
         d = data.model_dump()
         assert d["version"] == "0.1.0"
-        assert d["sdk"] == "aetherml"
+        assert d["sdk"] == "Phronesis"
 
     def test_capabilities_data_fields(self) -> None:
         data = CapabilitiesData(
@@ -394,7 +394,7 @@ class TestModels:
             code="TEST_ERROR",
             message="Something went wrong",
             details={"field": "name"},
-            documentation="https://docs.aetherml.ai/errors/TEST_ERROR",
+            documentation="https://docs.Phronesis.ai/errors/TEST_ERROR",
         )
         d = detail.model_dump()
         assert d["code"] == "TEST_ERROR"

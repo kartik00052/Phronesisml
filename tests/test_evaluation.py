@@ -17,10 +17,10 @@ import pandas as pd
 import pytest
 from sklearn.linear_model import LinearRegression, LogisticRegression
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.evaluation.agent import EvaluationAgent
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.ml.evaluation.metrics import evaluate_model
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.evaluation.agent import EvaluationAgent
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.ml.evaluation.metrics import evaluate_model
 
 # ── Fixtures ──────────────────────────────────────────────────────────
 
@@ -415,7 +415,7 @@ class TestAmbiguityPropagation:
         pandas_engine: PandasEngine,
     ) -> None:
         """Full chain: ambiguous target → model selection → evaluation with caveat."""
-        from aetherml.agents.model_selection.agent import ModelSelectionAgent
+        from phronesisml.agents.model_selection.agent import ModelSelectionAgent
 
         # Create a small dataset with ambiguous target
         df = pd.DataFrame(

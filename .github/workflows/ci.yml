@@ -28,8 +28,8 @@ jobs:
       - run: pip install ruff
       - name: Run ruff fix + format
         run: |
-          ruff check aetherml/ --fix
-          ruff format aetherml/
+          ruff check phronesisml/ --fix
+          ruff format phronesisml/
       - name: Commit and push if changed
         run: |
           git config user.name "github-actions[bot]"
@@ -52,8 +52,8 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install ruff
-      - run: ruff check aetherml/ --no-fix
-      - run: ruff format --check aetherml/
+      - run: ruff check phronesisml/ --no-fix
+      - run: ruff format --check phronesisml/
 
   typecheck:
     runs-on: ubuntu-latest
@@ -64,7 +64,7 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -e ".[dev]"
-      - run: mypy aetherml/ --ignore-missing-imports
+      - run: mypy phronesisml/ --ignore-missing-imports
 
   test:
     runs-on: ubuntu-latest
@@ -122,8 +122,8 @@ jobs:
     needs: [lint, typecheck, test]
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -t aetherml:test .
-      - run: docker run -d --name aetherml-test -p 8000:8000 aetherml:test
+      - run: docker build -t phronesisml:test .
+      - run: docker run -d --name phronesisml-test -p 8000:8000 phronesisml:test
       - name: Wait for health endpoint
         run: |
           for i in $(seq 1 30); do
@@ -138,7 +138,7 @@ jobs:
           exit 1
       - name: Stop container
         if: always()
-        run: docker stop aetherml-test && docker rm aetherml-test
+        run: docker stop phronesisml-test && docker rm phronesisml-test
 
   docker-publish:
     runs-on: ubuntu-latest
@@ -161,8 +161,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/aetherml:${{ steps.tag.outputs.version }}
-            ghcr.io/${{ github.repository_owner }}/aetherml:latest
+            ghcr.io/${{ github.repository_owner }}/phronesisml:${{ steps.tag.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/phronesisml:latest
 
   pypi-publish:
     runs-on: ubuntu-latest

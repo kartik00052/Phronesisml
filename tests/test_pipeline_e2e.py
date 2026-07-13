@@ -16,7 +16,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from aetherml.workflow.graph import PIPELINE_ORDER
+from phronesisml.workflow.graph import PIPELINE_ORDER
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ class TestFullPipelineE2E:
         Model Selection must reconstruct the full DataFrame by joining
         with upstream data.
         """
-        from aetherml import run_pipeline
+        from phronesisml import run_pipeline
 
         result = await run_pipeline(
             data_path=synthetic_csv,
@@ -77,7 +77,7 @@ class TestFullPipelineE2E:
     @pytest.mark.asyncio
     async def test_pipeline_stages_all_executed(self, synthetic_csv: str) -> None:
         """Every stage in PIPELINE_ORDER must be represented in the result."""
-        from aetherml import run_pipeline
+        from phronesisml import run_pipeline
 
         result = await run_pipeline(
             data_path=synthetic_csv,

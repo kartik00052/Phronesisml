@@ -1,4 +1,4 @@
-# AetherML — Pinned dependency lock file
+# Phronesis — Pinned dependency lock file
 # Generated from the installed environment. Regenerate with:
 #   pip install -e ".[dev,cli,api,excel]" && pip freeze > requirements.txt
 #
@@ -10,10 +10,10 @@ polars==1.42.1
 scikit-learn==1.6.1
 numpy==2.2.6
 
-# Excel (optional: pip install aetherml[excel])
+# Excel (optional: pip install phronesisml[excel])
 openpyxl==3.1.5
 
-# CLI (optional: pip install aetherml[cli])
+# CLI (optional: pip install phronesisml[cli])
 typer==0.26.7
 rich==13.9.4
 

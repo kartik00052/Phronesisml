@@ -1,4 +1,4 @@
-"""Shared test fixtures for AetherML tests."""
+"""Shared test fixtures for Phronesis tests."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import importlib
 import pandas as pd
 import pytest
 
-from aetherml.engines.pandas_engine import PandasEngine
+from phronesisml.engines.pandas_engine import PandasEngine
 
 collect_ignore: list[str] = []
 if not importlib.util.find_spec("fastapi"):

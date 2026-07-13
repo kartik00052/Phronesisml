@@ -6,8 +6,8 @@ from typing import Any
 
 import pytest
 
-from aetherml.agents.reporting.agent import ReportingAgent
-from aetherml.ml.reports.builder import (
+from phronesisml.agents.reporting.agent import ReportingAgent
+from phronesisml.ml.reports.builder import (
     _build_eda_section,
     _build_evaluation_section,
     _build_explainability_section,
@@ -19,7 +19,7 @@ from aetherml.ml.reports.builder import (
     _build_validation_section,
     build_report,
 )
-from aetherml.workflow.state import WorkflowState
+from phronesisml.workflow.state import WorkflowState
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ class TestReportingAgentProtocol:
         assert callable(agent.get_tools)
 
     def test_isinstance_base_agent(self) -> None:
-        from aetherml.agents.base import BaseAgent
+        from phronesisml.agents.base import BaseAgent
 
         agent = ReportingAgent()
         assert isinstance(agent, BaseAgent)
@@ -397,7 +397,7 @@ class TestBuildReport:
         )
         report = build_report(state)
         assert isinstance(report, str)
-        assert "# AetherML Pipeline Report" in report
+        assert "# Phronesis Pipeline Report" in report
         assert "test-run" in report
         assert "completed" in report
 
@@ -405,7 +405,7 @@ class TestBuildReport:
         state = _make_state()
         report = build_report(state)
         assert isinstance(report, str)
-        assert "# AetherML Pipeline Report" in report
+        assert "# Phronesis Pipeline Report" in report
 
 
 # ── Partial pipeline tests ───────────────────────────────────────────
@@ -458,11 +458,13 @@ class TestImportChecks:
     def test_no_llm_imports_in_builder(self) -> None:
         from pathlib import Path
 
-        builder_file = Path(__file__).parent.parent / "aetherml" / "ml" / "reports" / "builder.py"
+        builder_file = (
+            Path(__file__).parent.parent / "phronesisml" / "ml" / "reports" / "builder.py"
+        )
         lines = builder_file.read_text().splitlines()
         for line in lines:
             stripped = line.strip()
             if stripped.startswith("#") or stripped.startswith('"'):
                 continue
-            for kw in ["openai", "langchain", "gemma", "gemini", "aetherml.llm"]:
+            for kw in ["openai", "langchain", "gemma", "gemini", "phronesisml.llm"]:
                 assert kw not in stripped.lower()

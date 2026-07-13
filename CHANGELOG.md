@@ -1,11 +1,39 @@
 # Changelog
 
-All notable changes to AetherML will be documented in this file.
+All notable changes to PhronesisML will be documented in this file.
+
+> **Note:** This project was formerly known as **AetherML** and published to PyPI as
+> [`aetherml`](https://pypi.org/project/aetherml/). The `aetherml` package on PyPI is
+> now **deprecated** — no new versions will be published there. Install the new package
+> with `pip install phronesisml`.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.3] - 2026-07-13
+## [0.2.0] - 2026-07-13
+
+### Changed (Breaking)
+
+- **Project renamed from AetherML to PhronesisML** — The package, CLI, Docker image,
+  and all public-facing names have been updated.
+  - **Package:** `pip install aetherml` → `pip install phronesisml`
+  - **Import:** `from aetherml import AetherML` → `from phronesisml import Phronesis`
+  - **CLI command:** `aetherml run` → `phronesisml run`
+  - **Docker image:** `ghcr.io/kartik00052/phronesisml`
+  - **GitHub repo:** `github.com/kartik00052/PhronesisML`
+- **Class renames:**
+  - `AetherML` → `Phronesis`
+  - `AetherMLConfig` → `PhronesisConfig`
+  - `AetherMLError` → `PhronesisError`
+- **PyPI deprecation:** The `aetherml` package on PyPI is deprecated. New versions will
+  only be published as `phronesisml`. Existing `aetherml` installs are unaffected but
+  will not receive further updates.
+
+---
+
+The entries below document the project's history under its former name, **AetherML**.
+
+## [0.1.3] - 2026-07-13 *(as AetherML)*
 
 ### Added
 
@@ -18,7 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Version bump to 0.1.3** — Fresh publish to validate Trusted Publisher pipeline end-to-end.
 
-## [0.1.2] - 2026-07-13
+## [0.1.2] - 2026-07-13 *(as AetherML)*
 
 ### Added
 
@@ -35,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Stale manual extras** — Removed separate `[excel]` and `[parquet]` extras (now core). Cleaned up any leftover `[excel]`/`[parquet]` references from v0.1.0.
 
-## [0.1.0] - 2026-07-12
+## [0.1.0] - 2026-07-12 *(as AetherML)*
 
 ### Added
 

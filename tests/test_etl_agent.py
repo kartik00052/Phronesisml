@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.etl.agent import ETLAgent, ETLConfig
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.etl.agent import ETLAgent, ETLConfig
 
 
 class TestETLConfigDefaults:

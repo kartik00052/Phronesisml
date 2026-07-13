@@ -5,9 +5,9 @@ Instead of running the full pipeline with `ml.run()`, you can execute stages ind
 ## Step-by-Step Example
 
 ```python
-from aetherml import AetherML
+from phronesisml import Phronesis
 
-ml = AetherML("data/customers.csv")
+ml = Phronesis("data/customers.csv")
 
 # 1. Load and inspect
 ml.load()
@@ -53,7 +53,7 @@ print(ml.report())
 Pass `model_type` to `train()` or `recommend_model()` to skip model selection and train a specific algorithm directly:
 
 ```python
-ml = AetherML("data.csv")
+ml = Phronesis("data.csv")
 ml.run()  # or call stages incrementally
 
 # Train a specific model instead of auto-selecting
@@ -75,7 +75,7 @@ model = ml.train(cv=5)  # 5-fold cross-validation
 All stage methods return `self`, so you can chain calls:
 
 ```python
-result = AetherML("data.csv").load().clean().validate().eda().detect_target().engineer_features()
+result = Phronesis("data.csv").load().clean().validate().eda().detect_target().engineer_features()
 ```
 
 !!! note

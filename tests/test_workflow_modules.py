@@ -9,9 +9,9 @@ from unittest.mock import AsyncMock
 import pandas as pd
 import pytest
 
-from aetherml.agents.base import AgentResult
-from aetherml.exceptions import AgentError, AgentNotImplementedError, ConfigurationError
-from aetherml.workflow.router import (
+from phronesisml.agents.base import AgentResult
+from phronesisml.exceptions import AgentError, AgentNotImplementedError, ConfigurationError
+from phronesisml.workflow.router import (
     route_after_eda,
     route_after_etl,
     route_after_evaluation,
@@ -23,7 +23,7 @@ from aetherml.workflow.router import (
     route_after_upload,
     route_after_validation,
 )
-from aetherml.workflow.state import WorkflowState
+from phronesisml.workflow.state import WorkflowState
 
 # ── State ────────────────────────────────────────────────────────────────
 
@@ -170,7 +170,7 @@ class TestRouter:
 class TestMakeNode:
     @pytest.mark.asyncio
     async def test_success_path(self) -> None:
-        from aetherml.workflow.nodes import make_node
+        from phronesisml.workflow.nodes import make_node
 
         mock_agent = AsyncMock()
         mock_agent.name = "test_agent"
@@ -181,7 +181,7 @@ class TestMakeNode:
 
     @pytest.mark.asyncio
     async def test_failure_path_raises_agent_error(self) -> None:
-        from aetherml.workflow.nodes import make_node
+        from phronesisml.workflow.nodes import make_node
 
         mock_agent = AsyncMock()
         mock_agent.name = "failing_agent"
@@ -192,7 +192,7 @@ class TestMakeNode:
 
     @pytest.mark.asyncio
     async def test_not_implemented_returns_empty(self) -> None:
-        from aetherml.workflow.nodes import make_node
+        from phronesisml.workflow.nodes import make_node
 
         mock_agent = AsyncMock()
         mock_agent.name = "stub_agent"
@@ -203,7 +203,7 @@ class TestMakeNode:
 
     @pytest.mark.asyncio
     async def test_generic_exception_wrapped_in_agent_error(self) -> None:
-        from aetherml.workflow.nodes import make_node
+        from phronesisml.workflow.nodes import make_node
 
         mock_agent = AsyncMock()
         mock_agent.name = "crash_agent"
@@ -214,7 +214,7 @@ class TestMakeNode:
 
     @pytest.mark.asyncio
     async def test_return_value_has_correct_name(self) -> None:
-        from aetherml.workflow.nodes import make_node
+        from phronesisml.workflow.nodes import make_node
 
         mock_agent = AsyncMock()
         mock_agent.name = "my_agent"
@@ -224,7 +224,7 @@ class TestMakeNode:
 
     @pytest.mark.asyncio
     async def test_agent_error_preserves_metadata(self) -> None:
-        from aetherml.workflow.nodes import make_node
+        from phronesisml.workflow.nodes import make_node
 
         mock_agent = AsyncMock()
         mock_agent.name = "meta_agent"
@@ -248,7 +248,7 @@ class TestMakeNode:
 
 class TestBuildGraph:
     def test_stages_none_defaults_to_upload_etl(self) -> None:
-        from aetherml.workflow.graph import build_graph
+        from phronesisml.workflow.graph import build_graph
 
         agents = {
             "upload": _make_stub_agent("upload"),
@@ -258,28 +258,28 @@ class TestBuildGraph:
         assert graph is not None
 
     def test_unknown_stage_raises(self) -> None:
-        from aetherml.workflow.graph import build_graph
+        from phronesisml.workflow.graph import build_graph
 
         agents = {"upload": _make_stub_agent("upload")}
         with pytest.raises(ConfigurationError, match="Unknown stage"):
             build_graph(agents, stages=["upload", "nonexistent"])
 
     def test_missing_agent_raises(self) -> None:
-        from aetherml.workflow.graph import build_graph
+        from phronesisml.workflow.graph import build_graph
 
         agents = {}  # no agents provided
         with pytest.raises(ConfigurationError, match="Agent for stage"):
             build_graph(agents, stages=["upload", "etl"])
 
     def test_empty_stages_raises(self) -> None:
-        from aetherml.workflow.graph import build_graph
+        from phronesisml.workflow.graph import build_graph
 
         agents = {"upload": _make_stub_agent("upload")}
         with pytest.raises(ConfigurationError, match="No stages to wire"):
             build_graph(agents, stages=[])
 
     def test_pipeline_order_contains_expected_stages(self) -> None:
-        from aetherml.workflow.graph import PIPELINE_ORDER
+        from phronesisml.workflow.graph import PIPELINE_ORDER
 
         expected = [
             "upload",
@@ -299,7 +299,7 @@ class TestBuildGraph:
 
 def _make_stub_agent(name: str) -> Any:
     """Create a minimal stub agent for graph tests."""
-    from aetherml.agents.base import _StubAgent
+    from phronesisml.agents.base import _StubAgent
 
     stub = _StubAgent(name=name, description=f"Stub for {name}")
 

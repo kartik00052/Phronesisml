@@ -24,9 +24,9 @@ Describe the tests you ran to verify your changes:
 
 ```bash
 pytest tests/ -q
-ruff check aetherml/ --no-fix
-ruff format --check aetherml/
-mypy aetherml/ --ignore-missing-imports
+ruff check phronesisml/ --no-fix
+ruff format --check phronesisml/
+mypy phronesisml/ --ignore-missing-imports
 ```
 
 ## Screenshots / Output

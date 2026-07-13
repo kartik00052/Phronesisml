@@ -16,17 +16,17 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.model_selection.agent import ModelSelectionAgent
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.exceptions import AgentError
-from aetherml.ml.automl.auto_selector import (
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.model_selection.agent import ModelSelectionAgent
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.exceptions import AgentError
+from phronesisml.ml.automl.auto_selector import (
     CandidateModel,
     candidate_to_dict,
     dict_to_candidate,
     recommend_models,
 )
-from aetherml.ml.automl.trainer import (
+from phronesisml.ml.automl.trainer import (
     DEFAULT_MAX_TIME_SECONDS,
     DEFAULT_MAX_TRIALS,
     train_models,

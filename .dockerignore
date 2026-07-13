@@ -11,5 +11,30 @@ venv/
 .ruff_cache/
 .pytest_cache/
 htmlcov/
+
+# Tests & docs (not needed in image)
+tests/
+docs/
+notebooks/
+examples/
 *.md
 !README.md
+
+# Dev artifacts
+Phronesis_artifacts/
+phronesisml_artifacts/
+.mlflow/
+mlflow.db
+.pre-commit-config.yaml
+.editorconfig
+.gitignore
+docker-compose.yml
+Makefile
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

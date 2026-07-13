@@ -1,18 +1,18 @@
 # CLI
 
-AetherML provides a Typer-based CLI that wraps the SDK.
+PhronesisML provides a Typer-based CLI that wraps the SDK.
 
 !!! info
-    Install the CLI extras first: `pip install aetherml[cli]`
+    Install the CLI extras first: `pip install phronesisml[cli]`
 
 ## Commands
 
-### `aetherml run`
+### `phronesisml run`
 
 Run the full ML pipeline on a dataset:
 
 ```bash
-aetherml run data/customers.csv
+phronesisml run data/customers.csv
 ```
 
 **Options:**
@@ -27,24 +27,24 @@ aetherml run data/customers.csv
 
 ```bash
 # Use Polars engine with fill strategy
-aetherml run data.csv --engine polars --nulls fill
+phronesisml run data.csv --engine polars --nulls fill
 
 # Verbose output
-aetherml run data.csv -v
+phronesisml run data.csv -v
 ```
 
-### `aetherml info`
+### `phronesisml info`
 
-Show information about AetherML:
+Show information about PhronesisML:
 
 ```bash
-aetherml info
+phronesisml info
 ```
 
 ## Running via Docker
 
 ```bash
-docker run -p 8000:8000 ghcr.io/kartik00052/aetherml:v0.1.3
+docker run -p 8000:8000 ghcr.io/kartik00052/phronesisml:v0.2.0
 ```
 
 This starts the REST API server, not the CLI.

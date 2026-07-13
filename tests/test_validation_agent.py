@@ -7,11 +7,11 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.validation.agent import ValidationAgent
-from aetherml.data.validators.checks import validate_dataframe
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.exceptions import DataValidationError
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.validation.agent import ValidationAgent
+from phronesisml.data.validators.checks import validate_dataframe
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.exceptions import DataValidationError
 
 
 class TestValidationAgentProtocol:

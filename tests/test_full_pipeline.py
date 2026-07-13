@@ -11,12 +11,12 @@ from typing import Any
 
 import pytest
 
-from aetherml.exceptions import ConfigurationError
-from aetherml.workflow.graph import PIPELINE_ORDER, build_graph
+from phronesisml.exceptions import ConfigurationError
+from phronesisml.workflow.graph import PIPELINE_ORDER, build_graph
 
 
 def _make_stub(name: str) -> Any:
-    from aetherml.agents.base import AgentResult, _StubAgent
+    from phronesisml.agents.base import AgentResult, _StubAgent
 
     stub = _StubAgent(name=name, description=f"Stub for {name}")
 
@@ -80,10 +80,10 @@ class TestFullPipelineGraph:
 
 class TestComposeAgents:
     def test_compose_returns_all_pipeline_agents(self) -> None:
-        from aetherml import _compose_agents
-        from aetherml.configs.settings import AetherMLConfig
+        from phronesisml import _compose_agents
+        from phronesisml.configs.settings import PhronesisConfig
 
-        config = AetherMLConfig()
+        config = PhronesisConfig()
         agents = _compose_agents(config, data_path="/tmp/fake.csv")
 
         # All 11 pipeline stages must be present
@@ -95,10 +95,10 @@ class TestComposeAgents:
         assert "rag" not in agents
 
     def test_compose_agent_names_match_stages(self) -> None:
-        from aetherml import _compose_agents
-        from aetherml.configs.settings import AetherMLConfig
+        from phronesisml import _compose_agents
+        from phronesisml.configs.settings import PhronesisConfig
 
-        config = AetherMLConfig()
+        config = PhronesisConfig()
         agents = _compose_agents(config, data_path="/tmp/fake.csv")
 
         for stage in PIPELINE_ORDER:

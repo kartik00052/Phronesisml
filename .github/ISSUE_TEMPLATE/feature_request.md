@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a new feature or improvement for AetherML
+about: Suggest a new feature or improvement for PhronesisML
 title: "[FEATURE] "
 labels: enhancement
 assignees: ""

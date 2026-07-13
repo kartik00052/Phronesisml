@@ -4,11 +4,12 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 0.2.x   | :white_check_mark: |
+| < 0.2.0 | :x:                |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability within AetherML, please send an email
+If you discover a security vulnerability within PhronesisML, please send an email
 to kartiksharma18852@gmail.com. All security vulnerabilities will be promptly
 addressed.
 
@@ -27,14 +28,14 @@ repos, including the following steps:
 
 ## Security Considerations
 
-AetherML processes user-uploaded data files. Key security properties:
+Phronesis processes user-uploaded data files. Key security properties:
 
-- **No remote code execution**: All processing is local. AetherML does not
+- **No remote code execution**: All processing is local. PhronesisML does not
   execute arbitrary code from uploaded files.
-- **No network exfiltration**: By default, AetherML does not send data to
+- **No network exfiltration**: By default, PhronesisML does not send data to
   external services. MLflow logging is opt-in and requires explicit
   configuration.
 - **Temp file cleanup**: Uploaded files are written to temporary directories and
   cleaned up after processing completes.
-- **No credentials in code**: AetherML never logs or stores API keys, tokens,
+- **No credentials in code**: PhronesisML never logs or stores API keys, tokens,
   or passwords.

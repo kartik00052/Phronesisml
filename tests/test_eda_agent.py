@@ -7,10 +7,10 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.eda.agent import EDAAgent
-from aetherml.data.profilers.stats import profile_dataset
-from aetherml.engines.pandas_engine import PandasEngine
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.eda.agent import EDAAgent
+from phronesisml.data.profilers.stats import profile_dataset
+from phronesisml.engines.pandas_engine import PandasEngine
 
 
 class TestEDAAgentProtocol:

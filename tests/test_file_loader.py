@@ -5,14 +5,14 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from aetherml.data.loaders.file_loader import (
+from phronesisml.data.loaders.file_loader import (
     detect_format,
     list_excel_sheets,
     load_file,
     select_best_sheet,
 )
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.exceptions import DataLoadError
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.exceptions import DataLoadError
 
 
 @pytest.fixture

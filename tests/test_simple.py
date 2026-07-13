@@ -1,4 +1,4 @@
-"""Tests for the simple API — aetherml.simple module.
+"""Tests for the simple API — Phronesis.simple module.
 
 Each public function has:
   1. A return-type test (verifies the typed dataclass is returned correctly).
@@ -14,7 +14,7 @@ import asyncio
 import pandas as pd
 import pytest
 
-from aetherml.simple import (
+from phronesisml.simple import (
     CleanResult,
     DatasetProfile,
     ExplainResult,
@@ -341,7 +341,7 @@ class TestTrain:
 
 class TestImports:
     def test_import_from_top_level(self) -> None:
-        from aetherml import (  # noqa: F401
+        from phronesisml import (  # noqa: F401
             analyze,
             clean,
             detect_target,
@@ -354,7 +354,7 @@ class TestImports:
         )
 
     def test_import_result_types(self) -> None:
-        from aetherml import (  # noqa: F401
+        from phronesisml import (  # noqa: F401
             CleanResult,
             DatasetProfile,
             ExplainResult,
@@ -366,7 +366,7 @@ class TestImports:
         )
 
     def test_import_async_variants(self) -> None:
-        from aetherml import (  # noqa: F401
+        from phronesisml import (  # noqa: F401
             analyze_async,
             clean_async,
             detect_target_async,

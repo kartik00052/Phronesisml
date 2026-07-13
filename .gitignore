@@ -46,7 +46,8 @@ Thumbs.db
 mlruns/
 mlflow.db
 mlartifacts/
-aetherml_artifacts/
+phronesisml_artifacts/
+Phronesis_artifacts/
 
 # Database files
 *.db

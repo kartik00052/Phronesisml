@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import asyncio
 
-import aetherml
+import phronesisml
 
 
 async def main() -> None:
-    result = await aetherml.run_pipeline(
+    result = await phronesisml.run_pipeline(
         data_path="tests/fixtures/sample.csv",
         stages=[
             "upload",

@@ -11,8 +11,8 @@ from typing import Any
 
 import pytest
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.storage.agent import StorageAgent
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.storage.agent import StorageAgent
 
 
 class TestStorageAgent:

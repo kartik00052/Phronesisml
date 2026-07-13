@@ -9,14 +9,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from aetherml.agents.explainability.agent import ExplainabilityAgent
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.ml.explainability.shap_explainer import (
+from phronesisml.agents.explainability.agent import ExplainabilityAgent
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.ml.explainability.shap_explainer import (
     DEFAULT_MAX_SAMPLES,
     _compute_global_importance,
     _create_explainer,
 )
-from aetherml.workflow.state import WorkflowState
+from phronesisml.workflow.state import WorkflowState
 
 # ── Helpers ──────────────────────────────────────────────────────────
 
@@ -108,7 +108,7 @@ class TestExplainabilityAgentProtocol:
         assert callable(agent.get_tools)
 
     def test_isinstance_base_agent(self) -> None:
-        from aetherml.agents.base import BaseAgent
+        from phronesisml.agents.base import BaseAgent
 
         agent = ExplainabilityAgent(engine=PandasEngine())
         assert isinstance(agent, BaseAgent)
@@ -155,7 +155,7 @@ class TestExplainabilityAgentRun:
         state.processed_data = None
 
         with patch(
-            "aetherml.agents.explainability.agent.compute_shap_explanations",
+            "phronesisml.agents.explainability.agent.compute_shap_explanations",
             side_effect=ImportError("No module named 'shap'"),
         ):
             result = await agent.run(state)
@@ -184,7 +184,7 @@ class TestExplainabilityAgentRun:
         }
 
         with patch(
-            "aetherml.agents.explainability.agent.compute_shap_explanations",
+            "phronesisml.agents.explainability.agent.compute_shap_explanations",
             return_value=mock_report,
         ):
             result = await agent.run(state)
@@ -212,7 +212,7 @@ class TestExplainabilityAgentRun:
         }
 
         with patch(
-            "aetherml.agents.explainability.agent.compute_shap_explanations",
+            "phronesisml.agents.explainability.agent.compute_shap_explanations",
             return_value=mock_report,
         ):
             result = await agent.run(state)
@@ -236,7 +236,7 @@ class TestExplainabilityAgentRun:
         }
 
         with patch(
-            "aetherml.agents.explainability.agent.compute_shap_explanations",
+            "phronesisml.agents.explainability.agent.compute_shap_explanations",
             return_value=mock_report,
         ):
             result = await agent.run(state)
@@ -250,7 +250,7 @@ class TestExplainabilityAgentRun:
         state = _make_state(model=_MockTreeModel(), features=X)
 
         with patch(
-            "aetherml.agents.explainability.agent.compute_shap_explanations",
+            "phronesisml.agents.explainability.agent.compute_shap_explanations",
             side_effect=RuntimeError("SHAP crashed"),
         ):
             result = await agent.run(state)
@@ -373,7 +373,7 @@ class TestResourceBoundsIntegration:
         }
 
         with patch(
-            "aetherml.agents.explainability.agent.compute_shap_explanations",
+            "phronesisml.agents.explainability.agent.compute_shap_explanations",
             return_value=mock_report,
         ):
             result = await agent.run(state)
@@ -392,7 +392,7 @@ class TestImportChecks:
     def test_no_llm_imports_in_shap_explainer(self) -> None:
         from pathlib import Path
 
-        base = Path(__file__).parent.parent / "aetherml" / "ml" / "explainability"
+        base = Path(__file__).parent.parent / "phronesisml" / "ml" / "explainability"
         shap_file = base / "shap_explainer.py"
         lines = shap_file.read_text().splitlines()
         for line in lines:
@@ -405,7 +405,7 @@ class TestImportChecks:
     def test_no_llm_imports_in_explainability_agent(self) -> None:
         from pathlib import Path
 
-        base = Path(__file__).parent.parent / "aetherml" / "agents" / "explainability"
+        base = Path(__file__).parent.parent / "phronesisml" / "agents" / "explainability"
         agent_file = base / "agent.py"
         lines = agent_file.read_text().splitlines()
         for line in lines:

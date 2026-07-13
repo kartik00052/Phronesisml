@@ -8,11 +8,11 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.target_detection.agent import TargetDetectionAgent
-from aetherml.data.profilers.stats import profile_dataset
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.ml.target_detection.detector import AMBIGUITY_THRESHOLD, detect_target
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.target_detection.agent import TargetDetectionAgent
+from phronesisml.data.profilers.stats import profile_dataset
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.ml.target_detection.detector import AMBIGUITY_THRESHOLD, detect_target
 
 
 class TestTargetDetectionAgentProtocol:

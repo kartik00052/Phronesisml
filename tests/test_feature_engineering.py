@@ -8,10 +8,10 @@ from typing import Any
 import pandas as pd
 import pytest
 
-from aetherml.agents.base import BaseAgent
-from aetherml.agents.feature_engineering.agent import FeatureEngineeringAgent
-from aetherml.engines.pandas_engine import PandasEngine
-from aetherml.ml.feature_engineering.engineer import engineer_features
+from phronesisml.agents.base import BaseAgent
+from phronesisml.agents.feature_engineering.agent import FeatureEngineeringAgent
+from phronesisml.engines.pandas_engine import PandasEngine
+from phronesisml.ml.feature_engineering.engineer import engineer_features
 
 
 class TestFeatureEngineeringAgentProtocol:

@@ -13,9 +13,9 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 
-from aetherml.agents.evaluation.agent import EvaluationAgent
-from aetherml.agents.model_selection.agent import ModelSelectionAgent
-from aetherml.engines.pandas_engine import PandasEngine
+from phronesisml.agents.evaluation.agent import EvaluationAgent
+from phronesisml.agents.model_selection.agent import ModelSelectionAgent
+from phronesisml.engines.pandas_engine import PandasEngine
 
 
 @pytest.fixture
@@ -170,7 +170,7 @@ class TestFeatureSelectionMinFeatures:
 
     def test_min_features_prevents_dropping_all(self) -> None:
         """When all features would be dropped, min_features keeps at least one."""
-        from aetherml.ml.feature_engineering.engineer import _select_features
+        from phronesisml.ml.feature_engineering.engineer import _select_features
 
         df = pd.DataFrame(
             {
@@ -191,7 +191,7 @@ class TestFeatureSelectionMinFeatures:
 
     def test_min_features_higher_floor(self) -> None:
         """min_features=2 should keep at least 2 features."""
-        from aetherml.ml.feature_engineering.engineer import _select_features
+        from phronesisml.ml.feature_engineering.engineer import _select_features
 
         df = pd.DataFrame(
             {
@@ -214,7 +214,7 @@ class TestFeatureSelectionMinFeatures:
         """A feature genuinely correlated with the target must survive selection."""
         import numpy as np
 
-        from aetherml.ml.feature_engineering.engineer import _select_features
+        from phronesisml.ml.feature_engineering.engineer import _select_features
 
         rng = np.random.RandomState(42)
         n = 100
@@ -239,9 +239,9 @@ class TestFeatureSelectionMinFeatures:
         assert "predictive" in result.columns
 
     def test_configurable_thresholds_applied(self) -> None:
-        """Custom thresholds from AetherMLConfig must be respected."""
-        from aetherml.engines.pandas_engine import PandasEngine
-        from aetherml.ml.feature_engineering.engineer import engineer_features
+        """Custom thresholds from PhronesisConfig must be respected."""
+        from phronesisml.engines.pandas_engine import PandasEngine
+        from phronesisml.ml.feature_engineering.engineer import engineer_features
 
         engine = PandasEngine()
         rng = __import__("numpy").random.RandomState(42)
@@ -270,7 +270,7 @@ class TestFeatureSelectionMinFeatures:
 
     def test_strict_thresholds_drop_features(self) -> None:
         """Very strict thresholds should drop features with no signal."""
-        from aetherml.ml.feature_engineering.engineer import _select_features
+        from phronesisml.ml.feature_engineering.engineer import _select_features
 
         df = pd.DataFrame(
             {

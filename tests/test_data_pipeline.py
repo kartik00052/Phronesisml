@@ -8,13 +8,13 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from aetherml.data.loaders.file_loader import detect_format, load_file
-from aetherml.data.transformers.cleaning import (
+from phronesisml.data.loaders.file_loader import detect_format, load_file
+from phronesisml.data.transformers.cleaning import (
     cast_dtypes,
     encode_categoricals,
     handle_nulls,
 )
-from aetherml.exceptions import DataLoadError, DataTransformError
+from phronesisml.exceptions import DataLoadError, DataTransformError
 
 # ── File Loader: detect_format ───────────────────────────────────────────
 

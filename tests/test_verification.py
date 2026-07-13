@@ -11,7 +11,7 @@ import asyncio
 import pandas as pd
 import pytest
 
-from aetherml.sdk import AetherML
+from phronesisml.sdk import Phronesis
 
 # ── Fixtures ─────────────────────────────────────────────────────
 
@@ -68,7 +68,7 @@ class TestDegenerateFeatureSelection:
     def test_min_features_floor_prevents_all_dropped(self, degenerate_csv: str) -> None:
         """Even with near-constant and near-zero-correlation columns,
         at least 1 feature must survive (min_features floor)."""
-        ml = AetherML(degenerate_csv)
+        ml = Phronesis(degenerate_csv)
         report = ml.engineer_features()
 
         # min_features=1 default should preserve at least 1 feature
@@ -79,7 +79,7 @@ class TestDegenerateFeatureSelection:
 
     def test_configurable_thresholds_in_config(self) -> None:
         """Confirm FeatureSelectionConfig exists with the right fields."""
-        from aetherml.configs.settings import FeatureSelectionConfig
+        from phronesisml.configs.settings import FeatureSelectionConfig
 
         cfg = FeatureSelectionConfig(
             variance_threshold=0.001,
@@ -91,20 +91,20 @@ class TestDegenerateFeatureSelection:
         assert cfg.min_features == 3
 
     def test_custom_thresholds_via_sdk(self, degenerate_csv: str) -> None:
-        """Pass custom thresholds via AetherMLConfig and verify features survive."""
-        from aetherml.configs.settings import (
-            AetherMLConfig,
+        """Pass custom thresholds via PhronesisConfig and verify features survive."""
+        from phronesisml.configs.settings import (
             FeatureSelectionConfig,
+            PhronesisConfig,
         )
 
-        config = AetherMLConfig(
+        config = PhronesisConfig(
             feature_selection=FeatureSelectionConfig(
                 variance_threshold=0.0001,
                 correlation_threshold=0.001,
                 min_features=2,
             )
         )
-        ml = AetherML(degenerate_csv, config=config)
+        ml = Phronesis(degenerate_csv, config=config)
         report = ml.engineer_features()
         assert report.n_features >= 2, (
             f"Expected >= 2 features with min_features=2, got {report.n_features}"
@@ -112,19 +112,19 @@ class TestDegenerateFeatureSelection:
 
     def test_near_constant_col_retained(self, degenerate_csv: str) -> None:
         """The near-constant column should be retained when min_features > 1."""
-        from aetherml.configs.settings import (
-            AetherMLConfig,
+        from phronesisml.configs.settings import (
             FeatureSelectionConfig,
+            PhronesisConfig,
         )
 
-        config = AetherMLConfig(
+        config = PhronesisConfig(
             feature_selection=FeatureSelectionConfig(
                 variance_threshold=0.0001,
                 correlation_threshold=0.001,
                 min_features=2,
             )
         )
-        ml = AetherML(degenerate_csv, config=config)
+        ml = Phronesis(degenerate_csv, config=config)
         report = ml.engineer_features()
         assert "constant_col" in report.feature_names, (
             f"constant_col should be retained, got: {report.feature_names}"
@@ -139,7 +139,7 @@ class TestAsyncLoopGuard:
 
     def test_clean_inside_event_loop_raises_runtime_error(self, csv_path: str) -> None:
         async def _inner() -> None:
-            ml = AetherML(csv_path)
+            ml = Phronesis(csv_path)
             with pytest.raises(RuntimeError, match="running event loop"):
                 ml.clean()
 
@@ -147,7 +147,7 @@ class TestAsyncLoopGuard:
 
     def test_run_inside_event_loop_raises_runtime_error(self, csv_path: str) -> None:
         async def _inner() -> None:
-            ml = AetherML(csv_path)
+            ml = Phronesis(csv_path)
             with pytest.raises(RuntimeError, match="running event loop"):
                 ml.run()
 
@@ -155,7 +155,7 @@ class TestAsyncLoopGuard:
 
     def test_error_message_is_actionable(self, csv_path: str) -> None:
         async def _inner() -> None:
-            ml = AetherML(csv_path)
+            ml = Phronesis(csv_path)
             with pytest.raises(RuntimeError, match="_async variants"):
                 ml.clean()
 
@@ -169,13 +169,13 @@ class TestModelTypeSelection:
     """Verify train(model_type=...) trains that specific model."""
 
     def test_recommend_model_returns_alternatives(self, csv_path: str) -> None:
-        ml = AetherML(csv_path)
+        ml = Phronesis(csv_path)
         info = ml.recommend_model()
         assert len(info.candidates) > 1, "recommend_model should return multiple alternatives"
 
     def test_train_alternative_model_type(self, csv_path: str) -> None:
         """Train a non-top-recommended model and assert its type."""
-        ml = AetherML(csv_path)
+        ml = Phronesis(csv_path)
         first_run = ml.recommend_model()
         # Pick a different model from candidates
         candidates = first_run.candidates
@@ -186,7 +186,7 @@ class TestModelTypeSelection:
         )
 
         # Now train the alternative
-        ml2 = AetherML(csv_path)
+        ml2 = Phronesis(csv_path)
         alt_result = ml2.train(model_type=alt_name)
         # The best_pipeline.model_type is the sklearn class name, not the candidate name.
         # But the candidate model_type string should match the candidate name.
@@ -195,9 +195,9 @@ class TestModelTypeSelection:
 
     def test_train_invalid_model_type_fails(self, csv_path: str) -> None:
         """Requesting a nonexistent model type should fail with clear error."""
-        from aetherml.exceptions import WorkflowError
+        from phronesisml.exceptions import WorkflowError
 
-        ml = AetherML(csv_path)
+        ml = Phronesis(csv_path)
         with pytest.raises((WorkflowError, Exception)):
             ml.train(model_type="nonexistent_model_xyz")
 
@@ -206,10 +206,10 @@ class TestModelTypeSelection:
 
 
 class TestRunPopulatesAllFields:
-    """Verify .run() fills every field on the AetherML state."""
+    """Verify .run() fills every field on the Phronesis state."""
 
     def test_run_populates_all_fields(self, csv_path: str) -> None:
-        ml = AetherML(csv_path)
+        ml = Phronesis(csv_path)
         ml.run()
 
         state = ml._state
@@ -245,7 +245,7 @@ class TestRunPopulatesAllFields:
         assert len(state.final_report) > 0, "final_report is empty"
 
     def test_repr_shows_completed_stages(self, csv_path: str) -> None:
-        ml = AetherML(csv_path)
+        ml = Phronesis(csv_path)
         assert "stages_completed=0" in repr(ml)
         ml.run()
         r = repr(ml)
@@ -253,10 +253,10 @@ class TestRunPopulatesAllFields:
         assert "elapsed=" in r
 
     def test_repr_html_shows_model(self, csv_path: str) -> None:
-        ml = AetherML(csv_path)
+        ml = Phronesis(csv_path)
         ml.run()
         html = ml._repr_html_()
-        assert "AetherML" in html
+        assert "Phronesis" in html
         assert "Model:" in html
         assert "Target:" in html
         assert "<div" in html
@@ -270,19 +270,19 @@ class TestSparkEngineError:
 
     def test_spark_engine_import_error_message(self) -> None:
         """SparkEngine._get_or_create_session should raise ImportError with install command."""
-        from aetherml.engines.spark_engine import SparkEngine
+        from phronesisml.engines.spark_engine import SparkEngine
 
         engine = SparkEngine()
-        with pytest.raises(ImportError, match=r"pip install aetherml\[spark\]"):
+        with pytest.raises(ImportError, match=r"pip install phronesisml\[spark\]"):
             engine._get_or_create_session()
 
     def test_spark_preferred_config_fails_clearly(self, csv_path: str) -> None:
         """Configuring preferred='spark' should fail with clear error."""
-        from aetherml.configs.settings import AetherMLConfig, EngineConfig
-        from aetherml.exceptions import WorkflowError
+        from phronesisml.configs.settings import EngineConfig, PhronesisConfig
+        from phronesisml.exceptions import WorkflowError
 
-        config = AetherMLConfig(engine=EngineConfig(preferred="spark"))
-        ml = AetherML(csv_path, config=config)
+        config = PhronesisConfig(engine=EngineConfig(preferred="spark"))
+        ml = Phronesis(csv_path, config=config)
         with pytest.raises((ImportError, WorkflowError)) as exc_info:
             ml.run()
         # The error chain should mention pip install
@@ -296,5 +296,5 @@ class TestSparkEngineError:
                 break
             current = current.__cause__
         assert found_install_msg, (
-            f"Expected 'pip install aetherml[spark]' in error chain, got: {exc}"
+            f"Expected 'pip install phronesisml[spark]' in error chain, got: {exc}"
         )

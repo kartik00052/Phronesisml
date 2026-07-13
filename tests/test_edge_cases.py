@@ -11,8 +11,8 @@ import time
 import pandas as pd
 import pytest
 
-from aetherml.exceptions import AetherMLError, WorkflowError
-from aetherml.sdk import AetherML
+from phronesisml.exceptions import PhronesisError, WorkflowError
+from phronesisml.sdk import Phronesis
 
 # ── Corrupted file ──────────────────────────────────────────────
 
@@ -25,23 +25,23 @@ class TestCorruptedFile:
             b"\xff\xfe\xfd\xfc\xfb\xfa\x00\x01\x02\x03\n"
             b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
         )
-        ml = AetherML(str(p))
-        with pytest.raises((AetherMLError, WorkflowError, Exception)) as exc_info:
+        ml = Phronesis(str(p))
+        with pytest.raises((PhronesisError, WorkflowError, Exception)) as exc_info:
             ml.run()
         assert exc_info.value is not None
 
     def test_corrupted_binary_as_csv_raises(self, tmp_path: object) -> None:
         p = tmp_path / "fake.csv"  # type: ignore[operator]
         p.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x00")
-        ml = AetherML(str(p))
-        with pytest.raises((AetherMLError, WorkflowError, Exception)):
+        ml = Phronesis(str(p))
+        with pytest.raises((PhronesisError, WorkflowError, Exception)):
             ml.load()
 
     def test_truncated_xlsx_raises(self, tmp_path: object) -> None:
         p = tmp_path / "truncated.xlsx"  # type: ignore[operator]
         p.write_bytes(b"PK\x03\x04truncated content")
-        ml = AetherML(str(p))
-        with pytest.raises((AetherMLError, WorkflowError, Exception)):
+        ml = Phronesis(str(p))
+        with pytest.raises((PhronesisError, WorkflowError, Exception)):
             ml.load()
 
 
@@ -52,14 +52,14 @@ class TestUnsupportedExtension:
     def test_unsupported_ext_raises(self, tmp_path: object) -> None:
         p = tmp_path / "data.exe"  # type: ignore[operator]
         p.write_bytes(b"MZ\x90\x00")
-        ml = AetherML(str(p))
-        with pytest.raises((AetherMLError, WorkflowError, Exception)):
+        ml = Phronesis(str(p))
+        with pytest.raises((PhronesisError, WorkflowError, Exception)):
             ml.load()
 
     def test_unsupported_ext_message_contains_filename(self, tmp_path: object) -> None:
         p = tmp_path / "data.parquet"  # type: ignore[operator]
         p.write_bytes(b"\x89PAR1\x00\x00")
-        ml = AetherML(str(p))
+        ml = Phronesis(str(p))
         # parquet bytes may or may not parse; just confirm no crash on non-parquet
         import contextlib
 
@@ -74,23 +74,23 @@ class TestEmptyDataset:
     def test_zero_rows_csv(self, tmp_path: object) -> None:
         p = tmp_path / "empty.csv"  # type: ignore[operator]
         p.write_text("a,b,c\n", encoding="utf-8")
-        ml = AetherML(str(p))
-        with pytest.raises((AetherMLError, WorkflowError, ValueError)):
+        ml = Phronesis(str(p))
+        with pytest.raises((PhronesisError, WorkflowError, ValueError)):
             ml.run()
 
     def test_zero_columns_csv(self, tmp_path: object) -> None:
         p = tmp_path / "nocols.csv"  # type: ignore[operator]
         p.write_text("\n\n\n", encoding="utf-8")
-        ml = AetherML(str(p))
-        with pytest.raises((AetherMLError, WorkflowError, Exception)):
+        ml = Phronesis(str(p))
+        with pytest.raises((PhronesisError, WorkflowError, Exception)):
             ml.run()
 
     def test_single_cell_csv(self, tmp_path: object) -> None:
         p = tmp_path / "single.csv"  # type: ignore[operator]
         p.write_text("a\n", encoding="utf-8")
-        ml = AetherML(str(p))
+        ml = Phronesis(str(p))
         # Should fail — 1 row, 1 col, no target
-        with pytest.raises((AetherMLError, WorkflowError, Exception)):
+        with pytest.raises((PhronesisError, WorkflowError, Exception)):
             ml.run()
 
 
@@ -109,7 +109,7 @@ class TestAmbiguousTarget:
             }
         )
         df.to_csv(p, index=False)
-        ml = AetherML(str(p))
+        ml = Phronesis(str(p))
         result = ml.detect_target()
         # Should still detect something — may be ambiguous
         assert result.task_type in ("classification", "regression", "ambiguous")
@@ -119,7 +119,7 @@ class TestAmbiguousTarget:
         p = tmp_path / "constant.csv"  # type: ignore[operator]
         df = pd.DataFrame({"a": [1] * 20, "b": [2] * 20, "target": [0] * 20})
         df.to_csv(p, index=False)
-        ml = AetherML(str(p))
+        ml = Phronesis(str(p))
         result = ml.detect_target()
         # May detect "target" or another column — all are constant
         assert result.column in ("target", "a", "b")
@@ -142,7 +142,7 @@ class TestMultiSheetExcel:
                 writer, sheet_name="big", index=False
             )
             pd.DataFrame({"z": range(20)}).to_excel(writer, sheet_name="medium", index=False)
-        ml = AetherML(str(p))
+        ml = Phronesis(str(p))
         s = ml.summary()
         # Should load the "big" sheet (50 rows)
         assert s.rows == 50
@@ -153,7 +153,7 @@ class TestMultiSheetExcel:
         p = tmp_path / "single.xlsx"  # type: ignore[operator]
         df = pd.DataFrame({"a": range(10), "b": range(10)})
         df.to_excel(p, index=False)
-        ml = AetherML(str(p))
+        ml = Phronesis(str(p))
         s = ml.summary()
         assert s.rows == 10
 
@@ -176,7 +176,7 @@ class TestLargeDatasetPerformance:
         )
         df.to_csv(p, index=False)
 
-        ml = AetherML(str(p))
+        ml = Phronesis(str(p))
         start = time.perf_counter()
         s = ml.summary()
         elapsed = time.perf_counter() - start
@@ -198,12 +198,12 @@ class TestLargeDatasetPerformance:
         )
         df.to_csv(p, index=False)
 
-        ml_summary = AetherML(str(p))
+        ml_summary = Phronesis(str(p))
         start = time.perf_counter()
         ml_summary.summary()
         summary_time = time.perf_counter() - start
 
-        ml_full = AetherML(str(p))
+        ml_full = Phronesis(str(p))
         start = time.perf_counter()
         ml_full.run()
         run_time = time.perf_counter() - start
