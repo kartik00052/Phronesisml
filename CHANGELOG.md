@@ -17,11 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Jupyter support** — `_repr_html_()` on the `AetherML` class renders a rich summary widget in notebooks.
 - **Degenerate feature handling** — `FeatureEngineeringAgent` now gracefully handles zero-variance, all-null, and single-value columns without crashing, controlled by `FeatureSelectionConfig` (`variance_threshold`, `correlation_threshold`, `min_features`).
 - **Structured exceptions** — `AetherMLError` hierarchy (`DataValidationError`, `EngineSelectionError`, `WorkflowError`, `ConfigurationError`) with structured fields for programmatic error handling.
-- **FastAPI interface** — REST endpoints with multipart file upload, background job execution, job status polling, and OpenAPI docs (`pip install aetherml[api]`).
-- **CLI interface** — Typer-based CLI (`aetherml run`, `aetherml info`) as a thin wrapper around the SDK (`pip install aetherml[cli]`).
-- **PySpark engine** — Optional PySpark data engine for distributed/large-scale datasets (`pip install aetherml[spark]`).
-- **SHAP explainability** — Optional SHAP-based feature importance and model explanation (`pip install aetherml[explain]`).
-- **XGBoost support** — Optional XGBoost model family in the model selection candidate pool (`pip install aetherml[boost]`).
+- **FastAPI interface** — REST endpoints with multipart file upload, background job execution, job status polling, and OpenAPI docs (`pip install -e ".[api]"`).
+- **CLI interface** — Typer-based CLI (`aetherml run`, `aetherml info`) as a thin wrapper around the SDK (`pip install -e ".[cli]"`).
+- **PySpark engine** — Optional PySpark data engine for distributed/large-scale datasets (`pip install -e ".[spark]"`).
+- **SHAP explainability** — Optional SHAP-based feature importance and model explanation (`pip install -e ".[explain]"`).
+- **XGBoost support** — Optional XGBoost model family in the model selection candidate pool (`pip install -e ".[boost]"`).
 - **HTML report generation** — `AetherML.generate_report(format="html")` produces a self-contained HTML report.
 - **CI/CD pipeline** — GitHub Actions workflow with lint (ruff), typecheck (mypy), tests (pytest across Python 3.11/3.12/3.13), API tests, CLI tests, explainability tests, Docker build, and GHCR image publishing on tagged releases.
 - **Docker image** — Multi-stage Dockerfile producing a minimal production image, published to `ghcr.io/kartik00052/aetherml`.

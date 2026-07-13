@@ -82,7 +82,7 @@ AetherML is **SDK-first** — the CLI, the FastAPI service, and any future GUI a
 | **Explainability** | Post-training feature importance and model-behavior summaries | Implemented |
 | **Reporting** | Structured, versionable output artifacts for every stage of a run | Implemented |
 | **Modular Architecture** | Clear separation between agents, services, engines, and interfaces | Implemented |
-| **FastAPI Interface** | REST API with file upload, background jobs, and OpenAPI docs (`pip install aetherml[api]`) | Implemented |
+| **FastAPI Interface** | REST API with file upload, background jobs, and OpenAPI docs (`pip install -e ".[api]"`) | Implemented |
 | **Offline-First Design** | Core pipeline stages run without network access or hosted services | Implemented |
 | **SDK-First Philosophy** | Every interface (CLI, API, GUI) is a client of the SDK — never a place where logic lives | Implemented |
 | **Plugin System** | Extension points for custom agents, models, engines, and storage backends | Planned |
@@ -259,16 +259,16 @@ This table describes contracts, not implementation — full agent-by-agent docum
 
 **Requirements:** Python 3.11+
 
-### Standard
+### From GitHub (recommended)
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
-pip install aetherml
+pip install git+https://github.com/kartik00052/AetherML.git
 ```
 
-### Development (editable install)
+### From source (for contributors)
 
 ```bash
 git clone https://github.com/kartik00052/AetherML.git
@@ -281,6 +281,32 @@ pip install -e ".[dev]"
 ```
 
 The `[dev]` extra adds testing, linting, and formatting tools on top of the runtime dependencies. The editable (`-e`) install links the package directly to your working copy, so changes take effect immediately without reinstalling.
+
+### With optional extras
+
+```bash
+# From GitHub with extras
+pip install "git+https://github.com/kartik00052/AetherML.git[api]"
+pip install "git+https://github.com/kartik00052/AetherML.git[all]"
+
+# From source with extras
+pip install -e ".[all]"
+```
+
+### Available extras
+
+| Extra | What it adds | Install |
+|---|---|---|
+| `cli` | Typer CLI commands | `pip install -e ".[cli]"` |
+| `api` | FastAPI REST endpoints | `pip install -e ".[api]"` |
+| `parquet` | .parquet/.pq file support | `pip install -e ".[parquet]"` |
+| `excel` | .xlsx/.xls file support | `pip install -e ".[excel]"` |
+| `explain` | SHAP model explanations | `pip install -e ".[explain]"` |
+| `boost` | XGBoost models | `pip install -e ".[boost]"` |
+| `mlflow` | MLflow experiment tracking | `pip install -e ".[mlflow]"` |
+| `spark` | PySpark engine for large datasets | `pip install -e ".[spark]"` |
+| `all` | Everything above | `pip install -e ".[all]"` |
+| `dev` | Testing, linting, formatting | `pip install -e ".[dev]"` |
 
 [↑ Back to top](#table-of-contents)
 
@@ -475,7 +501,7 @@ Each command maps directly onto an SDK call — `aetherml run` calls `AetherML.r
 ### FastAPI
 
 ```bash
-pip install aetherml[api]
+pip install -e ".[api]"
 uvicorn aetherml.interfaces.api.app:app --reload
 ```
 
