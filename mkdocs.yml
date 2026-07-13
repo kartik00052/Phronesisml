@@ -1,0 +1,68 @@
+site_name: AetherML Documentation
+site_url: https://kartik00052.github.io/AetherML/
+repo_url: https://github.com/kartik00052/AetherML
+repo_name: kartik00052/AetherML
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+    - search.suggest
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: false
+            show_root_heading: true
+            heading_level: 3
+            members_order: source
+            docstring_style: google
+            merge_init_into_class: true
+
+nav:
+  - Home: index.md
+  - API Reference: api.md
+  - Guides:
+    - Incremental Usage: guides/incremental.md
+    - Simple API: guides/simple-api.md
+    - Advanced API: guides/advanced-api.md
+    - REST API: guides/rest-api.md
+    - CLI: guides/cli.md
+  - Limitations: limitations.md
