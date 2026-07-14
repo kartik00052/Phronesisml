@@ -613,7 +613,7 @@ PhronesisML's design draws inspiration from the architectural patterns and devel
 
 <div align="center">
 
-**Built with a commitment to transparent, inspectable machine learning pipelines.**
+**Built with a commitment to transparent, inspectable ML pipelines.**
 
 [![GitHub](https://img.shields.io/badge/GitHub-kartik00052-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/kartik00052/PhronesisML)
 [![PyPI](https://img.shields.io/badge/PyPI-phronesisml-6366F1?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/phronesisml/)
