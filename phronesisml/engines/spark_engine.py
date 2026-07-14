@@ -37,6 +37,7 @@ class SparkEngine(BaseEngine):
     engine_type = EngineType.SPARK
 
     def __init__(self, master: str = "local[*]") -> None:
+        super().__init__()
         self._master = master
         self._session: Any = None
 

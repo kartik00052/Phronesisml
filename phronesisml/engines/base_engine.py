@@ -70,7 +70,9 @@ class BaseEngine(ABC):
     """
 
     engine_type: EngineType
-    _collect_cache: dict[int, pd.DataFrame] = {}
+
+    def __init__(self) -> None:
+        self._collect_cache: dict[int, pd.DataFrame] = {}
 
     @abstractmethod
     def read(self, path: str | Path, **kwargs: Any) -> Any:

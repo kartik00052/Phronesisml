@@ -154,49 +154,15 @@ def _compose_agents(
     config: PhronesisConfig,
     data_path: str,
 ) -> dict[str, Any]:
-    """Manually compose all agents via constructor injection.
+    """Compose all agents via constructor injection (delegates to canonical location).
 
-    This is the composition root — the only place where concrete agent
-    and engine classes are instantiated.  The rest of the SDK depends
-    on abstractions (``BaseAgent``, ``BaseEngine``).
-
-    All agent imports are deferred to this function so that
-    ``import phronesisml`` does not pull in every dependency eagerly.
+    .. deprecated::
+        Use ``phronesisml.agents.compose.compose_agents()`` directly.
+        This wrapper exists for backward compatibility.
     """
-    from phronesisml.agents.eda.agent import EDAAgent
-    from phronesisml.agents.etl.agent import ETLAgent, ETLConfig
-    from phronesisml.agents.evaluation.agent import EvaluationAgent
-    from phronesisml.agents.explainability.agent import ExplainabilityAgent
-    from phronesisml.agents.feature_engineering.agent import FeatureEngineeringAgent
-    from phronesisml.agents.model_selection.agent import ModelSelectionAgent
-    from phronesisml.agents.reporting.agent import ReportingAgent
-    from phronesisml.agents.storage.agent import StorageAgent
-    from phronesisml.agents.target_detection.agent import TargetDetectionAgent
-    from phronesisml.agents.upload.agent import UploadAgent
-    from phronesisml.agents.validation.agent import ValidationAgent
-    from phronesisml.engines.engine_selector import select_engine
+    from phronesisml.agents.compose import compose_agents
 
-    # Select the computation engine
-    engine = select_engine(config=config, data_path=data_path)
-
-    # Instantiate agents with their dependencies
-    agents: dict[str, Any] = {
-        "upload": UploadAgent(engine=engine),
-        "validation": ValidationAgent(engine=engine),
-        "etl": ETLAgent(config=ETLConfig(null_strategy="drop")),
-        "eda": EDAAgent(engine=engine),
-        "target_detection": TargetDetectionAgent(engine=engine),
-        "feature_engineering": FeatureEngineeringAgent(
-            engine=engine,
-            feature_selection_config=config.feature_selection,
-        ),
-        "model_selection": ModelSelectionAgent(engine=engine),
-        "evaluation": EvaluationAgent(engine=engine),
-        "explainability": ExplainabilityAgent(engine=engine),
-        "reporting": ReportingAgent(),
-        "storage": StorageAgent(),
-    }
-    return agents
+    return compose_agents(config=config, data_path=data_path)
 
 
 _FULL_PIPELINE_STAGES: list[str] = [

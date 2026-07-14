@@ -8,6 +8,8 @@ Full configuration infrastructure is deferred to a later pass.
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 __all__ = [
@@ -21,7 +23,7 @@ __all__ = [
 class EngineConfig(BaseModel):
     """Engine selection preferences."""
 
-    preferred: str | None = Field(
+    preferred: Literal["pandas", "polars", "spark"] | None = Field(
         default=None,
         description="Force a specific engine ('pandas', 'polars', 'spark'). None = auto-select.",
     )
@@ -66,12 +68,16 @@ class FeatureSelectionConfig(BaseModel):
 
     variance_threshold: float = Field(
         default=0.01,
+        ge=0.0,
+        le=1.0,
         description=(
             "Features with variance below this are dropped. Lower values retain more features."
         ),
     )
     correlation_threshold: float = Field(
         default=0.05,
+        ge=0.0,
+        le=1.0,
         description=(
             "Features with absolute correlation to the target below "
             "this are dropped (supervised selection).  Lower values "
@@ -80,6 +86,7 @@ class FeatureSelectionConfig(BaseModel):
     )
     min_features: int = Field(
         default=1,
+        ge=1,
         description=(
             "Minimum number of features to retain.  Prevents feature "
             "selection from dropping ALL features on small datasets."

@@ -62,6 +62,7 @@ all = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["phronesisml"]
+artifacts = ["phronesisml/py.typed"]
 
 [project.scripts]
 phronesisml = "phronesisml.interfaces.cli.app:app"

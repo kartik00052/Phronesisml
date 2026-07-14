@@ -30,6 +30,7 @@ Design:
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Any
 
 from langgraph.graph import END, StateGraph
@@ -85,6 +86,30 @@ _STAGE_ROUTERS: dict[str, Any] = {
 }
 
 
+# Thread-safe monotonic counter for GC-safe agent identity.
+_agent_id_counter = 0
+_agent_id_lock = threading.Lock()
+_agent_id_map: dict[int, int] = {}  # id(obj) → monotonic_id
+
+
+def _get_agent_identity(agent: BaseAgent) -> int:
+    """Return a GC-safe monotonic identity for *agent*.
+
+    Uses ``id(agent)`` as key into a map that assigns a unique
+    monotonic integer.  Even if Python reuses the memory address
+    after garbage collection, the map ensures the old entry is
+    replaced with a new unique id.
+    """
+    global _agent_id_counter  # noqa: PLW0603
+
+    obj_id = id(agent)
+    with _agent_id_lock:
+        if obj_id not in _agent_id_map:
+            _agent_id_counter += 1
+            _agent_id_map[obj_id] = _agent_id_counter
+        return _agent_id_map[obj_id]
+
+
 _GRAPH_CACHE: dict[tuple[frozenset[str], tuple[str, ...], tuple[int, ...]], Any] = {}
 
 
@@ -129,9 +154,10 @@ def build_graph(
     ordered_stages = [s for s in PIPELINE_ORDER if s in stages]
 
     # Cache key: (agent_names, stages_tuple, agent_ids)
+    # Uses monotonic ids instead of id() to avoid GC-related collisions.
     agent_names = tuple(sorted(agents.keys()))
     stages_key = tuple(ordered_stages)
-    agent_ids = tuple(id(agents[name]) for name in agent_names)
+    agent_ids = tuple(_get_agent_identity(agents[name]) for name in agent_names)
     cache_key = (frozenset(agent_names), stages_key, agent_ids)
 
     if cache_key in _GRAPH_CACHE:

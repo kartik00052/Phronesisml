@@ -211,40 +211,17 @@ def _make_agents(
     engine: Any,
     config: Any | None = None,
 ) -> dict[str, Any]:
-    """Compose all agents with the given engine and config."""
+    """Compose all agents with the given engine and config.
+
+    Delegates to the canonical ``compose_agents()`` function.
+    """
+    from phronesisml.agents.compose import compose_agents
     from phronesisml.configs.settings import PhronesisConfig
 
     if config is None:
         config = PhronesisConfig()
 
-    from phronesisml.agents.eda.agent import EDAAgent
-    from phronesisml.agents.etl.agent import ETLAgent, ETLConfig
-    from phronesisml.agents.evaluation.agent import EvaluationAgent
-    from phronesisml.agents.explainability.agent import ExplainabilityAgent
-    from phronesisml.agents.feature_engineering.agent import FeatureEngineeringAgent
-    from phronesisml.agents.model_selection.agent import ModelSelectionAgent
-    from phronesisml.agents.reporting.agent import ReportingAgent
-    from phronesisml.agents.storage.agent import StorageAgent
-    from phronesisml.agents.target_detection.agent import TargetDetectionAgent
-    from phronesisml.agents.upload.agent import UploadAgent
-    from phronesisml.agents.validation.agent import ValidationAgent
-
-    return {
-        "upload": UploadAgent(engine=engine),
-        "validation": ValidationAgent(engine=engine),
-        "etl": ETLAgent(config=ETLConfig(null_strategy="drop")),
-        "eda": EDAAgent(engine=engine),
-        "target_detection": TargetDetectionAgent(engine=engine),
-        "feature_engineering": FeatureEngineeringAgent(
-            engine=engine,
-            feature_selection_config=config.feature_selection,
-        ),
-        "model_selection": ModelSelectionAgent(engine=engine),
-        "evaluation": EvaluationAgent(engine=engine),
-        "explainability": ExplainabilityAgent(engine=engine),
-        "reporting": ReportingAgent(),
-        "storage": StorageAgent(),
-    }
+    return compose_agents(engine=engine, config=config)
 
 
 # ── Pipeline stage definitions ───────────────────────────────────
