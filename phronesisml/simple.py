@@ -761,8 +761,7 @@ def explain(
     """Explain model predictions using SHAP.
 
     Runs upload through explainability. Returns feature importance
-    scores. Requires the ``shap`` package (gracefully degrades if
-    missing).
+    scores. SHAP is a core dependency and is always available.
 
     Args:
         path: Path to a data file.

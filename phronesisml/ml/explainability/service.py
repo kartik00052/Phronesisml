@@ -14,7 +14,8 @@ Design principles:
   layers delegate to this service — no duplicated business logic.
 - The service consumes only standardized inputs (fitted model, feature
   matrix, feature names).  It does not depend on training logic.
-- Graceful degradation: SHAP failures never crash the SDK.
+- SHAP is a core dependency.  Failures during computation are reported
+  with structured diagnostics (not silently swallowed).
 - Extensible routing: new explainers can be added by registering a
   predicate + factory pair in ``_EXPLAINER_REGISTRY``.
 """
@@ -305,11 +306,12 @@ def compute_explanations(
         config = ExplainConfig()
 
     try:
-        import shap
+        import shap  # noqa: F401
     except ImportError as exc:
         msg = (
-            "SHAP library is required for explainability. "
-            "Install it with: pip install phronesisml[explain]"
+            "SHAP library is required for explainability but is not installed. "
+            "It should be installed as a core dependency — this is an "
+            "environment issue.  Install with: pip install phronesisml"
         )
         raise ImportError(msg) from exc
 

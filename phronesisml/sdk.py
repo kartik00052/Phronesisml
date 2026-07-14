@@ -668,8 +668,8 @@ class Phronesis:
     def explain(self) -> ExplanationReport:
         """Explain model predictions using SHAP.
 
-        Computes feature importance based on SHAP values.  Requires
-        the ``shap`` package (gracefully degrades if missing).
+        Computes feature importance based on SHAP values.  SHAP is a
+        core dependency and is always available.
 
         Returns:
             An ``ExplanationReport`` with feature importance scores.
