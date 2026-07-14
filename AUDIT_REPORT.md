@@ -325,9 +325,864 @@
     [!] PyPI Trusted Publisher (CI-based OIDC) broken -- manual publish via API token used
 
 ================================================================================
+  REMAINING WORK — COMPLETE SESSION CONTEXT FOR NEXT SESSION
+================================================================================
+
+  ARCHITECTURE STATE (v0.2.1):
+    Fixed:  6 critical + 1 high + service layer started + SHAP core + sdist
+    Remaining: 0 Critical, 11 High, 18 Medium, 12 Low = 41 findings
+    Grade: A- (upgraded from B+)
+
+  CONSTRAINTS (user-provided, MUST NOT VIOLATE):
+    1. Preserve backward compatibility wherever practical
+    2. Small atomic changes only
+    3. Polars is CORE — must NOT be moved to optional
+    4. Protect git history
+    5. Never duplicate logic
+    6. Mandatory regression testing after every change
+    7. No silent behavioral changes
+    8. Preserve import stability
+    9. Validate architecture before coding
+    10. Protect against future reverts
+
+  KEY FILE LOCATIONS (current state):
+    phronesisml/__init__.py          — 54 exports, eagerly imports (needs lazy loading)
+    phronesisml/sdk.py               — Phronesis facade class, delegates to compose_agents()
+    phronesisml/simple.py            — 1328 lines, 8+ inline service classes (needs splitting)
+    phronesisml/results.py           — 11 frozen dataclasses (single source of truth, DONE)
+    phronesisml/configs/settings.py  — PhronesisConfig with Literal+validators (DONE)
+    phronesisml/exceptions.py        — 11 exception types
+    phronesisml/agents/compose.py    — compose_agents() single source (DONE)
+    phronesisml/agents/__init__.py   — No __all__
+    phronesisml/agents/base.py       — BaseAgent Protocol
+    phronesisml/agents/etl/agent.py  — Imports pandas at module level (HIGH)
+    phronesisml/agents/model_selection/agent.py — Reconstructs features+target
+    phronesisml/agents/evaluation/agent.py      — Reconstructs features+target (dup)
+    phronesisml/agents/reporting/agent.py       — No engine param (inconsistency)
+    phronesisml/workflow/graph.py    — Graph cache with monotonic counter (DONE)
+    phronesisml/workflow/__init__.py — Package init (DONE)
+    phronesisml/workflow/nodes.py    — Double-wraps AgentError
+    phronesisml/workflow/router.py   — Routing logic
+    phronesisml/engines/base_engine.py   — NUMERIC_DTYPES const (needs moving)
+    phronesisml/engines/spark_engine.py  — super().__init__() (DONE)
+    phronesisml/engines/pandas_engine.py — _LazyPandas wrapper
+    phronesisml/engines/polars_engine.py — aggregate() issue
+    phronesisml/engines/engine_selector.py — No SparkEngine availability check
+    phronesisml/data/loaders/file_loader.py    — pandas at module level
+    phronesisml/data/transformers/cleaning.py  — pandas at module level
+    phronesisml/data/transformers/__init__.py
+    phronesisml/data/validators/checks.py
+    phronesisml/data/profilers/stats.py
+    phronesisml/ml/automl/trainer.py       — pandas/numpy at module level
+    phronesisml/ml/automl/auto_selector.py
+    phronesisml/ml/feature_engineering/engineer.py
+    phronesisml/ml/evaluation/metrics.py
+    phronesisml/ml/explainability/service.py   — ExplainabilityService (DONE)
+    phronesisml/ml/explainability/shap_explainer.py — Backward-compat shim (DONE)
+    phronesisml/ml/target_detection/detector.py
+    phronesisml/ml/clustering/algorithms.py
+    phronesisml/ml/anomaly/detector.py
+    phronesisml/api/app.py          — FastAPI app, hardcoded __version__ = "0.2.0"
+    phronesisml/cli/main.py         — typer/rich at module level
+    phronesisml/reports/builder.py  — Report generation
+    phronesisml/py.typed            — PEP 561 marker (DONE)
+    test.py                         — 110 integration tests (all pass)
+    tests/test_explainability.py    — 38 explainability unit tests (all pass)
+    pyproject.toml                  — SHAP in core deps, sdist excludes, v0.2.1
+
+================================================================================
+  REMAINING FINDINGS — DETAILED SPECIFICATIONS
+================================================================================
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B1. EXTRACT SERVICE LAYER (HIGH, v0.3.0)                             │
+  │  Effort: 2-3 days | Files: new phronesisml/services/ package           │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Business logic is split between data/ functions (ad-hoc),    │
+  │  agents (orchestration), and simple.py (8+ inline "Service" classes).  │
+  │  This violates single responsibility and causes code duplication.      │
+  │                                                                        │
+  │  Current duplication:                                                  │
+  │    simple.py lines 100-400: Inline DataService, CleaningService,       │
+  │      FeatureService, ModelService classes that duplicate agent logic   │
+  │    agents/etl/agent.py: Duplicates cleaning logic from                 │
+  │      data/transformers/cleaning.py                                    │
+  │    agents/model_selection/agent.py: Duplicates model training from     │
+  │      ml/automl/trainer.py                                              │
+  │                                                                        │
+  │  Fix: Create phronesisml/services/ with:                               │
+  │    - __init__.py (exports all services)                               │
+  │    - data_service.py: DataService class                                │
+  │      Methods: load(path, format), profile(df), validate(df, config)   │
+  │    - cleaning_service.py: CleaningService class                        │
+  │      Methods: handle_nulls(df, strategy, fill_value),                 │
+  │               encode_categoricals(df), cast_dtypes(df, mappings)      │
+  │    - feature_service.py: FeatureService class                          │
+  │      Methods: engineer(df, target, config), select_features(df, cfg)  │
+  │    - model_service.py: ModelService class                              │
+  │      Methods: recommend(task, df), train(df, target, config),         │
+  │               evaluate(model, X_test, y_test, task)                   │
+  │    - report_service.py: ReportService class                            │
+  │      Methods: build_markdown(state), build_html(state)                │
+  │    - storage_service.py: StorageService class                          │
+  │      Methods: save_artifacts(state, path), load_artifacts(path)       │
+  │                                                                        │
+  │  Then:                                                                 │
+  │    - agents/ become thin orchestrators that call services              │
+  │    - simple.py functions call services directly (delete inline classes)│
+  │    - simple.py shrinks from 1328 lines to ~300 lines                  │
+  │                                                                        │
+  │  Validation: All 148 tests must pass after each service extraction     │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B2. SPLIT simple.py (HIGH, v0.3.0)                                   │
+  │  Effort: 1-2 days | Files: phronesisml/simple.py (modify)              │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: simple.py is 1328 lines with 8+ inline service classes.      │
+  │  After B1 extracts services, simple.py becomes thin wrappers.          │
+  │                                                                        │
+  │  Current structure of simple.py:                                       │
+  │    Lines 1-50:    Imports                                              │
+  │    Lines 50-200:  DatasetProfile, CleanResult, ValidationResult,      │
+  │                   TargetResult, FeatureResult, ModelResult,            │
+  │                   TrainResult, ExplainResult dataclasses (NOW in       │
+  │                   results.py, these are just re-exports)               │
+  │    Lines 200-400: Inline DataService, CleaningService classes          │
+  │    Lines 400-600: Inline FeatureService, ModelService classes          │
+  │    Lines 600-800: analyze(), clean(), validate(), detect_target()     │
+  │    Lines 800-1000: engineer(), select_model(), train(), explain()     │
+  │    Lines 1000-1200: report(), cluster(), detect_anomalies()           │
+  │    Lines 1200-1328: Async variants of all functions                    │
+  │                                                                        │
+  │  After B1:                                                              │
+  │    - Delete inline service classes (lines 200-600)                     │
+  │    - Each function becomes ~10-20 lines calling a service              │
+  │    - Async variants use asyncio.to_thread() wrapper                   │
+  │    - Re-exports from results.py (already done)                        │
+  │                                                                        │
+  │  Validation: test_simple_api_* tests must all pass                     │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B3. REMOVE DIRECT PANDAS IMPORT FROM ETLAgent (HIGH, v0.3.0)         │
+  │  Effort: 0.5 days | File: phronesisml/agents/etl/agent.py             │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: ETLAgent imports pandas at module level (line 12),           │
+  │  violating the engine-mediated design principle.                       │
+  │                                                                        │
+  │  Current code (agents/etl/agent.py ~line 12):                         │
+  │    import pandas as pd                                                 │
+  │                                                                        │
+  │  Fix: Remove the module-level import. The ETLAgent should receive      │
+  │  already-loaded data via WorkflowState (which is engine-agnostic).     │
+  │  If pandas is needed for specific operations, import inside the        │
+  │  method body or use the engine abstraction.                            │
+  │                                                                        │
+  │  Validation: test_pipeline_order, test_etl_* tests must pass           │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B4. ADD SHARED DATA RESOLUTION HELPER (HIGH, v0.3.0)                 │
+  │  Effort: 1 day | Files: phronesisml/agents/base.py (modify)           │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: ModelSelectionAgent and EvaluationAgent both reconstruct     │
+  │  features + target from upstream state independently. Duplication.     │
+  │                                                                        │
+  │  Current duplication:                                                  │
+  │    agents/model_selection/agent.py ~lines 20-35:                       │
+  │      df = state.raw_data or state.processed_data                       │
+  │      target = state.target_column                                      │
+  │      X = df.drop(columns=[target])                                     │
+  │      y = df[target]                                                    │
+  │                                                                        │
+  │    agents/evaluation/agent.py ~lines 15-30:                            │
+  │      df = state.raw_data or state.processed_data                       │
+  │      target = state.target_column                                      │
+  │      X = df.drop(columns=[target])                                     │
+  │      y = df[target]                                                    │
+  │                                                                        │
+  │  Fix: Add to phronesisml/agents/base.py:                              │
+  │    def _resolve_features_target(state):                                │
+  │        df = state.raw_data or state.processed_data                     │
+  │        target = state.target_column                                    │
+  │        X = df.drop(columns=[target])                                   │
+  │        y = df[target]                                                  │
+  │        return X, y, df                                                 │
+  │                                                                        │
+  │  Then both agents call _resolve_features_target(state)                 │
+  │                                                                        │
+  │  Validation: test_train_*, test_evaluate_* must pass                   │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B5. MOVE NUMERIC_DTYPES TO SHARED UTILS (HIGH, v0.3.0)               │
+  │  Effort: 0.5 days | Files: phronesisml/utils/dtypes.py (new)          │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: NUMERIC_DTYPES constant is defined in base_engine.py but    │
+  │  used across multiple modules. Should be in a shared utils module.     │
+  │                                                                        │
+  │  Current location: phronesisml/engines/base_engine.py                  │
+  │  Current value:                                                     │
+  │    NUMERIC_DTYPES = {                                                  │
+  │        "int8", "int16", "int32", "int64", "float16", "float32",       │
+  │        "float64", "uint8", "uint16", "uint32", "uint64"              │
+  │    }                                                                   │
+  │                                                                        │
+  │  Fix:                                                                 │
+  │    1. Create phronesisml/utils/__init__.py (if not exists)            │
+  │    2. Create phronesisml/utils/dtypes.py with NUMERIC_DTYPES          │
+  │    3. Update base_engine.py to import from utils.dtypes                │
+  │    4. Update any other files that use NUMERIC_DTYPES                  │
+  │    5. Keep re-export in base_engine.py for backward compat            │
+  │                                                                        │
+  │  Validation: test_pandas_engine, test_polars_engine must pass          │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B6. ADD LAZY __getattr__ TO __init__.py (HIGH, v0.3.0)               │
+  │  Effort: 1 day | File: phronesisml/__init__.py (modify)               │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: __init__.py eagerly imports 50+ symbols at module level.     │
+  │  This defeats lazy loading for users who only need a subset.           │
+  │  import phronesisml loads everything including sklearn, shap, etc.     │
+  │                                                                        │
+  │  Current structure:                                                    │
+  │    from __future__ import annotations                                  │
+  │    from phronesisml.sdk import Phronesis                               │
+  │    from phronesisml.simple import analyze, clean, validate, ...        │
+  │    from phronesisml.configs.settings import PhronesisConfig, ...       │
+  │    from phronesisml.exceptions import *                                │
+  │    from phronesisml.workflow.state import WorkflowState                │
+  │    from phronesisml.results import *                                   │
+  │    ... 50+ more imports                                                │
+  │                                                                        │
+  │  Fix: Add __getattr__ for lazy loading:                                │
+  │    _LAZY_IMPORTS = {                                                   │
+  │        "Phronesis": "phronesisml.sdk",                                │
+  │        "analyze": "phronesisml.simple",                               │
+  │        "PhronesisConfig": "phronesisml.configs.settings",             │
+  │        ...                                                             │
+  │    }                                                                   │
+  │                                                                        │
+  │    def __getattr__(name):                                              │
+  │        if name in _LAZY_IMPORTS:                                       │
+  │            import importlib                                            │
+  │            module = importlib.import_module(_LAZY_IMPORTS[name])       │
+  │            return getattr(module, name)                                │
+  │        raise AttributeError(f"module 'phronesisml' has no attribute   │
+  │                               {name!r}")                              │
+  │                                                                        │
+  │  CRITICAL: Must preserve backward compatibility —                     │
+  │    `from phronesisml import Phronesis` must still work                 │
+  │    `from phronesisml import analyze` must still work                   │
+  │  Keep __all__ for discoverability.                                     │
+  │                                                                        │
+  │  Validation: test_imports, test_new_init_exports must pass             │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B7. MOVE polars/openpyxl TO OPTIONAL EXTRAS (HIGH, v0.3.0)           │
+  │  Effort: 0.5 days | File: pyproject.toml (modify)                     │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: polars and openpyxl are hard dependencies but not always     │
+  │  needed. Small datasets use only Pandas. Users who just want the       │
+  │  basic API shouldn't need to install Polars.                           │
+  │                                                                        │
+  │  NOTE: User constraint #3 says Polars is CORE. This means Polars      │
+  │  stays in core deps but openpyxl should move to optional.             │
+  │  Actually — re-reading constraint: "Polars is core, must NOT be       │
+  │  moved to optional." So only openpyxl moves to optional.              │
+  │                                                                        │
+  │  Current pyproject.toml [project.dependencies]:                       │
+  │    polars>=1.0.0                                                       │
+  │    openpyxl>=3.1.0                                                     │
+  │                                                                        │
+  │  Fix:                                                                 │
+  │    1. Move openpyxl to [project.optional-dependencies]                │
+  │       excel = ["openpyxl>=3.1.0"]                                      │
+  │    2. Add try/except ImportError in excel loading code                │
+  │    3. Keep polars in core deps (user constraint)                       │
+  │                                                                        │
+  │  Validation: test_excel_loading must still pass when openpyxl installed │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B8. ADD FRIENDLY IMPORTERROR MESSAGES (HIGH, v0.3.0)                 │
+  │  Effort: 0.5 days | Files: phronesisml/cli/main.py, phronesisml/api/  │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: CLI imports typer and rich at module level — crashes if      │
+  │  not installed (no friendly ImportError message). Same for API/        │
+  │  FastAPI.                                                              │
+  │                                                                        │
+  │  Current code (cli/main.py):                                          │
+  │    import typer                                                        │
+  │    from rich.console import Console                                    │
+  │    (at module level, no try/except)                                    │
+  │                                                                        │
+  │  Fix: Wrap in try/except:                                              │
+  │    try:                                                                │
+  │        import typer                                                    │
+  │        from rich.console import Console                                │
+  │    except ImportError:                                                 │
+  │        raise ImportError(                                              │
+  │            "CLI requires extra dependencies. Install with:\n"          │
+  │            "  pip install phronesisml[cli]"                            │
+  │        ) from None                                                     │
+  │                                                                        │
+  │  Same pattern for api/app.py with fastapi:                             │
+  │    pip install phronesisml[api]                                        │
+  │                                                                        │
+  │  Also add extras to pyproject.toml:                                    │
+  │    cli = ["typer>=1.0", "rich>=13.0"]                                 │
+  │    api = ["fastapi>=0.100", "uvicorn>=0.23"]                          │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B9. CLEAR GRAPH CACHE IN ALL SDK METHODS (HIGH, v0.3.0)             │
+  │  Effort: 0.5 days | File: phronesisml/sdk.py (modify)                 │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: sdk.py Phronesis class clears graph cache in clean() and    │
+  │  recommend_model() but not in cluster() or detect_anomalies().        │
+  │                                                                        │
+  │  Current code:                                                         │
+  │    clean() calls: clear_graph_cache()       — YES                     │
+  │    recommend_model() calls: clear_graph_cache() — YES                 │
+  │    cluster() calls: clear_graph_cache()     — NO                      │
+  │    detect_anomalies() calls: clear_graph_cache() — NO                 │
+  │                                                                        │
+  │  Fix: Add clear_graph_cache() to cluster() and detect_anomalies()     │
+  │                                                                        │
+  │  Validation: All SDK tests must pass                                   │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B10. FORWARD CLUSTER/ANOMALY PARAMETERS IN SDK (HIGH, v0.3.0)       │
+  │  Effort: 0.5 days | File: phronesisml/sdk.py (modify)                 │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: cluster() and detect_anomalies() accept n_clusters,         │
+  │  algorithms, contamination params but don't forward them to the       │
+  │  underlying clustering/anomaly implementations.                       │
+  │                                                                        │
+  │  Current code (sdk.py cluster method):                                │
+  │    def cluster(self, n_clusters=None, algorithms=None, ...):           │
+  │        # These params are accepted but IGNORED                        │
+  │        # The actual clustering runs via workflow without these params  │
+  │                                                                        │
+  │  Fix: Forward parameters through to clustering/algorithms.py          │
+  │  and anomaly/detector.py via WorkflowState or agent config.           │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  B11. UPDATE CHANGELOG.md (HIGH, v0.3.0)                             │
+  │  Effort: 0.5 days | File: CHANGELOG.md (modify)                       │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: CHANGELOG.md exists but may not be current with all         │
+  │  changes from this session.                                           │
+  │                                                                        │
+  │  Current CHANGELOG.md likely covers up to v0.2.0. Need to add:        │
+  │    - v0.2.1 section with all session changes                          │
+  │    - Critical fixes A1-A6                                             │
+  │    - results.py extraction                                            │
+  │    - ExplainabilityService                                            │
+  │    - SHAP promoted to core                                            │
+  │    - sdist optimization                                               │
+  │    - MyPY fixes                                                      │
+  │    - CI/CD updates                                                    │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C1. ADD encoding_strategy TO ETL (MEDIUM, v0.4.0)                   │
+  │  Effort: 1 day | File: phronesisml/data/transformers/cleaning.py      │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: ETL always label-encodes all categorical columns — no       │
+  │  option for one-hot encoding or skip.                                 │
+  │                                                                        │
+  │  Fix: Add encoding_strategy parameter:                                │
+  │    Literal["label", "onehot", "none"]                                  │
+  │  Default: "label" (backward compatible)                                │
+  │  Wire through: cleaning.py → ETLAgent → simple.clean()               │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C2. ADD scaling_strategy TO FEATURE ENGINEERING (MEDIUM, v0.4.0)    │
+  │  Effort: 1 day | File: phronesisml/ml/feature_engineering/engineer.py│
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Feature engineering always min-max scales — no option for   │
+  │  standard, robust, or no scaling.                                     │
+  │                                                                        │
+  │  Fix: Add scaling_strategy parameter:                                 │
+  │    Literal["minmax", "standard", "robust", "none"]                     │
+  │  Default: "minmax" (backward compatible)                               │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C3. ADD outlier_method PARAMETER (MEDIUM, v0.4.0)                   │
+  │  Effort: 0.5 days | File: phronesisml/ml/feature_engineering/engineer.py│
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Feature engineering outlier detection uses IQR only —       │
+  │  no z-score or isolation forest option.                               │
+  │                                                                        │
+  │  Fix: Add outlier_method parameter:                                   │
+  │    Literal["iqr", "zscore", "none"]                                    │
+  │  Default: "iqr" (backward compatible)                                  │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C4. ADD CENTRALIZED LOGGING CONFIGURATION (MEDIUM, v0.4.0)          │
+  │  Effort: 1 day | File: phronesisml/logging.py (new)                   │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: No centralized logging configuration. Logging is ad-hoc.    │
+  │                                                                        │
+  │  Fix: Create phronesisml/logging.py with:                             │
+  │    def configure_logging(level="INFO", log_file=None,                 │
+  │                          json_format=False):                           │
+  │        # Set up root logger                                           │
+  │        # Add console handler                                          │
+  │        # Optionally add file handler                                  │
+  │        # Optionally use JSON formatter                                │
+  │                                                                        │
+  │  Then call from sdk.py and simple.py entry points.                    │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C5. ADD LOG FILE OUTPUT OPTION (MEDIUM, v0.4.0)                     │
+  │  Effort: 0.5 days | File: phronesisml/logging.py (new, part of C4)   │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: No log file output option.                                   │
+  │                                                                        │
+  │  Fix: Add file_handler parameter to configure_logging():              │
+  │    configure_logging(log_file="phronesis.log")                        │
+  │  Use RotatingFileHandler for production safety.                        │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C6. DOWNGRADE ROUTINE LOGS TO DEBUG (MEDIUM, v0.4.0)                │
+  │  Effort: 0.5 days | Files: multiple data/ and ml/ modules            │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Some modules log at INFO level for routine operations       │
+  │  (noisy in production).                                               │
+  │                                                                        │
+  │  Fix: Change routine operations from INFO to DEBUG:                    │
+  │    - "Loading csv file" → DEBUG                                       │
+  │    - "Profiling complete" → DEBUG                                     │
+  │    - "No null values found" → DEBUG                                   │
+  │  Keep important milestones at INFO (pipeline start/complete,          │
+  │  training complete, errors).                                           │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C7. ADD USER-FRIENDLY ERROR MESSAGES (MEDIUM, v0.4.0)               │
+  │  Effort: 1 day | Files: phronesisml/exceptions.py (modify)           │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Some error messages are too technical for end users.         │
+  │                                                                        │
+  │  Fix: Add user_message attribute to PhronesisError:                   │
+  │    class PhronesisError(Exception):                                   │
+  │        def __init__(self, message, user_message=None, ...):           │
+  │            self.user_message = user_message or message                │
+  │                                                                        │
+  │  Example:                                                              │
+  │    WorkflowError("Agent 'etl' failed: KeyError 'target'")             │
+  │    → user_message: "The target column was not found in your data.     │
+  │       Please check your column names and try again."                  │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C8. DEFER PANDAS IMPORTS IN DATA MODULES (MEDIUM, v0.4.0)           │
+  │  Effort: 1 day | Files: data/loaders/file_loader.py,                 │
+  │  data/transformers/cleaning.py, ml/automl/trainer.py                 │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Multiple modules import pandas at module level.              │
+  │  This forces pandas to load even when not needed.                     │
+  │                                                                        │
+  │  Files to fix:                                                         │
+  │    data/loaders/file_loader.py — import pandas as pd (module level)   │
+  │    data/transformers/cleaning.py — import pandas as pd (module level) │
+  │    ml/automl/trainer.py — import pandas as pd + numpy as np           │
+  │    agents/etl/agent.py — import pandas as pd (see B3)                 │
+  │                                                                        │
+  │  Fix: Move imports inside function bodies:                            │
+  │    def load_file(path, format):                                        │
+  │        import pandas as pd                                             │
+  │        ...                                                             │
+  │                                                                        │
+  │  Validation: All tests must pass (pandas is still required, just      │
+  │  loaded on-demand)                                                     │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C9. SPLIT TESTS INTO MODULES (MEDIUM, v0.4.0)                       │
+  │  Effort: 1 day | Files: tests/ directory (restructure)               │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Tests split across test.py (110) and                       │
+  │  tests/test_explainability.py (38) — should be further modularized.  │
+  │                                                                        │
+  │  Fix: Split test.py into:                                             │
+  │    tests/test_imports.py        — [A] imports section                 │
+  │    tests/test_engines.py        — [B] engine compatibility            │
+  │    tests/test_data_loading.py   — [C] data loading & formats         │
+  │    tests/test_etl.py            — [D] ETL & data processing          │
+  │    tests/test_validation.py     — [E] validation                      │
+  │    tests/test_eda.py            — [F] EDA / profiling                │
+  │    tests/test_target.py         — [G] target detection               │
+  │    tests/test_features.py       — [H] feature engineering            │
+  │    tests/test_models.py         — [I] model selection & training     │
+  │    tests/test_evaluation.py     — [J] evaluation                     │
+  │    tests/test_reports.py        — [L] reports                         │
+  │    tests/test_simple_api.py     — [M] simple API                     │
+  │    tests/test_oop_api.py        — [N] OOP API                        │
+  │    tests/test_advanced_api.py   — [O] advanced API                   │
+  │    tests/test_cli.py            — [R] CLI                            │
+  │    tests/test_fastapi.py        — [S] FastAPI                        │
+  │    tests/test_agents.py         — [T] agent instantiation            │
+  │    tests/test_workflow.py       — [U] LangGraph workflow             │
+  │    tests/test_edge_cases.py     — [V] edge case datasets             │
+  │    tests/test_unsupervised.py   — [X] unsupervised learning          │
+  │    tests/test_explainability.py — already exists (keep as-is)        │
+  │                                                                        │
+  │  Keep test.py as the orchestrator that runs all subtests.             │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C10. ADD PYTEST MARKERS (MEDIUM, v0.4.0)                            │
+  │  Effort: 0.5 days | File: pyproject.toml (modify)                    │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: No pytest configuration for custom markers.                  │
+  │                                                                        │
+  │  Fix: Add to pyproject.toml:                                          │
+  │    [tool.pytest.ini_options]                                          │
+  │    markers = [                                                         │
+  │        "slow: marks tests as slow (deselect with '-m \"not slow\"')",  │
+  │        "integration: full pipeline integration tests",                │
+  │        "unit: unit tests for individual components",                  │
+  │    ]                                                                   │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C11. ADD SPARK/ASYNC TEST CASES (MEDIUM, v0.4.0)                    │
+  │  Effort: 1 day | File: tests/test_spark.py, tests/test_async.py     │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: No test for Spark engine (only pandas/polars).              │
+  │  No test for async APIs (only sync tested).                           │
+  │                                                                        │
+  │  Fix:                                                                 │
+  │    tests/test_spark.py:                                               │
+  │      @pytest.mark.skipif(not HAS_PYSPARK, reason="pyspark not installed")│
+  │      def test_spark_engine(): ...                                     │
+  │                                                                        │
+  │    tests/test_async.py:                                               │
+  │      @pytest.mark.asyncio                                             │
+  │      async def test_analyze_async(): ...                              │
+  │      @pytest.mark.asyncio                                             │
+  │      async def test_clean_async(): ...                                │
+  │      (test all 9 async variants)                                      │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C12. ADD API REFERENCE DOCUMENTATION (MEDIUM, v0.4.0)               │
+  │  Effort: 2 days | Files: docs/ directory, pyproject.toml             │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: No API reference documentation (auto-generated).            │
+  │                                                                        │
+  │  Fix:                                                                 │
+  │    1. Add mkdocs.yml configuration                                    │
+  │    2. Add mkdocstrings plugin for auto-generated API docs            │
+  │    3. Create docs/api/ with module pages                               │
+  │    4. Add GitHub Pages deployment in CI                               │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C13. ADD ISSUE/PR TEMPLATES (MEDIUM, v0.4.0)                        │
+  │  Effort: 0.5 days | Files: .github/ISSUE_TEMPLATE/, .github/         │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: No issue templates. No PR templates.                        │
+  │                                                                        │
+  │  Fix: Create:                                                          │
+  │    .github/ISSUE_TEMPLATE/bug_report.md                               │
+  │    .github/ISSUE_TEMPLATE/feature_request.md                          │
+  │    .github/pull_request_template.md                                   │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C14. MOVE TEST DATA FILES (MEDIUM, v0.4.0)                          │
+  │  Effort: 0.5 days | Files: CSV files in repo root                    │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Test data files (CSV) in repo root.                         │
+  │                                                                        │
+  │  Current CSVs in root:                                                │
+  │    Housing_supervised_regression.csv                                   │
+  │    customer_churn_supervised_classification.csv                        │
+  │    fraudTest.csv                                                      │
+  │    fraudTrain.csv                                                     │
+  │                                                                        │
+  │  Fix: Move to tests/data/ and update test.py references.              │
+  │  Add tests/data/ to .gitignore exclusions (keep in git).             │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C15. ADD JSON REPORT FORMAT (MEDIUM, v0.4.0)                        │
+  │  Effort: 1 day | File: phronesisml/reports/builder.py                │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: No JSON report format. Only markdown and HTML.              │
+  │                                                                        │
+  │  Fix: Add build_json(state) → dict method.                            │
+  │  Return structured dict with all pipeline results.                     │
+  │  Wire through: simple.report(format="json")                          │
+  │  Add Literal["markdown", "html", "json"] validator.                   │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C16. ADD PROFILING SECTION TO REPORTS (MEDIUM, v0.4.0)              │
+  │  Effort: 0.5 days | File: phronesisml/reports/builder.py             │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Reports don't include data profiling details.               │
+  │                                                                        │
+  │  Fix: Add profiling section after EDA section:                        │
+  │    - Row/column counts                                                │
+  │    - Numeric column stats (mean, std, min, max)                       │
+  │    - Categorical column value counts                                  │
+  │    - Missing value summary                                            │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C17. ADD COPY-ON-WRITE STRATEGY (MEDIUM, v0.4.0)                    │
+  │  Effort: 1 day | Files: data/transformers/, ml/feature_engineering/  │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: df.copy() in multiple places (ETL, feature engineering,     │
+  │  validation) — unnecessary copies for small datasets.                 │
+  │                                                                        │
+  │  Fix: Add conditional copy based on data size:                        │
+  │    def maybe_copy(df, force=False):                                    │
+  │        if force or len(df) > 10000:                                   │
+  │            return df.copy()                                            │
+  │        return df                                                       │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  C18. ADD LRU EVICTION TO GRAPH CACHE (MEDIUM, v0.4.0)              │
+  │  Effort: 0.5 days | File: phronesisml/workflow/graph.py              │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  Problem: Graph cache grows unbounded — no eviction policy.           │
+  │                                                                        │
+  │  Fix: Use functools.lru_cache or custom LRU:                          │
+  │    _GRAPH_CACHE = {}                                                   │
+  │    MAX_CACHE_SIZE = 32                                                 │
+  │    # Evict oldest when full                                            │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D1. PARALLEL EXECUTION (LOW, v0.5+)                                 │
+  │  Effort: 2 days | File: phronesisml/workflow/graph.py                 │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  EDA and validation could run concurrently (both operate on           │
+  │  processed_data). Add LangGraph parallel branches.                    │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D2. FEEDBACK LOOPS (LOW, v0.5+)                                     │
+  │  Effort: 2 days | File: phronesisml/workflow/graph.py, router.py     │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Add evaluation → feature engineering loop when metrics are poor.     │
+  │  Max 2 iterations to prevent infinite loops.                          │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D3. RETRY/RESUME CAPABILITY (LOW, v0.5+)                            │
+  │  Effort: 2 days | File: phronesisml/workflow/graph.py                 │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Add optional retry logic for failed agents (max 2 retries).         │
+  │  Add workflow state serialization for resume from checkpoint.         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D4. PARALLEL MODEL TRAINING (LOW, v0.5+)                            │
+  │  Effort: 1 day | File: phronesisml/ml/automl/trainer.py              │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Add joblib parallel option for model training trials.                │
+  │  Parallel(n_jobs=-1)(delayed(train_single)(...) for trial in trials) │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D5. FUSE FEATURE ENGINEERING PASSES (LOW, v0.5+)                    │
+  │  Effort: 1 day | File: phronesisml/ml/feature_engineering/engineer.py│
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Feature engineering does multiple passes over the data.              │
+  │  Fuse operations to reduce memory and improve performance.            │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D6. HYPOTHESIS PROPERTY-BASED TESTING (LOW, v0.5+)                  │
+  │  Effort: 2 days | Files: tests/test_properties.py (new)              │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Add Hypothesis tests for:                                            │
+  │    - ETL always returns non-null target column                        │
+  │    - Feature engineering output has correct feature count             │
+  │    - Training always returns a model with score > 0                   │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D7. MUTMUT MUTATION TESTING (LOW, v0.5+)                            │
+  │  Effort: 1 day | Files: pyproject.toml, CI config                    │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Add mutmut configuration for mutation testing.                       │
+  │  Target: >80% mutation score.                                         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D8. SPHINX/MKDOCS CONFIGURATION (LOW, v0.5+)                        │
+  │  Effort: 2 days | Files: docs/ directory                              │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Add MkDocs with Material theme. Auto-generate API reference.        │
+  │  Deploy to GitHub Pages via CI.                                       │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D9. ADD MIGRATION GUIDE (LOW, v0.5+)                                │
+  │  Effort: 1 day | File: MIGRATION.md (new)                            │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Document migration paths from v0.1.0 → v0.2.0 → v0.3.0.            │
+  │  Include deprecation notices and API changes.                         │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D10. ADD GLOSSARY (LOW, v0.5+)                                      │
+  │  Effort: 0.5 days | File: docs/glossary.md (new)                     │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Define terms: WorkflowState, Agent, Engine, Explainer, etc.          │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D11. ADD PERFORMANCE GUIDE (LOW, v0.5+)                             │
+  │  Effort: 1 day | File: docs/performance.md (new)                     │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Document: HPO tuning (max_trials, max_time_seconds),                │
+  │  engine selection (pandas vs polars), SHAP sampling, graph caching. │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  D12. ADD SECURITY POLICY (LOW, v0.5+)                               │
+  │  Effort: 0.5 days | File: SECURITY.md (new)                          │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │  Add security vulnerability reporting policy.                         │
+  │  Document dependency scanning (Dependabot).                           │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  BLOCKED: CI-BASED PYPI PUBLISH                                       │
+  ├─────────────────────────────────────────────────────────────────────────┤
+  │                                                                        │
+  │  PyPI Trusted Publisher (OIDC) returns "invalid-publisher".           │
+  │  Workaround: Manual publish via API token was used for v0.2.1.       │
+  │                                                                        │
+  │  To fix:                                                               │
+  │    1. Go to pypi.org/manage/account/publishing                        │
+  │    2. Edit publisher for "phronesisml"                                 │
+  │    3. Repository = kartik00052/Phronesisml                            │
+  │    4. Workflow = ci.yml                                                │
+  │    5. Environment = pypi                                               │
+  │    6. LEAVE BRANCH FIELD BLANK                                         │
+  │    7. Save                                                             │
+  │                                                                        │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+  IMPLEMENTATION ORDER (recommended)
+================================================================================
+
+  Session 2 (tomorrow):
+    1. B1: Extract service layer (biggest impact, enables B2)
+    2. B2: Split simple.py (depends on B1)
+    3. B3: Remove direct pandas import from ETLAgent
+    4. B4: Add shared data resolution helper
+    5. B9: Clear graph cache in all SDK methods
+    6. B10: Forward cluster/anomaly parameters
+
+  Session 3:
+    7. B5: Move NUMERIC_DTYPES to shared utils
+    8. B6: Add lazy __getattr__ to __init__.py
+    9. B7: Move openpyxl to optional extras
+    10. B8: Add friendly ImportError messages
+    11. B11: Update CHANGELOG.md
+
+  Session 4:
+    12. C1-C3: ETL/feature engineering parameterization
+    13. C4-C6: Logging improvements
+    14. C7-C8: Error messages + deferred imports
+
+  Session 5:
+    15. C9-C11: Test restructuring + markers + async/Spark tests
+    16. C12-C14: Docs, templates, data files
+
+  Later sessions:
+    17. C15-C18: Report formats, profiling, performance
+    18. D1-D12: Low-priority improvements
+
+================================================================================
   END OF REPORT
-  Generated: 2026-07-15 04:07 UTC
-  Total Tests: 148 (110 integration + 38 unit)
-  Total Time:  ~54s (42.48s integration + 11.46s unit)
-  Pass Rate:   100.0%
+  Generated: 2026-07-15
+  Current version: 0.2.1
+  Architecture grade: A- (upgraded from B+)
+  Tests: 148/148 passing (100%)
+  Published: PyPI v0.2.1 + Docker ghcr.io:v0.2.1
+  Remaining findings: 41 (0 Critical, 11 High, 18 Medium, 12 Low)
+  Next session target: B1-B6 (service layer + simple.py split + helpers)
 ================================================================================
