@@ -26,7 +26,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from phronesisml.agents.base import AgentResult, Tool
+from phronesisml.agents.base import AgentResult, Tool, resolve_features_target
 from phronesisml.engines.base_engine import BaseEngine
 from phronesisml.ml.evaluation.metrics import evaluate_model
 
@@ -66,15 +66,7 @@ class EvaluationAgent:
                 error="No trained_model in workflow state. Run model selection first.",
             )
 
-        target_column = getattr(state, "target_column", None)
-        if target_column is None:
-            return AgentResult(
-                success=False,
-                error="No target_column in workflow state.",
-            )
-
         task_type = getattr(state, "task_type", None)
-        feature_names = getattr(state, "feature_names", None)
 
         best_pipeline = getattr(state, "best_pipeline", None)
         best_params = best_pipeline.get("params", {}) if best_pipeline else {}
@@ -82,29 +74,14 @@ class EvaluationAgent:
         target_detection_confidence = getattr(state, "target_detection_confidence", None)
         ambiguity_reason = getattr(state, "ambiguity_reason", None)
 
-        # Reconstruct full DataFrame with target for evaluation.
-        upstream = (
-            state.validated_data if state.validated_data is not None else state.processed_data
-        )
-        if upstream is None:
-            return AgentResult(
-                success=False,
-                error="No validated_data or processed_data in workflow state.",
-            )
+        try:
+            resolved = resolve_features_target(state, self._engine)
+        except ValueError as exc:
+            return AgentResult(success=False, error=str(exc))
 
-        if state.features is not None:
-            features_df = self._engine.cached_collect(state.features)
-            upstream_df = self._engine.cached_collect(upstream)
-            if target_column in upstream_df.columns:
-                collected = features_df.copy()
-                collected[target_column] = upstream_df[target_column].values
-            else:
-                collected = features_df
-        else:
-            collected = self._engine.cached_collect(upstream)
-
-        if feature_names is None:
-            feature_names = [c for c in collected.columns if c != target_column]
+        collected = resolved.collected
+        feature_names = resolved.feature_names
+        target_column = resolved.target_column
 
         # ── Evaluate ─────────────────────────────────────────────────
         try:

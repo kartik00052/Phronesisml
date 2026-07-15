@@ -84,7 +84,21 @@ def route_after_target_detection(state: Any) -> Literal["proceed", "__end__"]:
     If target detection found a target column, proceed to feature
     engineering.  For unsupervised tasks (clustering, anomaly), proceed
     without a target column.  Analytics-only mode ends here.
+
+    Also checks for pre-flight validation blockers — if any are found,
+    the workflow ends early to prevent downstream OOM or failures.
     """
+    # ── Pre-flight blocker check ─────────────────────────────────────
+    preflight_blockers = getattr(state, "preflight_blockers", None)
+    if preflight_blockers:
+        logger.warning(
+            "Pre-flight validation found %d blocker(s) — ending workflow.",
+            len(preflight_blockers),
+        )
+        for blocker in preflight_blockers:
+            logger.warning("BLOCKER: %s", blocker)
+        return "__end__"
+
     task_type = getattr(state, "task_type", None)
     target_column = getattr(state, "target_column", None)
 

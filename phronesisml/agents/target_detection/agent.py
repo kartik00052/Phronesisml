@@ -31,7 +31,11 @@ from typing import Any
 
 from phronesisml.agents.base import AgentResult, Tool
 from phronesisml.engines.base_engine import BaseEngine
-from phronesisml.ml.target_detection.detector import AMBIGUITY_THRESHOLD, detect_target
+from phronesisml.ml.target_detection.detector import (
+    AMBIGUITY_THRESHOLD,
+    detect_target,
+    validate_target_safety,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,6 +93,44 @@ class TargetDetectionAgent:
                 result["confidence"],
                 result["ambiguity_reason"] is not None,
             )
+
+            # ── Pre-flight validation ────────────────────────────────
+            # If a target was detected, run safety checks before
+            # proceeding to feature engineering.
+            preflight_result = None
+            if result["target_column"] is not None:
+                preflight_result = validate_target_safety(
+                    data,
+                    self._engine,
+                    result["target_column"],
+                    result["task_type"],
+                    data_profile,
+                )
+                if not preflight_result["safe"]:
+                    # Blockers found — surface them as warnings and
+                    # return failure to prevent downstream OOM.
+                    blocker_msg = "; ".join(preflight_result["blockers"])
+                    logger.warning(
+                        "Pre-flight validation FAILED for target '%s': %s",
+                        result["target_column"],
+                        blocker_msg,
+                    )
+                    return AgentResult(
+                        success=False,
+                        error=f"Pre-flight validation failed: {blocker_msg}",
+                        error_type="PreFlightValidationError",
+                        error_message=blocker_msg,
+                        metadata={
+                            "candidates": result["candidates"],
+                            "ambiguity_threshold": AMBIGUITY_THRESHOLD,
+                            "preflight_warnings": preflight_result["warnings"],
+                            "preflight_blockers": preflight_result["blockers"],
+                        },
+                    )
+                elif preflight_result["warnings"]:
+                    for w in preflight_result["warnings"]:
+                        logger.warning("Pre-flight warning: %s", w)
+
             return AgentResult(
                 success=True,
                 data={
@@ -100,6 +142,7 @@ class TargetDetectionAgent:
                 metadata={
                     "candidates": result["candidates"],
                     "ambiguity_threshold": AMBIGUITY_THRESHOLD,
+                    "preflight": preflight_result,
                 },
             )
         except Exception as exc:

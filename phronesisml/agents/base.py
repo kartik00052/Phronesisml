@@ -19,11 +19,14 @@ from __future__ import annotations
 
 from typing import Any, Protocol, runtime_checkable
 
-__all__ = ["AgentResult", "BaseAgent", "Tool"]
+__all__ = ["AgentResult", "BaseAgent", "ResolvedData", "Tool", "resolve_features_target"]
 
 from pydantic import BaseModel, Field
 
 from phronesisml.exceptions import AgentNotImplementedError
+
+# Re-export from services for backward compatibility
+from phronesisml.services.data_resolution import ResolvedData, resolve_features_target
 
 
 class AgentResult(BaseModel):

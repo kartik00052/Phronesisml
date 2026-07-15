@@ -24,13 +24,16 @@ from pathlib import Path
 from typing import Any
 
 from phronesisml.agents.base import AgentResult, Tool
-from phronesisml.data.loaders.file_loader import detect_format, list_excel_sheets, load_file
+from phronesisml.data.loaders.file_loader import (
+    _EXCEL_EXTENSIONS,
+    detect_format,
+    list_excel_sheets,
+    load_file,
+)
 from phronesisml.engines.base_engine import BaseEngine
 from phronesisml.exceptions import DataLoadError
 
 logger = logging.getLogger(__name__)
-
-_EXCEL_EXTENSIONS = {".xlsx", ".xls"}
 
 # Default max file size: 2 GB — avoids constructing PhronesisConfig just to read this.
 _DEFAULT_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024

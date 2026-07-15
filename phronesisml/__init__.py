@@ -30,7 +30,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from phronesisml.configs.settings import PhronesisConfig
+# Lightweight imports (always loaded)
+from phronesisml.configs.settings import PhronesisConfig, SamplingConfig
 from phronesisml.exceptions import ConfigurationError, PhronesisError, WorkflowError
 from phronesisml.results import (
     AnomalyResult,
@@ -45,51 +46,13 @@ from phronesisml.results import (
     TrainResult,
     ValidationResult,
 )
-from phronesisml.sdk import (
-    AnomalyReport,
-    ClusteringReport,
-    DatasetSummary,
-    EDAReport,
-    EvaluationMetrics,
-    ExplanationReport,
-    FeatureReport,
-    ModelInfo,
-    Phronesis,
-    TargetInfo,
-    TaskInfo,
-    ValidationReport,
-)
-from phronesisml.simple import (
-    analyze,
-    analyze_async,
-    clean,
-    clean_async,
-    cluster,
-    cluster_async,
-    detect_anomalies,
-    detect_anomalies_async,
-    detect_target,
-    detect_target_async,
-    detect_task,
-    detect_task_async,
-    engineer,
-    engineer_async,
-    explain,
-    explain_async,
-    report,
-    report_async,
-    select_model,
-    select_model_async,
-    train,
-    train_async,
-    validate,
-    validate_async,
-)
 from phronesisml.workflow.state import WorkflowState
+
+# Heavy imports are lazy — loaded on first access via __getattr__
 
 logger = logging.getLogger(__name__)
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __all__ = [
     # ── Simple API ──────────────────────────────────────
@@ -143,6 +106,7 @@ __all__ = [
     "ValidationReport",
     # ── Advanced API ────────────────────────────────────
     "PhronesisConfig",
+    "SamplingConfig",
     "PhronesisError",
     "ConfigurationError",
     "WorkflowError",
@@ -150,6 +114,62 @@ __all__ = [
     "run_pipeline",
     "__version__",
 ]
+
+# ── Lazy import registry ─────────────────────────────────────────
+_LAZY_IMPORTS: dict[str, str] = {
+    # OOP API (from sdk)
+    "Phronesis": "phronesisml.sdk",
+    "AnomalyReport": "phronesisml.sdk",
+    "ClusteringReport": "phronesisml.sdk",
+    "DatasetSummary": "phronesisml.sdk",
+    "EDAReport": "phronesisml.sdk",
+    "EvaluationMetrics": "phronesisml.sdk",
+    "ExplanationReport": "phronesisml.sdk",
+    "FeatureReport": "phronesisml.sdk",
+    "ModelInfo": "phronesisml.sdk",
+    "TargetInfo": "phronesisml.sdk",
+    "TaskInfo": "phronesisml.sdk",
+    "ValidationReport": "phronesisml.sdk",
+    # Config types (from configs.settings)
+    "SamplingConfig": "phronesisml.configs.settings",
+    # Simple API (from simple)
+    "analyze": "phronesisml.simple",
+    "analyze_async": "phronesisml.simple",
+    "clean": "phronesisml.simple",
+    "clean_async": "phronesisml.simple",
+    "cluster": "phronesisml.simple",
+    "cluster_async": "phronesisml.simple",
+    "detect_anomalies": "phronesisml.simple",
+    "detect_anomalies_async": "phronesisml.simple",
+    "detect_target": "phronesisml.simple",
+    "detect_target_async": "phronesisml.simple",
+    "detect_task": "phronesisml.simple",
+    "detect_task_async": "phronesisml.simple",
+    "engineer": "phronesisml.simple",
+    "engineer_async": "phronesisml.simple",
+    "explain": "phronesisml.simple",
+    "explain_async": "phronesisml.simple",
+    "report": "phronesisml.simple",
+    "report_async": "phronesisml.simple",
+    "select_model": "phronesisml.simple",
+    "select_model_async": "phronesisml.simple",
+    "train": "phronesisml.simple",
+    "train_async": "phronesisml.simple",
+    "validate": "phronesisml.simple",
+    "validate_async": "phronesisml.simple",
+}
+
+
+def __getattr__(name: str) -> Any:
+    """Lazy import for heavy symbols (sdk, simple API)."""
+    if name in _LAZY_IMPORTS:
+        import importlib
+
+        module = importlib.import_module(_LAZY_IMPORTS[name])
+        value = getattr(module, name)
+        globals()[name] = value  # cache for subsequent access
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def _compose_agents(
@@ -188,6 +208,7 @@ async def run_pipeline(
     null_strategy: str = "drop",
     stages: list[str] | None = None,
     config: PhronesisConfig | None = None,
+    sampling_config: Any | None = None,
 ) -> dict[str, Any]:
     """Run the Phronesis pipeline on a dataset.
 
@@ -206,6 +227,9 @@ async def run_pipeline(
             runs the full pipeline (all 11 stages).
         config: Optional pre-built configuration.  If ``None``, a config is
             constructed from the other arguments.
+        sampling_config: Optional ``SamplingConfig`` for pre-flight sampling.
+            If ``None``, uses the config's sampling settings or disables
+            sampling.
 
     Returns:
         A dict summarising the pipeline results.
@@ -216,19 +240,33 @@ async def run_pipeline(
     """
     if config is None:
         config = PhronesisConfig()
+    if null_strategy is not None:
+        config.null_strategy = null_strategy
     if engine_preference is not None:
         config.engine.preferred = engine_preference  # type: ignore[assignment]
     if stages is None:
         stages = list(_FULL_PIPELINE_STAGES)
+
+    # Resolve sampling config
+    effective_sampling_config = sampling_config or config.sampling
 
     logger.info("Phronesis pipeline starting — data_path=%s", data_path)
 
     # 1–3. Compose agents, build graph, build initial state
     try:
         agents = _compose_agents(config, data_path)
+        from phronesisml.engines.engine_selector import select_engine
         from phronesisml.workflow.graph import build_graph
 
-        graph = build_graph(agents, stages=stages)
+        # Select engine for sampling node
+        engine_instance = select_engine(config=config)
+
+        graph = build_graph(
+            agents,
+            stages=stages,
+            sampling_config=effective_sampling_config,
+            engine=engine_instance,
+        )
         initial_state = WorkflowState(data_path=data_path)
     except WorkflowError:
         raise
@@ -266,6 +304,8 @@ def _extract_summary(state: dict[str, Any]) -> dict[str, Any]:
     profile = state.get("data_profile")
     best_pipeline = state.get("best_pipeline")
     evaluation_report = state.get("evaluation_report")
+    sampling_metadata = state.get("sampling_metadata")
+    resource_report = state.get("resource_report")
 
     return {
         "row_count": state.get("row_count"),
@@ -314,5 +354,30 @@ def _extract_summary(state: dict[str, Any]) -> dict[str, Any]:
         ),
         "final_report_length": (
             len(state["final_report"]) if state.get("final_report") is not None else None
+        ),
+        # ── Sampling metadata ────────────────────────────────────────
+        "was_sampled": (
+            sampling_metadata.get("was_sampled", False) if sampling_metadata is not None else False
+        ),
+        "sampling_method": (
+            sampling_metadata.get("sampling_method") if sampling_metadata is not None else None
+        ),
+        "sampling_ratio": (
+            sampling_metadata.get("sampling_ratio") if sampling_metadata is not None else None
+        ),
+        "original_rows": (
+            sampling_metadata.get("original_rows") if sampling_metadata is not None else None
+        ),
+        "sample_rows": (
+            sampling_metadata.get("sample_rows") if sampling_metadata is not None else None
+        ),
+        # ── Resource estimates ───────────────────────────────────────
+        "estimated_memory_mb": (
+            resource_report.get("estimated_memory_mb") if resource_report is not None else None
+        ),
+        "estimated_encoded_features": (
+            resource_report.get("estimated_encoded_features")
+            if resource_report is not None
+            else None
         ),
     }

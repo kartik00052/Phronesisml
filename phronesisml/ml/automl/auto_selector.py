@@ -295,16 +295,6 @@ def candidate_to_dict(candidate: CandidateModel) -> dict[str, Any]:
     }
 
 
-def dict_to_candidate(d: dict[str, Any]) -> CandidateModel:
-    """Deserialize a dict back into a CandidateModel."""
-    return CandidateModel(
-        name=d["name"],
-        estimator_path=d["estimator_path"],
-        param_space=d.get("param_space", {}),
-        tags=d.get("tags", {}),
-    )
-
-
 def estimate_training_cost(
     n_rows: int,
     n_features: int,

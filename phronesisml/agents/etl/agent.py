@@ -19,8 +19,6 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-import pandas as pd
-
 from phronesisml.agents.base import AgentResult, Tool
 from phronesisml.data.transformers.cleaning import (
     cast_dtypes,
@@ -79,6 +77,8 @@ class ETLAgent:
         Reads from: ``state.raw_data``
         Returns: dict with ``processed_data`` and ``transform_log``
         """
+        import pandas as pd
+
         raw_data = state.raw_data
         if raw_data is None:
             return AgentResult(

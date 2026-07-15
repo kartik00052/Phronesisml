@@ -31,6 +31,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] - 2026-07-15
+
+### Added
+
+- **Target detection hardening** — ID/UUID/high-cardinality columns are now filtered
+  out during automatic target detection, preventing MemoryError on datasets with
+  high-cardinality identifiers (e.g., `customer_churn_supervised_classification.csv`).
+- **Pre-flight validation** — `validate_target_safety()` checks target suitability
+  before model training. Router pre-flight check added to prevent unsafe target usage.
+- **`WorkflowState` new fields** — Added `clustering_n_clusters`, `clustering_algorithms`,
+  `anomaly_contamination`, `anomaly_algorithms` for unsupervised task configuration.
+- **Graph cache clearing** — `clear_all_caches()` called when agents are replaced in
+  `clean()` and `recommend_model()` to prevent stale graph state.
+- **Pre-flight package** — New `phronesisml/ml/preflight/` module with config, estimator,
+  sampler, and memory modules for resource-aware pipeline execution.
+- **Services layer** — New `phronesisml/services/` package with `storage.py` (artifact
+  persistence) and `data_resolution.py` (feature/target reconstruction).
+- **Result builders module** — Extracted from `simple.py` into `phronesisml/_result_builders.py`.
+- **Stage constants module** — Extracted from `simple.py` into `phronesisml/_stages.py`.
+- **Lazy imports** — `__init__.py` now uses `__getattr__` for deferred loading of heavy
+  modules (sdk, simple API). `import phronesisml` no longer loads sklearn/shap eagerly.
+- **Friendly ImportError messages** — CLI (`pip install phronesisml[cli]`) and API
+  (`pip install phronesisml[api]`) modules now raise clear errors when extras are missing.
+
+### Changed
+
+- **`openpyxl` moved to optional extras** — No longer a core dependency. Install with
+  `pip install phronesisml[excel]` for Excel (.xlsx) support. Polars remains core.
+- **`simple.py` reduced from 1130 to 676 lines** — Internal helpers extracted to
+  `_result_builders.py` and `_stages.py`. Public API unchanged.
+- **`StorageAgent` delegates to `services.storage`** — File I/O logic extracted into
+  the services layer. Agent is now a thin orchestrator.
+- **`resolve_features_target()` moved to services** — Shared utility relocated from
+  `agents/base.py` to `services/data_resolution.py`. Backward-compat re-export preserved.
+
+### Fixed
+
+- **Architecture grade upgraded from B+ to A-** — 193/193 tests passing.
+- **Remaining findings reduced to 40** (0 Critical, 10 High, 18 Medium, 12 Low).
+
+---
+
 The entries below document the project's history under its former name, **AetherML**.
 
 ## [0.1.3] - 2026-07-13 *(as AetherML)*

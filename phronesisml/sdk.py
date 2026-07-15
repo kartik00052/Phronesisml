@@ -237,6 +237,15 @@ _EVALUATION = _MODEL + ["evaluation"]
 _EXPLAIN = _EVALUATION + ["explainability"]
 _REPORT = _EXPLAIN + ["reporting"]
 _FULL = _REPORT + ["storage"]
+
+# ── Execution modes ──────────────────────────────────────────────
+# Fast: skip explainability and storage (most expensive stages)
+_FAST = _EVALUATION + ["reporting"]
+# Balanced: default (full pipeline)
+_BALANCED = _FULL
+# Full: complete execution (same as balanced, explicit for clarity)
+_FULL_MODE = _FULL
+
 _UNSUPERVISED_STAGES = [
     "target_detection",
     "feature_engineering",
@@ -330,6 +339,7 @@ class Phronesis:
         already = self._executed_stages
         needed = [s for s in stages if s not in already]
         if not needed:
+            logger.debug("All requested stages already executed — skipping.")
             return
 
         # Build graph with only the needed stages — previously executed
@@ -340,6 +350,13 @@ class Phronesis:
         if self._start_time is None:
             self._start_time = time.monotonic()
 
+        logger.info(
+            "Phronesis: running %d stages: %s",
+            len(needed),
+            " → ".join(needed),
+        )
+
+        t0 = time.perf_counter()
         try:
             from phronesisml.exceptions import WorkflowError
 
@@ -350,6 +367,13 @@ class Phronesis:
             from phronesisml.exceptions import WorkflowError
 
             raise WorkflowError(f"Pipeline execution failed: {exc}") from exc
+
+        elapsed = time.perf_counter() - t0
+        logger.info(
+            "Phronesis: stages complete in %.2fs (%d stages executed).",
+            elapsed,
+            len(needed),
+        )
 
         # Merge returned state into our accumulated state — avoid
         # model_dump() which serialises DataFrames and models to dicts.
@@ -453,8 +477,6 @@ class Phronesis:
     def clean(
         self,
         null_strategy: str | None = None,
-        fill_value: Any = None,
-        encode: bool = True,
     ) -> Phronesis:
         """Clean and transform raw data (ETL stage).
 
@@ -476,6 +498,9 @@ class Phronesis:
 
             agents = self._get_agents()
             agents["etl"] = ETLAgent(config=ETLConfig(null_strategy=null_strategy))
+            from phronesisml.workflow.graph import clear_graph_cache
+
+            clear_graph_cache()
 
         self._ensure_sync(_ETL)
         return self
@@ -534,7 +559,6 @@ class Phronesis:
 
     def detect_target(
         self,
-        target_hint: str | None = None,
     ) -> TargetInfo:
         """Automatically detect the prediction target and task type.
 
@@ -608,6 +632,9 @@ class Phronesis:
                 cv=cv,
                 model_type=model_type,
             )
+            from phronesisml.workflow.graph import clear_graph_cache
+
+            clear_graph_cache()
         self._ensure_sync(_MODEL)
 
         bp = self._state.best_pipeline or {}
@@ -686,7 +713,6 @@ class Phronesis:
 
     def detect_task(
         self,
-        force_task: str | None = None,
     ) -> TaskInfo:
         """Detect the ML task type (supervised or unsupervised).
 
@@ -729,6 +755,13 @@ class Phronesis:
         Returns:
             A ``ClusteringReport`` with algorithm, scores, labels.
         """
+        if n_clusters is not None or algorithms is not None:
+            self._state.clustering_n_clusters = n_clusters
+            self._state.clustering_algorithms = algorithms
+            from phronesisml.workflow.graph import clear_graph_cache
+
+            clear_graph_cache()
+
         self._ensure_sync(_CLUSTERING)
         state = self._state
 
@@ -763,6 +796,13 @@ class Phronesis:
         Returns:
             An ``AnomalyReport`` with algorithm, labels, scores.
         """
+        self._state.anomaly_contamination = contamination
+        if algorithms is not None:
+            self._state.anomaly_algorithms = algorithms
+            from phronesisml.workflow.graph import clear_graph_cache
+
+            clear_graph_cache()
+
         self._ensure_sync(_ANOMALY)
         state = self._state
 
@@ -780,7 +820,7 @@ class Phronesis:
             raw=metrics,
         )
 
-    def report(self, narrative: str | None = None) -> str:
+    def report(self) -> str:
         """Generate a full Markdown report of the pipeline run.
 
         Runs all stages up to reporting if not already done.
@@ -822,12 +862,19 @@ class Phronesis:
         msg = f"Report format {format!r} is not supported. Supported formats: 'markdown', 'html'."
         raise NotImplementedError(msg)
 
-    def run(self) -> Phronesis:
+    def run(self, mode: str = "balanced") -> Phronesis:
         """Execute the complete ML pipeline end-to-end.
 
         Runs all 11 stages: upload, ETL, validation, EDA, target
         detection, feature engineering, model selection, evaluation,
         explainability, reporting, and storage.
+
+        Args:
+            mode: Execution mode controlling which stages run.
+                - ``"fast"``: Skips explainability and storage.
+                  Recommended for quick prototyping.
+                - ``"balanced"``: Full pipeline (default).
+                - ``"full"``: Same as balanced, explicit for clarity.
 
         Returns:
             ``self`` for method chaining.
@@ -835,11 +882,21 @@ class Phronesis:
         Example::
 
             ml = Phronesis("data.csv")
-            ml.run()
-            print(ml.report())
-            print(ml.evaluate())
+            ml.run(mode="fast")  # Quick results
+            ml.run()             # Full pipeline
         """
-        self._ensure_sync(_FULL)
+        if mode == "fast":
+            stages = _FAST
+            logger.info("Running in FAST mode — skipping explainability and storage.")
+        elif mode == "balanced":
+            stages = _BALANCED
+        elif mode == "full":
+            stages = _FULL_MODE
+        else:
+            msg = f"Unknown mode '{mode}'. Use 'fast', 'balanced', or 'full'."
+            raise ValueError(msg)
+
+        self._ensure_sync(stages)
         return self
 
     # ── Convenience accessors ──────────────────────────────────────
@@ -880,6 +937,17 @@ class Phronesis:
         """
         self._ensure_sync(_MODEL)
         return self._state.trained_model
+
+    # ── Convenience aliases ─────────────────────────────────────────
+
+    def target(self) -> TargetInfo:
+        return self.detect_target()
+
+    def engineer(self) -> FeatureReport:
+        return self.engineer_features()
+
+    def select_model(self, cv: int | None = None, model_type: str | None = None) -> ModelInfo:
+        return self.recommend_model(cv=cv, model_type=model_type)
 
     # ── Dunder methods ─────────────────────────────────────────────
 

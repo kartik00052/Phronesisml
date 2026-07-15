@@ -50,14 +50,49 @@ DEFAULT_TEST_SIZE = 0.2
 DEFAULT_RANDOM_STATE = 42
 
 
+def _adaptive_max_trials(n_rows: int, n_features: int) -> int:
+    """Compute adaptive max_trials based on dataset size.
+
+    Small datasets need fewer trials (models train fast, overfit risk).
+    Large datasets need more trials (more data = more meaningful HPO).
+    """
+    if n_rows < 100:
+        return 10
+    elif n_rows < 1000:
+        return 20
+    elif n_rows < 10000:
+        return 30
+    elif n_rows < 100000:
+        return 40
+    else:
+        return DEFAULT_MAX_TRIALS
+
+
+def _adaptive_max_time(n_rows: int, n_features: int) -> int:
+    """Compute adaptive max_time_seconds based on dataset size.
+
+    Small datasets should finish in seconds, not minutes.
+    """
+    if n_rows < 100:
+        return 15
+    elif n_rows < 1000:
+        return 30
+    elif n_rows < 10000:
+        return 60
+    elif n_rows < 100000:
+        return 90
+    else:
+        return DEFAULT_MAX_TIME_SECONDS
+
+
 def train_models(
     df: pd.DataFrame,
     engine: BaseEngine,
     candidates: list[CandidateModel],
     target_column: str,
     task_type: str,
-    max_trials: int = DEFAULT_MAX_TRIALS,
-    max_time_seconds: int = DEFAULT_MAX_TIME_SECONDS,
+    max_trials: int | None = None,
+    max_time_seconds: int | None = None,
     test_size: float = DEFAULT_TEST_SIZE,
     random_state: int = DEFAULT_RANDOM_STATE,
     cv: int | None = None,
@@ -71,9 +106,9 @@ def train_models(
         target_column: Name of the target column.
         task_type: ``"classification"``, ``"regression"``, or ``"ambiguous"``.
         max_trials: Maximum total parameter combinations to evaluate.
-            Enforced as a hard ceiling — search stops when exceeded.
+            If ``None``, adapts based on dataset size.
         max_time_seconds: Maximum total wall-clock seconds for HPO.
-            Enforced via monotonic clock check before each trial.
+            If ``None``, adapts based on dataset size.
         test_size: Fraction of data to hold out for evaluation.
         random_state: Random seed for reproducibility.
         cv: Number of cross-validation folds.  If ``None`` (default),
@@ -100,6 +135,22 @@ def train_models(
 
     features = features_df.values
     target = df[target_column].values
+
+    n_rows, n_features = features.shape
+
+    # ── Adaptive resource bounds ─────────────────────────────────────
+    if max_trials is None:
+        max_trials = _adaptive_max_trials(n_rows, n_features)
+    if max_time_seconds is None:
+        max_time_seconds = _adaptive_max_time(n_rows, n_features)
+
+    logger.info(
+        "HPO config: max_trials=%d, max_time_seconds=%d (n_rows=%d, n_features=%d)",
+        max_trials,
+        max_time_seconds,
+        n_rows,
+        n_features,
+    )
 
     use_cv = cv is not None and cv >= 2
 

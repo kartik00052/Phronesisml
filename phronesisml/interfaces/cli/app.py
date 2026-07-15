@@ -15,9 +15,14 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import typer
-from rich.console import Console
-from rich.logging import RichHandler
+try:
+    import typer
+    from rich.console import Console
+    from rich.logging import RichHandler
+except ImportError as exc:
+    raise ImportError(
+        "CLI requires extra dependencies. Install with:\n  pip install phronesisml[cli]"
+    ) from exc
 
 app = typer.Typer(
     name="phronesisml",

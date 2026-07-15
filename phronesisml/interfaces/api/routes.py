@@ -214,10 +214,10 @@ async def analyze(
     engine: str | None = Form(None),  # noqa: B008
     null_strategy: str = Form("drop"),  # noqa: B008
 ) -> APIResponse:
-    """Run the complete ML pipeline on a dataset.
+    """Run upload through EDA (cleaning, validation, profiling) on a dataset.
 
-    Uploads the file, runs all stages (upload → … → storage), and
-    returns the full result asynchronously.
+    Uploads the file, runs stages: upload → ETL → validation → EDA, and
+    returns a dataset profile asynchronously.
     """
     tmp_path = await _save_upload(file)
     try:
@@ -353,8 +353,11 @@ async def train(
     correlation_threshold: float = Form(0.05),  # noqa: B008
     min_features: int = Form(1),  # noqa: B008
     cv: int | None = Form(None, description="Cross-validation folds (None=default split)."),  # noqa: B008
+    model_type: str | None = Form(
+        None, description="Specific model to train (e.g. random_forest)."
+    ),  # noqa: B008
 ) -> APIResponse:
-    """Train the recommended model on a dataset (full pipeline)."""
+    """Train a model on a dataset (full pipeline)."""
     tmp_path = await _save_upload(file)
     try:
         from phronesisml.simple import train_async
@@ -369,6 +372,7 @@ async def train(
                 correlation_threshold=correlation_threshold,
                 min_features=min_features,
                 cv=cv,
+                model_type=model_type,
             )
         )
     except HTTPException:
@@ -389,11 +393,11 @@ async def evaluate(
     """Evaluate models on a dataset (includes model selection + evaluation)."""
     tmp_path = await _save_upload(file)
     try:
-        from phronesisml.simple import select_model_async
+        from phronesisml.simple import evaluate_async
 
         return await _submit_job(
             _run_and_cleanup(
-                select_model_async,
+                evaluate_async,
                 tmp_path,
                 engine,
                 null_strategy,

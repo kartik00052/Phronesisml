@@ -35,6 +35,18 @@ _FORMAT_EXTENSIONS: dict[str, list[str]] = {
 _EXCEL_EXTENSIONS = {".xlsx", ".xls"}
 
 
+def _check_xlsx_deps() -> None:
+    """Raise a clear error if openpyxl is missing for .xlsx files."""
+    try:
+        import openpyxl  # noqa: F401
+    except ImportError as exc:
+        msg = (
+            "Excel (.xlsx) files require the 'openpyxl' package. "
+            "Install it with: pip install phronesisml[excel]"
+        )
+        raise DataLoadError(msg) from exc
+
+
 def _check_xls_deps(path: Path) -> None:
     """Raise a clear error if xlrd is missing for legacy .xls files."""
     try:
@@ -45,10 +57,6 @@ def _check_xls_deps(path: Path) -> None:
             "Install it with: pip install xlrd"
         )
         raise DataLoadError(msg) from exc
-
-
-# Legacy alias kept for backward compatibility
-_check_excel_deps = _check_xls_deps
 
 
 def list_excel_sheets(path: str | Path) -> list[dict[str, Any]]:
@@ -66,6 +74,8 @@ def list_excel_sheets(path: str | Path) -> list[dict[str, Any]]:
     path = Path(path)
     if path.suffix.lower() == ".xls":
         _check_xls_deps(path)
+    elif path.suffix.lower() == ".xlsx":
+        _check_xlsx_deps()
     try:
         xls = pd.ExcelFile(path)
     except Exception as exc:
@@ -202,6 +212,8 @@ def load_file(
     if path.suffix.lower() in _EXCEL_EXTENSIONS:
         if path.suffix.lower() == ".xls":
             _check_xls_deps(path)
+        elif path.suffix.lower() == ".xlsx":
+            _check_xlsx_deps()
         if "sheet_name" not in kwargs:
             kwargs["sheet_name"] = select_best_sheet(path)
 
@@ -216,8 +228,3 @@ def load_file(
     except Exception as exc:
         msg = f"Failed to load data from {path}: {exc}"
         raise DataLoadError(msg) from exc
-
-
-def infer_format(path: str | Path) -> str:
-    """Public alias for ``detect_format``."""
-    return detect_format(path)

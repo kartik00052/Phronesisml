@@ -55,7 +55,7 @@ class PandasEngine(BaseEngine):
             return reader(path, **kwargs)
         except ImportError as exc:
             extra_map = {
-                ".xlsx": "openpyxl (included in Phronesis core)",
+                ".xlsx": "openpyxl — install with: pip install phronesisml[excel]",
                 ".xls": "xlrd — install with: pip install xlrd",
                 ".parquet": "pyarrow (included in Phronesis core)",
                 ".feather": "pyarrow (included in Phronesis core)",
@@ -132,3 +132,49 @@ class PandasEngine(BaseEngine):
 
     def memory_usage(self, df: pd.DataFrame) -> int:
         return int(df.memory_usage(deep=True).sum())
+
+    def sample(
+        self,
+        df: pd.DataFrame,
+        n: int | None = None,
+        fraction: float | None = None,
+        random_state: int | None = None,
+        strategy: str = "random",
+        target_column: str | None = None,
+    ) -> pd.DataFrame:
+        """Return a sampled subset using Pandas sampling."""
+        n_rows = len(df)
+
+        if strategy == "head":
+            size = n or int(n_rows * (fraction or 1.0))
+            return df.head(size).reset_index(drop=True)
+
+        if strategy == "time_aware" and n is not None:
+            step = n_rows / n
+            indices = [int(i * step) for i in range(n)]
+            return df.iloc[indices].reset_index(drop=True)
+
+        if strategy == "stratified" and target_column and n is not None:
+            try:
+                from sklearn.model_selection import train_test_split
+
+                fraction_val = n / n_rows
+                sampled, _ = train_test_split(
+                    df,
+                    train_size=fraction_val,
+                    stratify=df[target_column],
+                    random_state=random_state,
+                )
+                return sampled.reset_index(drop=True)
+            except (ValueError, ImportError):
+                pass
+
+        # Default: random sampling
+        if n is not None:
+            return df.sample(n=min(n, n_rows), random_state=random_state).reset_index(drop=True)
+        elif fraction is not None:
+            return df.sample(frac=min(fraction, 1.0), random_state=random_state).reset_index(
+                drop=True
+            )
+        else:
+            return df.copy()

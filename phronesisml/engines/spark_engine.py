@@ -147,3 +147,40 @@ class SparkEngine(BaseEngine):
         # Return 0 to indicate "unknown" — the engine selector should
         # use file-size heuristics instead for Spark-bound data.
         return 0
+
+    def sample(
+        self,
+        df: Any,
+        n: int | None = None,
+        fraction: float | None = None,
+        random_state: int | None = None,
+        strategy: str = "random",
+        target_column: str | None = None,
+    ) -> Any:
+        """Return a sampled subset using Spark's native sampling."""
+        if strategy == "head":
+            size = n or int(df.count() * (fraction or 1.0))
+            return df.limit(size)
+
+        if strategy == "time_aware" and n is not None:
+            # Evenly spaced: use modulo-based sampling
+            total = df.count()
+            step = total / n
+            from pyspark.sql import functions as F
+
+            return (
+                df.withColumn("_row_id", F.monotonically_increasing_id())
+                .filter(F.col("_row_id") % int(step) == 0)
+                .limit(n)
+                .drop("_row_id")
+            )
+
+        # Default: random sampling
+        if fraction is not None:
+            return df.sample(fraction=min(fraction, 1.0), seed=random_state)
+        elif n is not None:
+            total = df.count()
+            frac = min(n / max(total, 1), 1.0)
+            return df.sample(fraction=frac, seed=random_state)
+        else:
+            return df

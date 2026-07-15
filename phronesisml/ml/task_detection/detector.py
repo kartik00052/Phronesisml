@@ -31,23 +31,7 @@ TASK_ANALYTICS = "analytics"
 TASK_AMBIGUOUS = "ambiguous"
 
 # Confidence thresholds
-SUPERVISED_AMBIGUITY_THRESHOLD = 0.6
 UNSUPERVISED_MIN_CONFIDENCE = 0.4
-
-# Column name hints that suggest supervised targets
-_TARGET_NAME_HINTS = frozenset(
-    {
-        "target",
-        "label",
-        "y",
-        "outcome",
-        "class",
-        "answer",
-        "target_variable",
-        "response",
-        "dependent",
-    }
-)
 
 
 def detect_task(

@@ -20,12 +20,14 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-__all__ = ["BaseEngine", "EngineType"]
+__all__ = ["BaseEngine", "EngineType", "NUMERIC_DTYPES"]
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+from phronesisml.utils.dtypes import NUMERIC_DTYPES  # noqa: F401 — backward-compat re-export
 
 
 class EngineType(StrEnum):
@@ -34,31 +36,6 @@ class EngineType(StrEnum):
     PANDAS = "pandas"
     POLARS = "polars"
     SPARK = "spark"
-
-
-# Shared constant: dtype strings that engines report as numeric.
-NUMERIC_DTYPES = frozenset(
-    {
-        "int8",
-        "int16",
-        "int32",
-        "int64",
-        "uint8",
-        "uint16",
-        "uint24",
-        "uint32",
-        "uint64",
-        "float16",
-        "float32",
-        "float64",
-        "Int8",
-        "Int16",
-        "Int32",
-        "Int64",
-        "Float32",
-        "Float64",
-    }
-)
 
 
 class BaseEngine(ABC):
@@ -205,6 +182,35 @@ class BaseEngine(ABC):
 
         This is used by the engine selector to choose an appropriate
         backend based on data size.
+        """
+        ...
+
+    @abstractmethod
+    def sample(
+        self,
+        df: Any,
+        n: int | None = None,
+        fraction: float | None = None,
+        random_state: int | None = None,
+        strategy: str = "random",
+        target_column: str | None = None,
+    ) -> Any:
+        """Return a sampled subset of *df*.
+
+        The original DataFrame is never modified.  The returned DataFrame
+        is in the engine's native format.
+
+        Args:
+            n: Number of rows to sample.  Mutually exclusive with *fraction*.
+            fraction: Fraction of rows to sample (0.0–1.0).  Mutually
+                exclusive with *n*.
+            random_state: Random seed for reproducibility.
+            strategy: Sampling strategy ('random', 'stratified', 'head',
+                'time_aware').
+            target_column: Target column for stratified sampling.
+
+        Returns:
+            A new DataFrame with sampled rows.
         """
         ...
 

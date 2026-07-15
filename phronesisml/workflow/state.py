@@ -204,4 +204,51 @@ class WorkflowState(BaseModel):
         description="[storage] URI where the model / artifacts were persisted.",
     )
 
+    # ── Pre-flight validation diagnostics ────────────────────────────
+    # Populated by target detection agent's pre-flight safety checks.
+    preflight_warnings: list[str] | None = Field(
+        default=None,
+        description="[preflight] Non-fatal warnings from pre-flight validation.",
+    )
+    preflight_blockers: list[str] | None = Field(
+        default=None,
+        description="[preflight] Fatal blockers from pre-flight validation (halt pipeline).",
+    )
+
+    # ── Sampling metadata ────────────────────────────────────────────
+    # Populated by the sampling system when automatic sampling occurs.
+    sampling_metadata: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "[sampling] Metadata about sampling: original_rows, sample_rows, "
+            "sampling_ratio, sampling_method, random_state, was_sampled."
+        ),
+    )
+    resource_report: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "[preflight] Resource estimation report: memory, feature count, "
+            "runtime estimates, and sampling recommendation."
+        ),
+    )
+
+    # ── Unsupervised task parameters ─────────────────────────────────
+    # Set by SDK.cluster() / detect_anomalies() and read by ModelSelectionAgent.
+    clustering_n_clusters: int | None = Field(
+        default=None,
+        description="[sdk] Hint for number of clusters (passed to clustering algorithms).",
+    )
+    clustering_algorithms: list[str] | None = Field(
+        default=None,
+        description="[sdk] List of clustering algorithms to try.",
+    )
+    anomaly_contamination: float | None = Field(
+        default=None,
+        description="[sdk] Expected fraction of anomalies (passed to anomaly detection).",
+    )
+    anomaly_algorithms: list[str] | None = Field(
+        default=None,
+        description="[sdk] List of anomaly detection algorithms to try.",
+    )
+
     model_config = {"arbitrary_types_allowed": True, "extra": "allow"}

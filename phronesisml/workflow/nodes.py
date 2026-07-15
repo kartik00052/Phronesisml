@@ -10,6 +10,13 @@ Design:
   explicit.
 - Agents read from state and return their output.  Nodes translate
   the output into a state update dict that LangGraph merges.
+
+Failure handling:
+- Agents that return ``AgentResult(success=False)`` are logged as errors
+  and raise ``AgentError`` to halt the pipeline.
+- Agents that return ``AgentResult(success=True)`` with diagnostic
+  metadata (warnings, blockers) propagate those diagnostics to the state
+  for downstream agents to inspect.
 """
 
 from __future__ import annotations
@@ -61,8 +68,28 @@ def make_node(agent: BaseAgent) -> Any:
                 error_context=result.error_context,
             )
 
+        # ── Propagate diagnostics from metadata ──────────────────────
+        # If the agent returned diagnostic information (warnings,
+        # blockers, pre-flight results), merge it into the state update
+        # so downstream agents can inspect it.
+        state_update = dict(result.data) if result.data else {}
+        if result.metadata:
+            # Store metadata under agent name for downstream access
+            # e.g. state_update["target_detection_metadata"] = {...}
+            meta_key = f"{agent.name}_metadata"
+            state_update[meta_key] = result.metadata
+
+            # Propagate pre-flight warnings/blockers to top-level state
+            # so routers can make informed decisions.
+            preflight = result.metadata.get("preflight")
+            if preflight is not None:
+                if preflight.get("blockers"):
+                    state_update["preflight_blockers"] = preflight["blockers"]
+                if preflight.get("warnings"):
+                    state_update["preflight_warnings"] = preflight["warnings"]
+
         logger.info("Agent '%s' completed successfully.", agent.name)
-        return result.data
+        return state_update
 
     node_fn.__name__ = f"node_{agent.name}"
     node_fn.__doc__ = f"LangGraph node wrapping agent '{agent.name}'."

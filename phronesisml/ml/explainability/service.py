@@ -46,6 +46,10 @@ class ExplainConfig:
     """Maximum rows to use for SHAP computation.  Enforced as a hard
     ceiling — if the dataset exceeds this, a random sample is drawn."""
 
+    max_features: int = 50
+    """Maximum features to use for SHAP computation.  If the feature
+    matrix has more columns, the top features by variance are selected."""
+
     background_size: int = 100
     """Number of background samples for KernelExplainer."""
 
@@ -334,7 +338,21 @@ def compute_explanations(
         X.shape[1],
     )
 
-    # ── Enforce resource bound ──────────────────────────────────────
+    # ── Cap feature dimensions ──────────────────────────────────────
+    feature_names_used = list(feature_names)
+    if X.shape[1] > config.max_features:
+        # Select top features by variance (cheapest proxy for importance)
+        variances = np.var(X, axis=0)
+        top_indices = np.argsort(variances)[-config.max_features :]
+        X = X[:, top_indices]
+        feature_names_used = [feature_names[i] for i in top_indices]
+        logger.info(
+            "Explainability: capped features from %d to %d (by variance).",
+            len(feature_names),
+            config.max_features,
+        )
+
+    # ── Enforce row sampling ────────────────────────────────────────
     sampled = False
     n_rows = X.shape[0]
 
@@ -344,7 +362,7 @@ def compute_explanations(
         X_sample = X[indices]
         sampled = True
         logger.info(
-            "Explainability: sampled dataset from %d to %d rows (max_samples=%d).",
+            "Explainability: sampled rows from %d to %d (max_samples=%d).",
             n_rows,
             config.max_samples,
             config.max_samples,
@@ -373,7 +391,7 @@ def compute_explanations(
         shap_values = explainer.shap_values(X_sample)
 
     # ── Compute global feature importance ───────────────────────────
-    feature_importance = _compute_global_importance(shap_values, feature_names)
+    feature_importance = _compute_global_importance(shap_values, feature_names_used)
 
     logger.info(
         "Explainability complete: explainer=%s, features=%d, sampled=%s.",
@@ -387,6 +405,7 @@ def compute_explanations(
         "explainer_type": explainer_type_name,
         "sampled": sampled,
         "n_samples_used": X_sample.shape[0],
+        "n_features_used": len(feature_names_used),
         "max_samples": config.max_samples,
     }
 

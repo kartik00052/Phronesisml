@@ -151,3 +151,54 @@ class PolarsEngine(BaseEngine):
             return int(df.estimated_size("bytes"))
         msg = f"Expected DataFrame or LazyFrame, got {type(df).__name__}"
         raise EngineError(msg)
+
+    def sample(
+        self,
+        df: Any,
+        n: int | None = None,
+        fraction: float | None = None,
+        random_state: int | None = None,
+        strategy: str = "random",
+        target_column: str | None = None,
+    ) -> pl.DataFrame:
+        """Return a sampled subset using Polars native sampling."""
+        if isinstance(df, pl.LazyFrame):
+            df = df.collect()
+
+        n_rows = len(df)
+
+        if strategy == "head":
+            size = n or int(n_rows * (fraction or 1.0))
+            return df.head(size)
+
+        if strategy == "time_aware" and n is not None:
+            # Evenly spaced indices for temporal preservation
+            step = n_rows / n
+            indices = [int(i * step) for i in range(n)]
+            return df[indices]
+
+        if strategy == "stratified" and target_column and n is not None:
+            # Polars doesn't have native stratified sampling — convert to pandas
+            pd_df = df.to_pandas()
+            try:
+                from sklearn.model_selection import train_test_split
+
+                fraction_val = n / n_rows
+                sampled, _ = train_test_split(
+                    pd_df,
+                    train_size=fraction_val,
+                    stratify=pd_df[target_column],
+                    random_state=random_state,
+                )
+                return pl.from_pandas(sampled.reset_index(drop=True))
+            except (ValueError, ImportError):
+                # Fallback to random
+                pass
+
+        # Default: random sampling
+        if n is not None:
+            return df.sample(n=min(n, n_rows), seed=random_state)
+        elif fraction is not None:
+            return df.sample(fraction=min(fraction, 1.0), seed=random_state)
+        else:
+            return df

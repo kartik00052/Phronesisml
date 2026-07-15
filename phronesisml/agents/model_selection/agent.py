@@ -36,7 +36,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from phronesisml.agents.base import AgentResult, Tool
+from phronesisml.agents.base import AgentResult, Tool, resolve_features_target
 from phronesisml.engines.base_engine import NUMERIC_DTYPES, BaseEngine
 from phronesisml.ml.automl.auto_selector import (
     candidate_to_dict,
@@ -93,13 +93,6 @@ class ModelSelectionAgent:
         ``trained_model``
         """
         # ── Resolve input data ───────────────────────────────────────
-        target_column = getattr(state, "target_column", None)
-        if target_column is None:
-            return AgentResult(
-                success=False,
-                error="No target_column in workflow state. Run target detection first.",
-            )
-
         task_type = getattr(state, "task_type", None)
         if task_type is None:
             return AgentResult(
@@ -107,40 +100,27 @@ class ModelSelectionAgent:
                 error="No task_type in workflow state. Run target detection first.",
             )
 
-        feature_names = getattr(state, "feature_names", None)
+        try:
+            resolved = resolve_features_target(state, self._engine)
+        except ValueError as exc:
+            return AgentResult(success=False, error=str(exc))
 
-        # Feature Engineering drops the target column from state.features.
-        # To train, we need both features AND target in one DataFrame.
-        # Reconstruct by joining engineered features with the target
-        # from upstream validated/processed data.
-        upstream = (
-            state.validated_data if state.validated_data is not None else state.processed_data
-        )
-        if upstream is None:
-            return AgentResult(
-                success=False,
-                error="No validated_data or processed_data in workflow state.",
-            )
-
-        if state.features is not None:
-            features_df = self._engine.cached_collect(state.features)
-            upstream_df = self._engine.cached_collect(upstream)
-            if target_column in upstream_df.columns:
-                collected = features_df.copy()
-                collected[target_column] = upstream_df[target_column].values
-            else:
-                collected = features_df
-        else:
-            collected = self._engine.cached_collect(upstream)
-
-        if feature_names is None:
-            # Fallback: all columns except target
-            feature_names = [c for c in collected.columns if c != target_column]
+        collected = resolved.collected
+        feature_names = resolved.feature_names
+        target_column = resolved.target_column
 
         # ── Recommend models ─────────────────────────────────────────
         n_rows = len(collected)
         n_features = len(feature_names)
-        dtypes = self._engine.dtypes(state.features if state.features is not None else upstream)
+
+        # ── Unsupervised tasks ────────────────────────────────────────
+        if task_type in ("clustering", "anomaly_detection"):
+            return await self._run_unsupervised(
+                state, collected, feature_names, task_type, n_rows, n_features
+            )
+
+        # ── Supervised tasks ─────────────────────────────────────────
+        dtypes = self._engine.dtypes(state.features if state.features is not None else collected)
         n_numeric = sum(1 for f in feature_names if dtypes.get(f, "") in NUMERIC_DTYPES)
         n_categorical = n_features - n_numeric
 
@@ -250,3 +230,149 @@ class ModelSelectionAgent:
                 },
             ),
         ]
+
+    async def _run_unsupervised(
+        self,
+        state: Any,
+        collected: Any,
+        feature_names: list[str],
+        task_type: str,
+        n_rows: int,
+        n_features: int,
+    ) -> AgentResult:
+        """Handle unsupervised tasks (clustering, anomaly detection).
+
+        Reads unsupervised parameters from state and delegates to the
+        appropriate ML module.
+        """
+        if task_type == "clustering":
+            return self._run_clustering(state, collected, feature_names, n_rows, n_features)
+        if task_type == "anomaly_detection":
+            return self._run_anomaly(state, collected, feature_names, n_rows, n_features)
+        return AgentResult(
+            success=False,
+            error=f"Unknown unsupervised task type: {task_type}",
+        )
+
+    def _run_clustering(
+        self,
+        state: Any,
+        collected: Any,
+        feature_names: list[str],
+        n_rows: int,
+        n_features: int,
+    ) -> AgentResult:
+        """Run clustering analysis with parameters from state."""
+        from phronesisml.ml.clustering.algorithms import run_clustering
+
+        n_clusters = getattr(state, "clustering_n_clusters", None)
+        algorithms = getattr(state, "clustering_algorithms", None)
+
+        kwargs: dict[str, Any] = {}
+        if n_clusters is not None:
+            kwargs["max_k"] = n_clusters + 1
+        if algorithms is not None:
+            kwargs["algorithms"] = algorithms
+
+        try:
+            result = run_clustering(
+                df=collected,
+                feature_names=feature_names,
+                **kwargs,
+            )
+        except Exception as exc:
+            msg = f"Clustering failed: {exc}"
+            logger.exception(msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+
+        metrics = {
+            "algorithm": result.algorithm,
+            "n_clusters": result.n_clusters,
+            "silhouette_score": result.silhouette_score,
+            "davies_bouldin_score": result.davies_bouldin_score,
+            "calinski_harabasz_score": result.calinski_harabasz_score,
+            "params": result.params,
+        }
+
+        logger.info(
+            "Clustering complete: algorithm=%s, n_clusters=%d, silhouette=%.4f",
+            result.algorithm,
+            result.n_clusters,
+            result.silhouette_score or 0.0,
+        )
+
+        return AgentResult(
+            success=True,
+            data={
+                "cluster_labels": result.labels,
+                "cluster_metrics": metrics,
+            },
+            metadata={
+                "algorithm": result.algorithm,
+                "n_clusters": result.n_clusters,
+                "n_algorithms_tried": len(result.all_results),
+            },
+        )
+
+    def _run_anomaly(
+        self,
+        state: Any,
+        collected: Any,
+        feature_names: list[str],
+        n_rows: int,
+        n_features: int,
+    ) -> AgentResult:
+        """Run anomaly detection with parameters from state."""
+        from phronesisml.ml.anomaly.detector import detect_anomalies
+
+        contamination = getattr(state, "anomaly_contamination", None) or 0.1
+        algorithms = getattr(state, "anomaly_algorithms", None)
+
+        try:
+            result = detect_anomalies(
+                df=collected,
+                feature_names=feature_names,
+                contamination=contamination,
+                algorithms=algorithms,
+            )
+        except Exception as exc:
+            msg = f"Anomaly detection failed: {exc}"
+            logger.exception(msg)
+            return AgentResult(
+                success=False,
+                error=msg,
+                error_type=type(exc).__name__,
+                error_message=str(exc),
+            )
+
+        metrics = {
+            "algorithm": result.algorithm,
+            "n_anomalies": result.n_anomalies,
+            "contamination": result.contamination,
+            "params": result.params,
+        }
+
+        logger.info(
+            "Anomaly detection complete: algorithm=%s, n_anomalies=%d",
+            result.algorithm,
+            result.n_anomalies,
+        )
+
+        return AgentResult(
+            success=True,
+            data={
+                "anomaly_labels": result.labels,
+                "anomaly_scores": result.anomaly_scores,
+                "anomaly_metrics": metrics,
+            },
+            metadata={
+                "algorithm": result.algorithm,
+                "n_anomalies": result.n_anomalies,
+                "n_algorithms_tried": len(result.all_results),
+            },
+        )

@@ -71,6 +71,18 @@ PIPELINE_ORDER: list[str] = [
     "storage",
 ]
 
+# Stages that should be preceded by a sampling node.
+# Sampling occurs BEFORE these expensive stages to prevent OOM.
+_SAMPLING_PRECEDENCE_STAGES = frozenset(
+    {
+        "eda",
+        "feature_engineering",
+        "model_selection",
+        "explainability",
+        "reporting",
+    }
+)
+
 # Maps each stage name to its routing function.
 _STAGE_ROUTERS: dict[str, Any] = {
     "upload": route_after_upload,
@@ -121,11 +133,14 @@ def clear_graph_cache() -> None:
     bakes agent closures that capture specific instances.
     """
     _GRAPH_CACHE.clear()
+    logger.debug("Graph cache cleared.")
 
 
 def build_graph(
     agents: dict[str, BaseAgent],
     stages: list[str] | None = None,
+    sampling_config: Any | None = None,
+    engine: Any | None = None,
 ) -> Any:
     """Build and compile the LangGraph workflow graph.
 
@@ -135,6 +150,10 @@ def build_graph(
             wired only if they appear in *stages*.
         stages: Ordered list of stage names to include.  If ``None``,
             defaults to ``["upload", "etl"]`` for backward compatibility.
+        sampling_config: ``SamplingConfig`` for pre-flight sampling.
+            If ``None``, sampling node is not added.
+        engine: ``BaseEngine`` instance for the sampling node.
+            Required if ``sampling_config`` is provided.
 
     Returns:
         A compiled LangGraph ``StateGraph`` ready for execution.
@@ -153,10 +172,31 @@ def build_graph(
     # Build the ordered list of nodes to wire
     ordered_stages = [s for s in PIPELINE_ORDER if s in stages]
 
+    # ── Insert sampling nodes ────────────────────────────────────────
+    # Insert a sampling node before each stage that requires it.
+    # Sampling nodes are named "sampling_before_<stage>" to avoid
+    # collisions with agent nodes.
+    stages_with_sampling: list[str] = []
+    sampling_nodes: dict[str, Any] = {}  # name → node_fn
+
+    if sampling_config is not None and engine is not None:
+        from phronesisml.workflow.sampling_node import create_sampling_node
+
+        sampler_node = create_sampling_node(engine, sampling_config)
+
+        for stage in ordered_stages:
+            if stage in _SAMPLING_PRECEDENCE_STAGES:
+                sampling_name = f"sampling_before_{stage}"
+                stages_with_sampling.append(sampling_name)
+                sampling_nodes[sampling_name] = sampler_node
+            stages_with_sampling.append(stage)
+    else:
+        stages_with_sampling = ordered_stages
+
     # Cache key: (agent_names, stages_tuple, agent_ids)
     # Uses monotonic ids instead of id() to avoid GC-related collisions.
     agent_names = tuple(sorted(agents.keys()))
-    stages_key = tuple(ordered_stages)
+    stages_key = tuple(stages_with_sampling)
     agent_ids = tuple(_get_agent_identity(agents[name]) for name in agent_names)
     cache_key = (frozenset(agent_names), stages_key, agent_ids)
 
@@ -167,22 +207,27 @@ def build_graph(
     graph = StateGraph(WorkflowState)
 
     # ── Add nodes ───────────────────────────────────────────────────
-    for stage_name in ordered_stages:
-        agent = agents.get(stage_name)
-        if agent is None:
-            msg = f"Agent for stage '{stage_name}' not provided."
-            raise ConfigurationError(msg)
-        graph.add_node(stage_name, make_node(agent))
+    for stage_name in stages_with_sampling:
+        if stage_name in sampling_nodes:
+            # Sampling node
+            graph.add_node(stage_name, sampling_nodes[stage_name])
+        else:
+            # Agent node
+            agent = agents.get(stage_name)
+            if agent is None:
+                msg = f"Agent for stage '{stage_name}' not provided."
+                raise ConfigurationError(msg)
+            graph.add_node(stage_name, make_node(agent))
 
     # ── Wire edges ──────────────────────────────────────────────────
-    if not ordered_stages:
+    if not stages_with_sampling:
         msg = "No stages to wire — empty pipeline."
         raise ConfigurationError(msg)
 
-    graph.set_entry_point(ordered_stages[0])
+    graph.set_entry_point(stages_with_sampling[0])
 
-    for i, stage_name in enumerate(ordered_stages):
-        is_last = i == len(ordered_stages) - 1
+    for i, stage_name in enumerate(stages_with_sampling):
+        is_last = i == len(stages_with_sampling) - 1
         router = _STAGE_ROUTERS.get(stage_name)
 
         if is_last:
@@ -196,7 +241,7 @@ def build_graph(
             else:
                 graph.add_edge(stage_name, END)
         else:
-            next_stage = ordered_stages[i + 1]
+            next_stage = stages_with_sampling[i + 1]
             if router is not None:
                 graph.add_conditional_edges(
                     stage_name,
@@ -208,5 +253,8 @@ def build_graph(
 
     compiled = graph.compile()
     _GRAPH_CACHE[cache_key] = compiled
-    logger.info("Workflow graph built (cached): %s", " -> ".join(ordered_stages) + " -> end")
+    logger.info(
+        "Workflow graph built (cached): %s",
+        " -> ".join(stages_with_sampling) + " -> end",
+    )
     return compiled

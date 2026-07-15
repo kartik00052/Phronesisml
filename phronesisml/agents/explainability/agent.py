@@ -37,9 +37,9 @@ from typing import Any
 
 from phronesisml.agents.base import AgentResult, Tool
 from phronesisml.engines.base_engine import BaseEngine
-from phronesisml.ml.explainability.shap_explainer import (
-    DEFAULT_MAX_SAMPLES,
-    compute_shap_explanations,
+from phronesisml.ml.explainability.service import (
+    ExplainConfig,
+    compute_explanations,
 )
 
 logger = logging.getLogger(__name__)
@@ -62,7 +62,7 @@ class ExplainabilityAgent:
     def __init__(
         self,
         engine: BaseEngine,
-        max_samples: int = DEFAULT_MAX_SAMPLES,
+        max_samples: int = ExplainConfig().max_samples,
     ) -> None:
         self._engine = engine
         self._max_samples = max_samples
@@ -112,11 +112,12 @@ class ExplainabilityAgent:
 
         # ── Compute SHAP explanations ────────────────────────────────
         try:
-            report = compute_shap_explanations(
+            config = ExplainConfig(max_samples=self._max_samples)
+            report = compute_explanations(
                 model=trained_model,
                 X=X,
                 feature_names=feature_names,
-                max_samples=self._max_samples,
+                config=config,
             )
         except Exception as exc:
             msg = f"SHAP computation failed: {exc}"
@@ -158,7 +159,8 @@ class ExplainabilityAgent:
                     "max_samples": {
                         "type": "integer",
                         "description": (
-                            f"Max rows for SHAP computation (default: {DEFAULT_MAX_SAMPLES})."
+                            "Max rows for SHAP computation "
+                            f"(default: {ExplainConfig().max_samples})."
                         ),
                     },
                 },

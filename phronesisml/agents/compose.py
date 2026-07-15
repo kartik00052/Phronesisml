@@ -71,7 +71,7 @@ def compose_agents(
     agents: dict[str, Any] = {
         "upload": UploadAgent(engine=engine),
         "validation": ValidationAgent(engine=engine),
-        "etl": ETLAgent(config=ETLConfig(null_strategy="drop")),
+        "etl": ETLAgent(config=ETLConfig(null_strategy=config.null_strategy)),
         "eda": EDAAgent(engine=engine),
         "target_detection": TargetDetectionAgent(engine=engine),
         "feature_engineering": FeatureEngineeringAgent(
