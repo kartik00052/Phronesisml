@@ -232,7 +232,7 @@ class Sampler:
             "anomaly_detection": SamplingMode.ANOMALY_PRESERVING,
             "time_series": SamplingMode.TIME_AWARE,
         }
-        return strategy_map.get(task_type, SamplingMode.RANDOM)
+        return strategy_map.get(task_type, SamplingMode.RANDOM)  # type: ignore[arg-type]
 
     def _compute_target_size(
         self,

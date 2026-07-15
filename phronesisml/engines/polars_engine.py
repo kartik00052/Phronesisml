@@ -169,13 +169,13 @@ class PolarsEngine(BaseEngine):
 
         if strategy == "head":
             size = n or int(n_rows * (fraction or 1.0))
-            return df.head(size)
+            return df.head(size)  # type: ignore[no-any-return]
 
         if strategy == "time_aware" and n is not None:
             # Evenly spaced indices for temporal preservation
             step = n_rows / n
             indices = [int(i * step) for i in range(n)]
-            return df[indices]
+            return df[indices]  # type: ignore[no-any-return]
 
         if strategy == "stratified" and target_column and n is not None:
             # Polars doesn't have native stratified sampling — convert to pandas
@@ -197,8 +197,8 @@ class PolarsEngine(BaseEngine):
 
         # Default: random sampling
         if n is not None:
-            return df.sample(n=min(n, n_rows), seed=random_state)
+            return df.sample(n=min(n, n_rows), seed=random_state)  # type: ignore[no-any-return]
         elif fraction is not None:
-            return df.sample(fraction=min(fraction, 1.0), seed=random_state)
+            return df.sample(fraction=min(fraction, 1.0), seed=random_state)  # type: ignore[no-any-return]
         else:
-            return df
+            return df  # type: ignore[no-any-return]

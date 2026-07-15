@@ -110,7 +110,7 @@ class MemorySafety:
             import psutil
 
             mem = psutil.virtual_memory()
-            return mem.total / (1024**3)
+            return float(mem.total / (1024**3))
         except Exception:
             return 8.0
 
