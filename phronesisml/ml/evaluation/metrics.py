@@ -117,9 +117,16 @@ def evaluate_model(
         elif task_type == "regression":
             metrics = _regression_metrics(target, y_pred)
         elif task_type == "ambiguous":
-            metrics = _classification_metrics(target, y_pred)
-            with contextlib.suppress(ValueError, TypeError):
-                metrics.update(_regression_metrics(target, y_pred))
+            unique_target = np.unique(target)
+            is_classification_like = len(unique_target) <= 20 and np.all(
+                unique_target == unique_target.astype(int)
+            )
+            if is_classification_like:
+                metrics = _classification_metrics(target, y_pred)
+                with contextlib.suppress(ValueError, TypeError):
+                    metrics.update(_regression_metrics(target, y_pred))
+            else:
+                metrics = _regression_metrics(target, y_pred)
         else:
             unique_target = np.unique(target)
             if len(unique_target) <= 20 and np.all(unique_target == unique_target.astype(int)):

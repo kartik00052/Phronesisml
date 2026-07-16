@@ -3,14 +3,15 @@
   17-Stage Comprehensive Review + Session Progress
 ================================================================================
 
-  Date:     2026-07-15
-  Version:  0.2.1 (released)
+  Date:     2026-07-16
+  Version:  0.2.2 (released)
   Scope:    SDK API, LangGraph workflow, agents, services, engines,
             dependencies, APIs, validation, ETL/EDA, reporting,
             logging, error handling, import safety, performance,
             testing, documentation, open-source readiness,
             preflight validation, resource estimation, sampling,
-            memory safety, target detection hardening
+            memory safety, target detection hardening,
+            evaluation metrics fix, Pydantic v2 compat
   Target:   Production-grade, maintainable, modular, extensible,
             beginner-friendly open-source Python SDK
 
@@ -24,8 +25,9 @@
 
   Architecture grade:  A- (upgraded from B+)
     Before: Clean facade, typed dataclasses, 110/110 tests
-    After:  All critical defects resolved, preflight system, 193/193 tests,
-            PEP 561 compliant, SHAP as core dep, sdist optimized
+    After:  All critical defects resolved, preflight system, 201/201 tests,
+            PEP 561 compliant, SHAP as core dep, sdist optimized,
+            evaluation metrics fixed, Pydantic v2 compatibility
 
 ================================================================================
   PREFLIGHT SYSTEM (NEW — v0.2.1 production hardening)
@@ -75,6 +77,7 @@
     604ae67  Promote SHAP to core dependency
     c7b05c8  Fix 3 MyPY type errors (type: ignore annotations)
     6e05918  Fix sdist size (211MB -> 0.13MB), bump to v0.2.1
+    01c2012  Fix Pydantic deprecation + audit reports + remove redundant test files
 
   Key architectural changes:
     - _compose_agents() extracted to phronesisml/agents/compose.py (DRY)
@@ -105,10 +108,20 @@
     - Workflow sampling node for pre-flight sampling
     - Pipeline integration: run_pipeline() passes sampling config
     - 45 preflight regression tests (tests/test_preflight.py)
+    - Pydantic v2 compat: WorkflowState.model_fields accessed on class, not instance
+    - Root cause fix: metrics.py ambiguous task evaluation crash on continuous targets
+      * task_type == "ambiguous" was blindly calling _classification_metrics() on
+        continuous targets, causing ValueError on mix of binary/continuous targets
+      * Fixed to check target is classification-like (≤20 unique discrete values)
+        before choosing classification vs regression metrics path
+    - New test suite: test_phronesis.py — 8 tests covering supervised, unsupervised,
+      EDA + ETL across all local CSV datasets (synthetic + real)
+    - Deleted 3 redundant test files (old test_phronesis, test_compatibility_matrix,
+      test_large_datasets) + stale _fraud_sampled.csv artifact
 
   Published artifacts:
-    PyPI:    pypi.org/project/phronesisml/0.2.1/
-    Docker:  ghcr.io/kartik00052/phronesisml:v0.2.1
+    PyPI:    pypi.org/project/phronesisml/0.2.2/
+    Docker:  ghcr.io/kartik00052/phronesisml:v0.2.2
     Source:  github.com/kartik00052/Phronesisml
 
   CI status (as of session end):
@@ -486,7 +499,7 @@
   STAGE 15: TESTING AUDIT
 ================================================================================
 
-  [✓] CLEAN: 193 tests passing (100%) — 110 integration + 38 unit + 45 preflight
+  [✓] CLEAN: 201 tests passing (100%) — 110 integration + 38 unit + 45 preflight + 8 dataset tests
   [✓] CLEAN: Comprehensive public API coverage
   [✓] CLEAN: Edge cases tested (dirty data, tiny datasets, inf values)
   [✓] CLEAN: Integration tests for full pipeline
@@ -494,6 +507,7 @@
   [✓] CLEAN: Feature importance validation tests
   [✓] CLEAN: Backward compatibility tests
   [✓] CLEAN: Preflight system tests (sampling, estimation, memory, engine backends)
+  [✓] CLEAN: Dataset-specific tests (supervised cls/reg, unsupervised cluster/anomaly, EDA+ETL)
 
   [✗] MEDIUM: Tests split across test.py and tests/ directory
       — should be further modularized.
@@ -568,7 +582,25 @@
       → Fix: Add SECURITY.md
 
 ================================================================================
-  STAGE 18: PREFLIGHT SYSTEM AUDIT (NEW)
+  STAGE 18: EVALUATION METRICS FIX (NEW — v0.2.2)
+================================================================================
+
+  Root cause: task_type == "ambiguous" in ml/evaluation/metrics.py:119
+    was blindly calling _classification_metrics() on all ambiguous targets,
+    including continuous ones (e.g., housing price, fraudTest amount).
+    This caused ValueError: "Classification metrics can't handle a mix of
+    binary and continuous targets" on regression-like ambiguous targets.
+
+  Fix applied (ml/evaluation/metrics.py:119):
+    Added target validation before choosing metrics path:
+    - Check target is classification-like (≤20 unique discrete values)
+    - Fall back to _regression_metrics() for continuous ambiguous targets
+    - Preserves original behavior for true classification targets
+
+  Affected test: test_phronesis.py (8 tests) — all now pass with real datasets
+
+================================================================================
+  STAGE 19: PREFLIGHT SYSTEM AUDIT (NEW)
 ================================================================================
 
   [✓] CLEAN: SamplingConfig uses Pydantic with Literal validators
@@ -673,11 +705,11 @@
 
 ================================================================================
   END OF REPORT
-  Generated: 2026-07-15
-  Current version: 0.2.1
+  Generated: 2026-07-16
+  Current version: 0.2.2
   Architecture grade: A- (upgraded from B+)
-  Tests: 193/193 passing (100%) — 110 integration + 38 explainability + 45 preflight
-  Published: PyPI v0.2.1 + Docker ghcr.io:v0.2.1
+  Tests: 201/201 passing (100%) — 110 integration + 38 explainability + 45 preflight + 8 dataset
+  Published: PyPI v0.2.2 + Docker ghcr.io:v0.2.2
   Remaining findings: 40 (0 Critical, 10 High, 18 Medium, 12 Low)
   Next session target: B1-B2 (service layer + simple.py split), B4-B11
 ================================================================================
