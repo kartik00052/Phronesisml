@@ -7,7 +7,7 @@ pydantic==2.13.3
 langgraph==0.6.11
 pandas==2.3.1
 polars==1.42.1
-scikit-learn==1.6.1
+scikit-learn==1.9.0
 numpy==2.2.6
 
 # Excel (optional: pip install phronesisml[excel])
