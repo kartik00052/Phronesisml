@@ -302,7 +302,7 @@ def normalize_columns(
         raise DataTransformError(msg)
 
     result = _copy(df)
-    params: dict[str, dict[str, float]] = {}
+    params: dict[str, dict[str, str | float]] = {}
     for col in target_cols:
         col_min = float(result[col].min())
         col_max = float(result[col].max())

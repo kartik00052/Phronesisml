@@ -104,6 +104,7 @@ pip install phronesisml
 
 # With extras
 pip install phronesisml[cli]       # CLI commands
+pip install phronesisml[docs]      # build the docs (mkdocs)
 pip install phronesisml[all]       # everything
 ```
 

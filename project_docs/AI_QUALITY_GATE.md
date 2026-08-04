@@ -138,7 +138,7 @@ The gate below is **mandatory** for every change that touches code, config, or i
 |---|---|---|
 | Lint | `ruff check .` | Zero errors |
 | Format | `ruff format --check .` | Zero files would be reformatted |
-| Types | `mypy phronesisml` | No new errors over the documented baseline (current: 34 pre-existing third-party-stub errors); `mypy --ignore-missing-imports` clean |
+| Types | `mypy phronesisml/ --ignore-missing-imports` | Clean (0 errors in 101 files as of the v0.3.0 packaging gate) |
 | Tests | `pytest -q` (full suite) | All tests pass, including `tests/test_regressions.py` |
 | Packaging (release only) | `python -m build` + clean-venv wheel smoke test | Wheel builds and installs; CLI/SDK run end-to-end |
 | State file | §12 | `project_state.json` regenerated and accurate |

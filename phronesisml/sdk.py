@@ -20,9 +20,12 @@ remains available for users who need full control.
 
 from __future__ import annotations
 
+import json
 import logging
+import sys
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
@@ -192,6 +195,153 @@ class TaskInfo:
     confidence: float
     ambiguity_reason: str | None
     candidates: list[dict[str, Any]]
+
+
+@dataclass(frozen=True)
+class ModelComparison:
+    """Ranked comparison of multiple trained models.
+
+    Produced by :meth:`Phronesis.compare` and the ``simple.compare``
+    function.  ``ranking`` is best-first, sorted by the task's primary
+    metric.
+    """
+
+    task_type: str
+    primary_metric: str
+    higher_is_better: bool
+    ranking: list[dict[str, Any]]
+    models: list[dict[str, Any]]
+
+    @property
+    def best_model(self) -> str | None:
+        """Name of the top-ranked model, or ``None`` if no models were compared."""
+        return self.ranking[0]["model"] if self.ranking else None
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable dict of the comparison."""
+        return {
+            "task_type": self.task_type,
+            "primary_metric": self.primary_metric,
+            "higher_is_better": self.higher_is_better,
+            "ranking": self.ranking,
+            "models": self.models,
+        }
+
+
+@dataclass(frozen=True)
+class SavedRun:
+    """A restored artifact run, loadable with ``Phronesis.restore()``.
+
+    Holds the persisted trained model, its transform recipe, and run
+    metadata so predictions can be reproduced offline without re-running
+    the pipeline.
+    """
+
+    run_id: str
+    model: Any
+    task_type: str
+    target_column: str | None
+    feature_names: list[str]
+    feature_transform: dict[str, Any] | None
+    config: dict[str, Any]
+    metadata: dict[str, Any]
+    model_info: dict[str, Any]
+
+    @classmethod
+    def from_directory(cls, directory: str | Path) -> SavedRun:
+        """Restore a saved run from an artifact directory.
+
+        Reads ``run_metadata.json``, ``model.json``,
+        ``feature_metadata.json``, ``config.json``, and ``model.joblib``
+        from *directory*.
+
+        Args:
+            directory: The artifact directory produced by
+                :meth:`Phronesis.save`.
+
+        Returns:
+            A ``SavedRun`` ready for offline prediction.
+
+        Raises:
+            FileNotFoundError: If any required artifact file is missing.
+        """
+        base = Path(directory)
+
+        def _read_json(name: str) -> dict[str, Any]:
+            path = base / name
+            if not path.is_file():
+                msg = f"Saved run artifact missing: {path}"
+                raise FileNotFoundError(msg)
+            data = json.loads(path.read_text(encoding="utf-8"))
+            return dict(data)
+
+        run_metadata = _read_json("run_metadata.json")
+        model_info = _read_json("model.json")
+        feature_metadata = _read_json("feature_metadata.json")
+        config = _read_json("config.json")
+
+        model_path = base / "model.joblib"
+        if not model_path.is_file():
+            msg = f"Saved model missing: {model_path}"
+            raise FileNotFoundError(msg)
+
+        import joblib
+
+        return cls(
+            run_id=run_metadata.get("run_id", base.name),
+            model=joblib.load(model_path),
+            task_type=run_metadata.get("task_type") or "unknown",
+            target_column=run_metadata.get("target_column"),
+            feature_names=list(feature_metadata.get("feature_names", [])),
+            feature_transform=feature_metadata.get("feature_transform"),
+            config=config,
+            metadata=run_metadata,
+            model_info=model_info,
+        )
+
+    def predict(self, data: Any, already_engineered: bool = False) -> list[Any]:
+        """Predict on new rows using the restored model.
+
+        Args:
+            data: Raw rows shaped like the training data (the target
+                column, if present, is ignored) — or, when
+                *already_engineered* is ``True``, a DataFrame in the
+                trained feature space.
+            already_engineered: ``True`` to skip recipe transformation.
+
+        Returns:
+            A list of model predictions (one per input row).
+
+        Raises:
+            ValueError: If the recipe is missing but required.
+            DataTransformError: If the input cannot be transformed.
+        """
+        import pandas as pd
+
+        if self.model is None:
+            msg = "Saved run contains no trained model."
+            raise ValueError(msg)
+
+        df = data if isinstance(data, pd.DataFrame) else pd.DataFrame(data)
+
+        if already_engineered:
+            missing = [c for c in self.feature_names if c not in df.columns]
+            if missing:
+                msg = f"Prediction data is missing engineered feature columns: {missing}"
+                raise ValueError(msg)
+            features = df[list(self.feature_names)]
+        else:
+            if not self.feature_transform:
+                msg = (
+                    "Saved run has no transform recipe. Pass "
+                    "'already_engineered=True' with engineered features."
+                )
+                raise ValueError(msg)
+            from phronesisml.ml.feature_engineering.transform import apply_transform_recipe
+
+            features = apply_transform_recipe(df, self.feature_transform)
+
+        return list(self.model.predict(features))
 
 
 # ── Internal engine bootstrap (lazy, lightweight) ────────────────
@@ -372,6 +522,15 @@ class Phronesis:
         if self._state.run_id is None:
             self._state.run_id = f"run_{uuid4().hex}"
         self._state.status = "running"
+
+        # ── SDK metadata stamps ────────────────────────────────────────
+        # Config and engine snapshots feed reporting/storage artifacts and
+        # are owned by the SDK (no agent writes them).
+        if self._state.config_snapshot is None:
+            self._state.config_snapshot = self._config.model_dump(mode="json")
+        if self._state.engine_name is None:
+            engine_cls = type(self._eng).__name__
+            self._state.engine_name = engine_cls.removesuffix("Engine").lower()
 
         logger.info(
             "Phronesis: running %d stages: %s",
@@ -796,6 +955,12 @@ class Phronesis:
 
             clear_graph_cache()
 
+        # Force the unsupervised task so target detection and model
+        # selection take the clustering branch (BUG fix: without this,
+        # target detection stamps "ambiguous" on numeric data and the
+        # pipeline trains a supervised model instead).
+        self._state.task_type = "clustering"
+        self._state.target_column = None
         self._ensure_sync(_CLUSTERING)
         state = self._state
 
@@ -837,6 +1002,9 @@ class Phronesis:
 
             clear_graph_cache()
 
+        # Force the unsupervised task (see ``cluster()`` for rationale).
+        self._state.task_type = "anomaly_detection"
+        self._state.target_column = None
         self._ensure_sync(_ANOMALY)
         state = self._state
 
@@ -978,6 +1146,387 @@ class Phronesis:
 
     def select_model(self, cv: int | None = None, model_type: str | None = None) -> ModelInfo:
         return self.recommend_model(cv=cv, model_type=model_type)
+
+    def recommend(self, cv: int | None = None, model_type: str | None = None) -> ModelInfo:
+        return self.recommend_model(cv=cv, model_type=model_type)
+
+    # ── Extended SDK surface ─────────────────────────────────────────
+
+    def analyze(self) -> EDAReport:
+        """Analyze the dataset: load, clean, validate, and profile.
+
+        Equivalent to :meth:`eda`; runs every stage through EDA and
+        returns the statistical report.
+
+        Returns:
+            An ``EDAReport`` with numeric/categorical summaries.
+        """
+        return self.eda()
+
+    def profile(self) -> DatasetSummary:
+        """Return a structured profile of the loaded dataset.
+
+        Equivalent to :meth:`summary`; includes shape, dtypes, memory,
+        missing values, duplicates, and a preview.
+
+        Returns:
+            A ``DatasetSummary``.
+        """
+        return self.summary()
+
+    def predict(
+        self,
+        data: Any,
+        already_engineered: bool = False,
+    ) -> list[Any]:
+        """Predict on new rows with the trained model.
+
+        The saved transform recipe (null fill, label encoding, min-max
+        scaling, feature selection) is applied to *data* before
+        prediction, reproducing the exact feature space the model saw
+        during training — no retraining required.  Deterministic and
+        offline.
+
+        Args:
+            data: A pandas DataFrame (or array-like) shaped like the
+                original training data; the target column, if present,
+                is ignored.
+            already_engineered: ``True`` if *data* already contains the
+                engineered feature columns (skips recipe transformation).
+
+        Returns:
+            A list of model predictions, one per input row.
+
+        Raises:
+            ValueError: If no trained model is available or the recipe
+                is missing while required.
+            DataTransformError: If *data* cannot be transformed by the
+                saved recipe (e.g. missing columns).
+        """
+        self._ensure_sync(_MODEL)
+        return self._predict_ready(data, already_engineered=already_engineered)
+
+    def _predict_ready(
+        self,
+        data: Any,
+        already_engineered: bool = False,
+    ) -> list[Any]:
+        """Predict using the model already trained on this instance.
+
+        Internal: assumes the model stages have run (e.g. via
+        ``await _run_stages(_MODEL)``).  Public callers should use
+        :meth:`predict`, which runs the stages as needed.
+        """
+        if self._state.trained_model is None:
+            msg = (
+                "No trained model available. Run train() / recommend_model() "
+                "before calling predict()."
+            )
+            raise ValueError(msg)
+
+        import pandas as pd
+
+        df = data if isinstance(data, pd.DataFrame) else pd.DataFrame(data)
+
+        if already_engineered:
+            feature_names = self._state.feature_names or list(df.columns)
+            missing = [c for c in feature_names if c not in df.columns]
+            if missing:
+                msg = f"Prediction data is missing engineered feature columns: {missing}"
+                raise ValueError(msg)
+            features = df[list(feature_names)]
+        else:
+            if not self._state.feature_transform:
+                msg = (
+                    "No feature transform recipe is available for this run. "
+                    "Pass 'already_engineered=True' with engineered features, "
+                    "or retrain through the pipeline so a recipe is recorded."
+                )
+                raise ValueError(msg)
+            from phronesisml.ml.feature_engineering.transform import apply_transform_recipe
+
+            features = apply_transform_recipe(df, self._state.feature_transform)
+
+        predictions = self._state.trained_model.predict(features)
+        return list(predictions)
+
+    def compare(self, model_types: list[str] | None = None) -> ModelComparison:
+        """Train several models on the same data and rank them.
+
+        The recommended baseline model (already trained on this
+        instance) is included automatically.  Each additional requested
+        model is trained through the full pipeline with its own
+        resource-bounded HPO, so comparisons are apples-to-apples.
+
+        Args:
+            model_types: Names of models to compare (e.g.
+                ``["random_forest", "logistic_regression"]``).  If
+                ``None``, every model in the recommended candidate pool
+                is compared.
+
+        Returns:
+            A ``ModelComparison`` with a best-first ``ranking`` sorted by
+            the task's primary metric.
+
+        Example::
+
+            ml = Phronesis("data.csv")
+            ml.train()
+            comparison = ml.compare(["random_forest", "gradient_boosting"])
+            print(comparison.best_model)
+        """
+        self._ensure_sync(_EVALUATION)
+
+        import asyncio
+
+        return asyncio.run(self._compare_core(model_types))
+
+    async def _compare_core(self, model_types: list[str] | None = None) -> ModelComparison:
+        """Compute the model comparison for this instance.
+
+        Internal: assumes the evaluation stages have run.  Public
+        callers should use :meth:`compare` (sync) or await this method
+        from an async context after ``await _run_stages(_EVALUATION)``.
+        """
+        task_type = self._state.task_type or "classification"
+        baseline_name = (self._state.best_pipeline or {}).get("model_type")
+        baseline_report = self._state.evaluation_report or {}
+        baseline_metrics = baseline_report.get("metrics", {})
+
+        if model_types is None:
+            model_types = [
+                str(name)
+                for c in (self._state.candidate_models or [])
+                if (name := c.get("name")) is not None
+            ]
+
+        models: list[dict[str, Any]] = [{"model": baseline_name, "metrics": baseline_metrics}]
+        for model_type in model_types:
+            if not model_type or model_type == baseline_name:
+                continue
+            models.append(await self._compare_one_core(model_type))
+
+        from phronesisml.ml.evaluation.report import compare_models
+
+        evaluations = [
+            {"model_info": {"name": m.get("model")}, "metrics": m.get("metrics", {})}
+            for m in models
+            if m.get("metrics")
+        ]
+        ranking = compare_models(evaluations, task_type)
+
+        return ModelComparison(
+            task_type=task_type,
+            primary_metric=ranking["primary_metric"],
+            higher_is_better=ranking["higher_is_better"],
+            ranking=ranking["ranking"],
+            models=models,
+        )
+
+    async def _compare_one_core(self, model_type: str) -> dict[str, Any]:
+        """Train a single named model on the same data and return its metrics."""
+        from phronesisml.exceptions import WorkflowError
+
+        other = Phronesis(
+            data_path=self._data_path,
+            config=self._config,
+            agent_overrides={"model_selection": {"model_type": model_type}},
+        )
+        try:
+            await other._run_stages(_EVALUATION)
+        except WorkflowError as exc:
+            return {"model": model_type, "metrics": {}, "error": str(exc)}
+        report = other.state.evaluation_report or {}
+        return {"model": model_type, "metrics": report.get("metrics", {})}
+
+    def save(self, directory: str | Path | None = None) -> dict[str, Any]:
+        """Persist the full artifact suite (including the trained model).
+
+        Runs every stage through storage if needed, then writes the
+        standard artifact set to ``<directory>/<run_id>/`` (default
+        ``./Phronesis_artifacts/<run_id>/``).
+
+        Args:
+            directory: Base directory for artifacts.  ``None`` re-uses
+                the pipeline default or the last artifact URI.
+
+        Returns:
+            A dict with ``artifact_uri``, ``saved_files``, and
+            ``warnings``.
+
+        Example::
+
+            ml = Phronesis("data.csv")
+            ml.train()
+            info = ml.save("saved_runs")
+            restored = Phronesis.restore(info["artifact_uri"])
+            restored.predict(new_rows)
+        """
+        self._ensure_sync(_FULL)
+        return self._save_ready(directory)
+
+    def _save_ready(self, directory: str | Path | None = None) -> dict[str, Any]:
+        """Persist the artifact suite assuming all stages have already run.
+
+        Internal: public callers should use :meth:`save`, which runs the
+        pipeline through storage as needed.
+        """
+        from phronesisml.services.storage import save_artifacts
+
+        if directory is None:
+            if self._state.artifact_uri:
+                base = Path(self._state.artifact_uri)
+            else:
+                base = Path("./Phronesis_artifacts")
+        else:
+            base = Path(directory)
+
+        result = save_artifacts(self._state, base_dir=base)
+        self._state.artifact_uri = result["artifact_uri"]
+        return result
+
+    @classmethod
+    def restore(cls, directory: str | Path) -> SavedRun:
+        """Restore a saved run for offline prediction.
+
+        Args:
+            directory: The artifact directory produced by :meth:`save`.
+
+        Returns:
+            A ``SavedRun`` with a ``predict()`` method and run metadata.
+        """
+        return SavedRun.from_directory(directory)
+
+    def version(self) -> str:
+        """Return the installed ``phronesisml`` version."""
+        from phronesisml import __version__
+
+        return __version__
+
+    def capabilities(self) -> dict[str, Any]:
+        """Report the SDK's capabilities: engines, tasks, stages, APIs.
+
+        Deterministic, offline, and inspectable — the same information
+        surfaced by ``phronesisml capabilities``.
+
+        Returns:
+            A dict describing supported task types, engines, explainers,
+            pipeline stages, SDK methods, CLI commands, and extras.
+        """
+        from phronesisml import __version__
+        from phronesisml._stages import _FULL_PIPELINE_STAGES
+        from phronesisml.engines.recommend import engine_capabilities
+
+        methods = [
+            "run",
+            "train",
+            "analyze",
+            "predict",
+            "evaluate",
+            "profile",
+            "clean",
+            "validate",
+            "recommend",
+            "compare",
+            "report",
+            "explain",
+            "save",
+            "restore",
+            "version",
+            "capabilities",
+            "health",
+            "load",
+            "summary",
+            "eda",
+            "detect_target",
+            "engineer_features",
+            "cluster",
+            "detect_anomalies",
+            "detect_task",
+            "generate_report",
+        ]
+        return {
+            "name": "phronesisml",
+            "version": __version__,
+            "offline": True,
+            "deterministic": True,
+            "task_types": [
+                "classification",
+                "regression",
+                "clustering",
+                "anomaly_detection",
+                "ambiguous",
+                "analytics",
+            ],
+            "engines": engine_capabilities(),
+            "explainers": ["tree", "linear", "permutation", "kernel"],
+            "pipeline_stages": list(_FULL_PIPELINE_STAGES),
+            "sdk_methods": methods,
+            "cli_commands": [
+                "run",
+                "info",
+                "train",
+                "analyze",
+                "validate",
+                "profile",
+                "explain",
+                "report",
+                "compare",
+                "version",
+                "capabilities",
+                "doctor",
+            ],
+            "extras": ["cli", "spark", "mlflow", "excel", "dev", "all"],
+        }
+
+    def health(self) -> dict[str, Any]:
+        """Run offline dependency and self checks.
+
+        Verifies that every core and optional dependency imports, and
+        reports a stable ``status``.
+
+        Returns:
+            A dict with ``status`` (``"ok"`` / ``"degraded"``),
+            ``version``, ``python``, and per-dependency availability.
+        """
+        from phronesisml import __version__
+
+        checks: dict[str, Any] = {}
+        for module, label in (
+            ("pandas", "pandas"),
+            ("numpy", "numpy"),
+            ("polars", "polars"),
+            ("sklearn", "scikit-learn"),
+            ("shap", "shap"),
+            ("langgraph", "langgraph"),
+            ("pydantic", "pydantic"),
+            ("joblib", "joblib"),
+            ("pyarrow", "pyarrow"),
+            ("openpyxl", "openpyxl (excel extra)"),
+            ("pyspark", "pyspark (spark extra)"),
+            ("mlflow", "mlflow (mlflow extra)"),
+            ("typer", "typer (cli extra)"),
+            ("rich", "rich (cli extra)"),
+        ):
+            try:
+                mod = __import__(module)
+                version = getattr(mod, "__version__", "installed")
+                checks[label] = {"installed": True, "version": str(version)}
+            except Exception:
+                checks[label] = {"installed": False, "version": None}
+
+        missing_core = sorted(
+            label for label, info in checks.items() if not info["installed"] and "(" not in label
+        )
+        status = "ok" if not missing_core else "degraded"
+
+        return {
+            "status": status,
+            "version": __version__,
+            "python": sys.version.split()[0],
+            "dependencies": checks,
+            "missing_core": missing_core,
+        }
 
     # ── Dunder methods ─────────────────────────────────────────────
 

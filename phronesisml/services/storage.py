@@ -159,22 +159,42 @@ def build_artifact_manifest(
     }
 
 
+def _unavailable(name: str, reason: str) -> dict[str, Any]:
+    """Build a documented placeholder artifact for an intentionally missing output.
+
+    Args:
+        name: Logical artifact name (e.g. ``"shap"``).
+        reason: Why the artifact is unavailable for this run.
+
+    Returns:
+        A JSON-serializable dict with ``status`` and ``reason``.
+    """
+    return {"artifact": name, "status": "unavailable", "reason": reason}
+
+
 def save_artifacts(
     state: Any,
     base_dir: str | Path = "./Phronesis_artifacts",
 ) -> dict[str, Any]:
-    """Persist pipeline artifacts to disk.
+    """Persist the full pipeline artifact suite to disk.
 
-    Reads from: ``state.run_id``, ``state.trained_model``,
-    ``state.final_report``, ``state.processed_data``,
-    ``state.evaluation_report``.
+    Writes the standard 17-file artifact set (``evaluation.json``,
+    ``metrics.json``, ``training.json``, ``model.json``,
+    ``feature_metadata.json``, ``target_detection.json``,
+    ``resource_estimation.json``, ``engine_selection.json``, ``eda.json``,
+    ``validation.json``, ``shap.json``, ``pipeline.json``,
+    ``run_metadata.json``, ``report.md``, ``report.html``, ``config.json``,
+    ``logs.txt``) plus the binary ``model.joblib`` when a trained model
+    exists.  Artifacts that are intentionally unavailable for a run
+    (e.g. no SHAP output for unsupervised tasks) are written as documented
+    placeholders rather than silently omitted.
 
     Args:
         state: The current ``WorkflowState``.
         base_dir: Base directory for artifact storage.
 
     Returns:
-        A dict with ``artifact_uri`` and ``saved_files``.
+        A dict with ``artifact_uri``, ``saved_files``, and ``warnings``.
 
     Raises:
         OSError: If disk write fails.
@@ -183,42 +203,203 @@ def save_artifacts(
     artifact_dir = Path(base_dir) / run_id
 
     logger.info("Storage service: persisting artifacts to %s.", artifact_dir)
-
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
     saved_files: list[str] = []
+    warnings: list[str] = []
 
-    # Save evaluation report as JSON
-    eval_report = getattr(state, "evaluation_report", None)
-    if eval_report is not None:
-        eval_path = artifact_dir / "evaluation_report.json"
-        eval_path.write_text(
-            json.dumps(eval_report, indent=2, default=str),
-            encoding="utf-8",
+    def _write(name: str, payload: Any, fmt: str = "json") -> None:
+        ext = {"json": ".json", "txt": ".txt", "md": ".md", "html": ".html"}.get(fmt, ".json")
+        path = artifact_dir / name if name.endswith(ext) else artifact_dir / f"{name}{ext}"
+        if fmt in ("txt", "md", "html"):
+            path.write_text(str(payload), encoding="utf-8")
+        else:
+            path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+        saved_files.append(str(path))
+
+    # ── Structured per-capability artifacts ──────────────────────────
+    evaluation_report = getattr(state, "evaluation_report", None)
+    if evaluation_report is not None:
+        _write("evaluation.json", evaluation_report)
+        metrics = evaluation_report.get("metrics", {})
+        if metrics:
+            _write("metrics.json", metrics)
+        else:
+            _write("metrics.json", _unavailable("metrics", "no metrics computed"))
+    else:
+        _write("evaluation.json", _unavailable("evaluation", "no evaluation stage output"))
+
+    best_pipeline = getattr(state, "best_pipeline", None) or {}
+    trained_model = getattr(state, "trained_model", None)
+    model_info = {
+        "model_type": best_pipeline.get("model_type"),
+        "model_class": type(trained_model).__name__ if trained_model is not None else None,
+        "best_params": best_pipeline.get("best_params") or best_pipeline.get("params", {}),
+        "score": best_pipeline.get("score"),
+        "trials_used": best_pipeline.get("trials_used"),
+        "time_elapsed": best_pipeline.get("time_elapsed"),
+        "truncated": best_pipeline.get("truncated"),
+        "estimated_training_cost": best_pipeline.get("estimated_training_cost"),
+    }
+    if best_pipeline:
+        _write("model.json", model_info)
+        _write("training.json", best_pipeline)
+    else:
+        _write("model.json", _unavailable("model", "no trained model"))
+        _write("training.json", _unavailable("training", "no training stage output"))
+
+    feature_names = getattr(state, "feature_names", None)
+    feature_transform = getattr(state, "feature_transform", None)
+    if feature_names is not None:
+        _write(
+            "feature_metadata.json",
+            {
+                "feature_names": feature_names,
+                "n_features": len(feature_names),
+                "feature_transform": feature_transform,
+            },
         )
-        saved_files.append(str(eval_path))
+    else:
+        _write(
+            "feature_metadata.json",
+            _unavailable("feature_metadata", "no feature engineering output"),
+        )
 
-    # Save final report if present
+    target_column = getattr(state, "target_column", None)
+    task_type = getattr(state, "task_type", None)
+    if target_column is not None or task_type is not None:
+        _write(
+            "target_detection.json",
+            {
+                "target_column": target_column,
+                "task_type": task_type,
+                "confidence": getattr(state, "target_detection_confidence", None),
+                "ambiguity_reason": getattr(state, "ambiguity_reason", None),
+            },
+        )
+    else:
+        _write(
+            "target_detection.json",
+            _unavailable("target_detection", "no target detection output"),
+        )
+
+    resource_report = getattr(state, "resource_report", None)
+    if resource_report is not None:
+        _write("resource_estimation.json", resource_report)
+    else:
+        _write(
+            "resource_estimation.json",
+            _unavailable("resource_estimation", "pre-flight resource estimation did not run"),
+        )
+
+    engine_name = getattr(state, "engine_name", None)
+    if engine_name is not None:
+        _write(
+            "engine_selection.json",
+            {
+                "engine": engine_name,
+                "recommendation": {"engine": engine_name},
+                "routing": {
+                    "row_count": getattr(state, "row_count", None),
+                    "engine_selected": engine_name,
+                },
+            },
+        )
+    else:
+        _write(
+            "engine_selection.json",
+            _unavailable("engine_selection", "no engine selected (empty/partial state)"),
+        )
+
+    data_profile = getattr(state, "data_profile", None)
+    if data_profile is not None:
+        _write("eda.json", data_profile)
+    else:
+        _write("eda.json", _unavailable("eda", "no EDA stage output"))
+
+    validation_report = getattr(state, "validation_report", None)
+    if validation_report is not None:
+        _write("validation.json", validation_report)
+    else:
+        _write("validation.json", _unavailable("validation", "no validation stage output"))
+
+    explanation_report = getattr(state, "explanation_report", None)
+    if explanation_report is not None:
+        _write("shap.json", explanation_report)
+    else:
+        _write(
+            "shap.json",
+            _unavailable("shap", "no SHAP explanation produced for this task/model"),
+        )
+
+    config_snapshot = getattr(state, "config_snapshot", None)
+    if config_snapshot is not None:
+        _write("config.json", config_snapshot)
+    else:
+        _write("config.json", _unavailable("config", "no configuration snapshot recorded"))
+
     final_report = getattr(state, "final_report", None)
     if final_report is not None:
-        report_path = artifact_dir / "final_report.md"
-        report_path.write_text(str(final_report), encoding="utf-8")
-        saved_files.append(str(report_path))
+        _write("report.md", final_report, fmt="md")
+        try:
+            from phronesisml.ml.reports.builder import build_html_report
 
-    # Save metadata summary
+            _write("report.html", build_html_report(state), fmt="html")
+        except Exception as exc:  # pragma: no cover - defensive
+            warnings.append(f"report.html not written: {exc}")
+    else:
+        _write("report.md", _unavailable("report", "no reporting stage output"), fmt="txt")
+        _write("report.html", _unavailable("report.html", "no reporting stage output"), fmt="txt")
+
+    # ── Pipeline report (reuses the canonical JSON report builder) ───
+    try:
+        from phronesisml.ml.reports.io import build_json_report
+
+        _write("pipeline.json", build_json_report(state))
+    except Exception as exc:  # pragma: no cover - defensive
+        warnings.append(f"pipeline.json not written: {exc}")
+
+    # ── Binary model artifact ────────────────────────────────────────
+    if trained_model is not None:
+        try:
+            import joblib
+
+            model_path = artifact_dir / "model.joblib"
+            joblib.dump(trained_model, model_path)
+            saved_files.append(str(model_path))
+        except Exception as exc:  # pragma: no cover - defensive
+            warnings.append(f"model.joblib not written: {exc}")
+
+    # ── Deterministic text log ───────────────────────────────────────
+    transform_log = getattr(state, "transform_log", None) or []
+    log_lines = [
+        f"PhronesisML run log — run_id={run_id}",
+        f"version={_package_version()} status={getattr(state, 'status', None)}",
+        f"data_path={getattr(state, 'data_path', None)}",
+        f"target_column={target_column} task_type={task_type}",
+        f"engine={engine_name}",
+        f"rows={getattr(state, 'row_count', None)}",
+        f"feature_names={feature_names}",
+        f"transformations={len(transform_log)}",
+        *[f"[transform] {json.dumps(t, default=str)}" for t in transform_log or []],
+        *[f"[warning] {w}" for w in warnings],
+    ]
+    _write("logs.txt", "\n".join(log_lines) + "\n", fmt="txt")
+
+    # ── Run metadata (canonical index) ───────────────────────────────
     metadata = {
         "run_id": run_id,
-        "target_column": getattr(state, "target_column", None),
-        "task_type": getattr(state, "task_type", None),
-        "best_pipeline": getattr(state, "best_pipeline", None),
+        "status": getattr(state, "status", None),
+        "version": _package_version(),
+        "data_path": getattr(state, "data_path", None),
+        "target_column": target_column,
+        "task_type": task_type,
+        "engine": engine_name,
+        "best_pipeline": best_pipeline,
+        "artifact_count": len(saved_files),
         "saved_files": saved_files,
     }
-    meta_path = artifact_dir / "run_metadata.json"
-    meta_path.write_text(
-        json.dumps(metadata, indent=2, default=str),
-        encoding="utf-8",
-    )
-    saved_files.append(str(meta_path))
+    _write("run_metadata.json", metadata)
 
     artifact_uri = str(artifact_dir)
     logger.info(
@@ -227,4 +408,14 @@ def save_artifacts(
         artifact_uri,
     )
 
-    return {"artifact_uri": artifact_uri, "saved_files": saved_files}
+    return {"artifact_uri": artifact_uri, "saved_files": saved_files, "warnings": warnings}
+
+
+def _package_version() -> str:
+    """Return the installed ``phronesisml`` version (best-effort)."""
+    try:
+        from phronesisml import __version__ as _version
+
+        return _version
+    except ImportError:  # pragma: no cover - defensive
+        return "unknown"

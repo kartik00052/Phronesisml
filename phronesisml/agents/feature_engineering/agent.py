@@ -38,6 +38,7 @@ from phronesisml.agents.base import AgentResult, Tool
 from phronesisml.configs.settings import FeatureSelectionConfig
 from phronesisml.engines.base_engine import BaseEngine
 from phronesisml.ml.feature_engineering.engineer import engineer_features
+from phronesisml.ml.feature_engineering.transform import build_transform_recipe
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +70,8 @@ class FeatureEngineeringAgent:
         Reads from: ``state.validated_data`` (preferred) or
         ``state.processed_data`` (fallback), ``state.data_profile``,
         ``state.target_column``, ``state.task_type``
-        Returns: dict with ``features`` and ``feature_names``
+        Returns: dict with ``features``, ``feature_names``, and
+        ``feature_transform`` (the serialized transform recipe)
         """
         data = state.validated_data if state.validated_data is not None else state.processed_data
         if data is None:
@@ -108,6 +110,7 @@ class FeatureEngineeringAgent:
                 data={
                     "features": features,
                     "feature_names": feature_names,
+                    "feature_transform": build_transform_recipe(log_entry, target_column),
                 },
                 metadata={
                     "rows": self._engine.shape(features)[0],

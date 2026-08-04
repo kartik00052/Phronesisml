@@ -21,7 +21,7 @@ Conventional commits: `fix:`, `feat:`, `docs:`, `chore:`, `style:`, `release:`, 
 
 ## 4. Gate before tagging
 
-1. §9 gate green: `ruff check .`, `ruff format --check .`, `mypy phronesisml`, full `pytest -q`.
+1. §9 gate green: `ruff check .`, `ruff format --check .`, `mypy phronesisml/ --ignore-missing-imports`, full `pytest -q`.
 2. Clean-room wheel smoke test: build wheel, install in a fresh venv (correct Python floor), run CLI + SDK end-to-end.
 3. Docs sync (§4) and `project_state.json` regenerated (§12).
 4. `CHANGELOG.md` entry.

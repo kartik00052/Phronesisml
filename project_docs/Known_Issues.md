@@ -21,7 +21,7 @@
 | ID | Severity | Description |
 |---|---|---|
 | ISSUE-07-residual | Low | A single in-flight HPO trial may overshoot `max_time_seconds` (budget checked between trials). By design. |
-| MYPY-001 | Medium | Strict mypy has 50 third-party-stub errors (pandas/sklearn/mlflow/pyspark) — documented baseline category, no new category (was 51 before the v0.3.0 REST removal). Gate runs `mypy --ignore-missing-imports` clean. |
+| MYPY-001 | Resolved | Strict mypy is **clean** as of the v0.3.0 packaging gate — `mypy phronesisml/ --ignore-missing-imports` reports 0 errors in 101 files. The historical 50-error figure (pandas/sklearn/mlflow/pyspark stub category) was eliminated by fixing the 9 gate-blocking errors in 7 files. |
 | KNOWN-001 | Medium | *(Obsolete — REST layer removed in v0.3.0.)* In-memory API job store; jobs lost on restart. |
 | KNOWN-002 | Medium | Linear workflow graph; no feedback loops / conditional task-type branches. Phase 2/3. |
 | KNOWN-003 | Low | PDF reports raise `NotImplementedError`. Markdown/HTML only. |

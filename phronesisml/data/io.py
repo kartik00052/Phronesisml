@@ -401,7 +401,7 @@ def detect_encoding(path: str | Path, sample_bytes: int = 100_000) -> str:
         pass
 
     try:
-        import chardet  # type: ignore[import-not-found]
+        import chardet
 
         detected = chardet.detect(raw)
         if detected and detected.get("encoding"):

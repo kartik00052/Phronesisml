@@ -28,6 +28,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`phronesisml run|info|analyze|validate|explain`) are unchanged and remain the
   canonical interfaces.
 
+### Added
+
+- **Unsupervised ML flows wired end-to-end** — `cluster()` / `cluster_async()` and
+  `detect_anomalies()` / `detect_anomalies_async()` now force the clustering /
+  anomaly-detection task so the pipeline takes the unsupervised branch (target
+  detection and evaluation are skipped); verified with sampled real-world data
+  (KMeans/DBSCAN silhouette scoring, Isolation Forest anomaly detection).
+- **Extended SDK surface** — `profile`, `predict`, `compare`, `save`, `restore`,
+  `version`, `capabilities`, `health` (plus async variants), and `ModelComparison` /
+  `SavedRun` result types, exposed through the simple API and the OOP `Phronesis`
+  class.
+- **`[docs]` extra** — `mkdocs`, `mkdocs-material`, `mkdocstrings[python]`; `all`
+  now includes `docs`.
+- **Expanded `[dev]` extra** — adds `pytest-xdist`, `coverage`, `build`, `twine`.
+
+### Changed (Packaging / Tooling)
+
+- **Version single-sourced** — `pyproject.toml` uses `dynamic = ["version"]` with
+  hatchling reading `phronesisml/__init__.py`; no more drift between the two.
+- **uv as a first-class workflow** — `uv.lock` is now tracked and resolves for
+  Windows, macOS (arm64), and Linux (`[tool.uv] environments`); `uv sync
+  --all-extras`, `uv build`, and `uv lock --check` are supported alongside the
+  pip workflow. Darwin is restricted to Apple Silicon because shap 0.51.0 (the
+  py<3.12 build) pins `numba<0.63` on darwin-x86_64, which forces `numpy<2.4`
+  and is unsatisfiable with the declared `numpy>=1.24,<2.5` range.
+- **`requirements.txt` regenerated** to match the locked resolutions.
+- **`Makefile`** gained uv targets (`sync`, `install-uv`, `build-uv`), a
+  cross-platform Python-based `clean`, and `test-fast` (`pytest -n auto`).
+- **CI** now runs a dual pip + uv matrix across Python 3.11/3.12/3.13, validates
+  the lock, and adds a `build` job (`python -m build`, `uv build`, `twine check`,
+  wheel import smoke test) that gates the PyPI publish.
+- **mypy** now targets `python_version = "3.11"` (the supported floor) instead of
+  3.13, and the tree is **mypy-clean** — `mypy phronesisml/ --ignore-missing-imports`
+  reports 0 errors in 101 files (9 errors in 7 files fixed, closing out the
+  historical stub-error baseline).
+
+### Added (Project docs)
+
+- `project_docs/PACKAGING_AUDIT.md` — packaging/tooling audit (10 findings).
+- `project_docs/UV_MIGRATION_REPORT.md` — migration record + usage guide.
+- `project_docs/DEPENDENCY_MATRIX.md`, `INSTALLATION_VALIDATION.md`,
+  `BUILD_VALIDATION.md`, `CI_VALIDATION.md` — dependency, install, build, and CI
+  evidence.
+- `scripts/download_demo_data.py` + `data/iris.csv`, `data/credit_card_clients.csv`
+  — curated demo datasets (HF `resolve/main` URLs with retry/backoff) for docs and
+  examples.
+
 ---
 
 ## [0.2.0] - 2026-07-13

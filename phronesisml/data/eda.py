@@ -87,7 +87,7 @@ def correlation_matrix(
     target_cols = [c for c in target_cols if pd.api.types.is_numeric_dtype(df[c])]
 
     corr = df[target_cols].corr(method=method)
-    matrix: dict[str, dict[str, float]] = {}
+    matrix: dict[str, dict[str, float | None]] = {}
     for col in target_cols:
         matrix[col] = {
             other: (float(corr.loc[col, other]) if pd.notna(corr.loc[col, other]) else None)

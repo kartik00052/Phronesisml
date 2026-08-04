@@ -12,16 +12,28 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        install: ["pip", "uv"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
           cache: pip
-      - run: pip install -e ".[dev]" mkdocs-material "mkdocstrings[python]"
+      - name: Install with uv (locked)
+        uses: astral-sh/setup-uv@v5
+        if: matrix.install == 'uv'
+      - run: uv sync --extra docs
+        if: matrix.install == 'uv'
+      - run: uv run mkdocs build --strict
+        if: matrix.install == 'uv'
+      - run: pip install -e ".[docs]"
+        if: matrix.install == 'pip'
       - run: mkdocs build --strict
+        if: matrix.install == 'pip'
       - name: Deploy to GitHub Pages
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.install == 'pip'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

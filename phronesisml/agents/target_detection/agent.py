@@ -13,6 +13,12 @@ Ambiguity handling:
 - The threshold and its rationale are documented in both this docstring
   and ``ml.target_detection.detector`` — they must agree.
 
+Forced unsupervised tasks:
+- If ``state.task_type`` is already ``"clustering"`` or
+  ``"anomaly_detection"`` (set by ``cluster()`` / ``detect_anomalies()``
+  before the pipeline runs), detection is skipped and the forced task
+  is preserved.
+
 Design:
 - Stateless: all inputs come from ``WorkflowState``.
 - Engine-mediated: all data operations go through ``BaseEngine`` —
@@ -81,6 +87,31 @@ class TargetDetectionAgent:
             return AgentResult(
                 success=False,
                 error="No data_profile in workflow state. Run the EDA agent first.",
+            )
+
+        # ── Respect a caller-forced unsupervised task ────────────────
+        # ``cluster()`` / ``detect_anomalies()`` set ``task_type`` before
+        # running the pipeline so the model-selection agent takes the
+        # unsupervised branch.  When that happens, target detection is a
+        # no-op — there is no supervised target to detect.
+        task_type = getattr(state, "task_type", None)
+        if task_type in ("clustering", "anomaly_detection"):
+            logger.info(
+                "Target detection skipped: task_type already forced to '%s'.",
+                task_type,
+            )
+            return AgentResult(
+                success=True,
+                data={
+                    "target_column": None,
+                    "task_type": task_type,
+                    "target_detection_confidence": 1.0,
+                    "ambiguity_reason": None,
+                },
+                metadata={
+                    "skipped": True,
+                    "reason": f"task_type already forced to '{task_type}'.",
+                },
             )
 
         try:

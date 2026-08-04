@@ -33,7 +33,7 @@ Baseline pattern in the repo: `SAMPLE_ROWS = 1000`, RNG seed `42`. New determini
 |---|---|---|
 | Lint | `ruff check .` | Zero errors |
 | Format | `ruff format --check .` | Zero files would be reformatted |
-| Types | `mypy phronesisml` | No new errors over the documented stub baseline (50 known after the v0.3.0 REST removal); `mypy --ignore-missing-imports` clean |
+| Types | `mypy phronesisml/ --ignore-missing-imports` | Clean (0 errors in 101 files) |
 | Tests | `pytest -q` | Full suite passes, incl. `tests/test_regressions.py` |
 | State file | §12 of gate | `project_state.json` regenerated |
 | Docs | gate §4 | No doc/implementation contradiction introduced |
@@ -42,7 +42,7 @@ Targets: `make lint`, `make format`, `make typecheck`, `make test`, `make check`
 
 ## 5. Current baseline
 
-Last full gate (2026-08-05, post v0.3.0 REST decommission): **274 passed, 0 failed**; ruff clean; ruff-format clean (121 files); mypy 50 stub-category errors (documented; 51 before the 4 API modules were removed).
+Last full gate (2026-08-05, v0.3.0 packaging/uv-migration): **305 passed, 0 failed**; ruff clean; ruff-format clean (121 files); mypy clean (0 errors, 101 files); `uv lock --check` consistent; `twine check dist/*` passed; `mkdocs build --strict` passed.
 
 ## 6. Integration scope to verify before release
 

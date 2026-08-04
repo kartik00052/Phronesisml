@@ -53,7 +53,7 @@ from phronesisml.workflow.state import WorkflowState
 
 logger = logging.getLogger(__name__)
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 __all__ = [
     # ── Simple API ──────────────────────────────────────
@@ -83,6 +83,22 @@ __all__ = [
     "report_async",
     "train",
     "train_async",
+    "profile",
+    "profile_async",
+    "predict",
+    "predict_async",
+    "compare",
+    "compare_async",
+    "save",
+    "save_async",
+    "restore",
+    "restore_async",
+    "version",
+    "version_async",
+    "capabilities",
+    "capabilities_async",
+    "health",
+    "health_async",
     "AnomalyResult",
     "CleanResult",
     "ClusteringResult",
@@ -107,6 +123,8 @@ __all__ = [
     "TaskInfo",
     "TargetInfo",
     "ValidationReport",
+    "ModelComparison",
+    "SavedRun",
     # ── Advanced API ────────────────────────────────────
     "PhronesisConfig",
     "SamplingConfig",
@@ -133,6 +151,8 @@ _LAZY_IMPORTS: dict[str, str] = {
     "TargetInfo": "phronesisml.sdk",
     "TaskInfo": "phronesisml.sdk",
     "ValidationReport": "phronesisml.sdk",
+    "ModelComparison": "phronesisml.sdk",
+    "SavedRun": "phronesisml.sdk",
     # Config types (from configs.settings)
     "SamplingConfig": "phronesisml.configs.settings",
     # Simple API (from simple)
@@ -162,6 +182,22 @@ _LAZY_IMPORTS: dict[str, str] = {
     "train_async": "phronesisml.simple",
     "validate": "phronesisml.simple",
     "validate_async": "phronesisml.simple",
+    "profile": "phronesisml.simple",
+    "profile_async": "phronesisml.simple",
+    "predict": "phronesisml.simple",
+    "predict_async": "phronesisml.simple",
+    "compare": "phronesisml.simple",
+    "compare_async": "phronesisml.simple",
+    "save": "phronesisml.simple",
+    "save_async": "phronesisml.simple",
+    "restore": "phronesisml.simple",
+    "restore_async": "phronesisml.simple",
+    "version": "phronesisml.simple",
+    "version_async": "phronesisml.simple",
+    "capabilities": "phronesisml.simple",
+    "capabilities_async": "phronesisml.simple",
+    "health": "phronesisml.simple",
+    "health_async": "phronesisml.simple",
 }
 
 

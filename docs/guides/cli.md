@@ -62,21 +62,11 @@ phronesisml info
 **Output:**
 
 ```
-PhronesisML v0.2.2
-Python 3.11.5
-Platform: win32
-
-Installed engines:
-  - pandas (always available)
-  - polars (installed)
-  - spark (not installed)
-
-Supported formats:
-  - CSV (.csv, .tsv)
-  - Parquet (.parquet, .pq)
-  - JSON (.json, .jsonl, .ndjson)
-  - Feather (.feather, .arrow)
-  - Excel (.xlsx, .xls)
+Phronesis v0.3.0
+Python 3.12.13 (main, Jun 11 2026, 04:05:29) [MSC v.1944 64 bit (AMD64)]
+  Polars: 1.43.2
+  Pandas: 2.3.3
+  LangGraph: installed
 ```
 
 ---

@@ -120,6 +120,13 @@ class ModelSelectionAgent:
                 state, collected, feature_names, task_type, n_rows, n_features
             )
 
+        # ── Supervised tasks need a target column ─────────────────────
+        if target_column is None:
+            return AgentResult(
+                success=False,
+                error="No target column resolved for supervised model selection.",
+            )
+
         # ── Resolve ambiguous tasks from the actual target values ────
         # A numeric target with many unique values is regression, never
         # classification — pick the candidate pool accordingly (BUG-02 fix).

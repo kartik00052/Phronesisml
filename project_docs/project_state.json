@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "updated_at": "2026-08-05T00:00:00Z",
-  "current_version": "0.2.2",
+  "current_version": "0.3.0",
   "phase": 1,
   "git": {
     "branch": "main",
-    "commit": "835d036",
+    "commit": "b75818c",
     "dirty": true,
-    "dirty_files": 99
+    "dirty_files": 35
   },
   "completed_roadmap_items": [
     {
@@ -82,7 +82,7 @@
       "id": "MYPY-001",
       "severity": "medium",
       "title": "Strict mypy: third-party-stub errors (pandas/sklearn/mlflow/pyspark)",
-      "evidence": "mypy phronesisml: 50 errors in 26 files, all in the documented import-untyped/import-not-found category (pandas, sklearn, mlflow, pyspark). No new error category introduced by this task; count fell from 51 when the 4 REST modules under interfaces/api/ were removed in v0.3.0."
+      "evidence": "mypy phronesisml --ignore-missing-imports: CLEAN (no issues in 101 source files) after the v0.3.0 packaging gate fixed 9 errors in 7 files (unused type-ignore comments at data/io.py, services/storage.py, sdk.py; dict-item/misc/index shape-noise at data/etl.py, data/eda.py, ml/target_detection/analysis.py; str|None arg-type at agents/model_selection/agent.py). The historical '50 errors / 26 files' figure (import-untyped/import-not-found category) is stale and no longer measured; the gate uses --ignore-missing-imports and passes."
     },
     {
       "id": "KNOWN-001",
@@ -177,5 +177,5 @@
     "status": "in_sync",
     "notes": "Tranche 1 delivered charter-mandated docs: project_docs/Architecture.md, Coding_Standards.md, Known_Issues.md, Testing.md, Workflow.md, Release_Process.md, Decision_Log.md (DECISION-001..015 + standing rejections), API_Contracts.md, Roadmap.md, Project_Knowledge_Base.md + process scaffolding (docs/root_cause/README.md, docs/runs/README.md, project_docs/templates/). AI_QUALITY_GATE.md remains the constitution; INSTRUCTIONS.md absent from the tree and superseded. On 2026-08-05 the repo-root audit/state docs (AUDIT_REPORT, ARCHITECTURE_AUDIT, CODEBASE_INTEGRITY_REPORT, DUPLICATION_REPORT, IMPLEMENTATION_ROADMAP, PROJECT_KNOWLEDGE_BASE, PUBLIC_API_AUDIT, TASK_SUMMARY) were consolidated into project_docs/ and project_docs/README.md added as the session entry point; mkdocs build --strict passes. Curve metrics + JSON/run report + determinism contract documented in known-issue evidence and verified_features."
   },
-  "notes": "This session executed the v0.3.0 REST-API decommission: removed phronesisml/interfaces/api/ (app/routes/models/jobs), the [api] extra (fastapi/uvicorn/python-multipart), Docker artifacts (Dockerfile, docker-compose.yml, .dockerignore, CI docker jobs), REST tests, and all REST/uvicorn/8000/Docker documentation (docs/, project_docs/, repo-root *.md annotated 'obsolete since v0.3.0'). Shared logic (simple.py async fns, _stages, workflow graph, __version__) preserved; SDK-first/CLI-first verified end-to-end. Full gate green post-removal: 274 passed / 0 failed, ruff check clean, ruff format clean (121 files), mypy 50 documented stub-category errors (down from 51), wheel+sdist built and installed, CLI 'phronesisml run' and SDK imports verified. Later the same day the repo-root audit/state docs were consolidated into project_docs/ (single session-entry folder; project_docs/README.md added), sdist excludes project_docs/, and mkdocs build --strict passes after fixing 3 docstring/signature drift sites in sdk.py. All v0.2.2 phase-1 work plus the decommission plus the consolidation remains uncommitted in the working tree (121 entries). project_docs/, docs/, and repo-root state docs uncommitted."
+  "notes": "v0.3.0 packaging/uv-migration (the 12-step checklist) is COMPLETE and the final gate is GREEN. Audit + remediation: PACKAGING_AUDIT.md (10 findings F1-F10) written; pyproject modernized (dynamic version via [tool.hatch.version], [docs] extra, expanded [dev], all += docs, mypy python_version 3.11, sdist-exclusion comment); uv.lock regenerated cross-platform and now tracked; requirements.txt regenerated to match lock pins; Makefile rewritten with uv targets + cross-platform clean; ci.yml/docs.yml rewritten as dual pip+uv matrices with a new build job (both builders + twine check + import smoke); CHANGELOG v0.3.0 expanded; six validation docs written (PACKAGING_AUDIT, DEPENDENCY_MATRIX, INSTALLATION_VALIDATION, BUILD_VALIDATION, CI_VALIDATION, UV_MIGRATION_REPORT). Unsupervised flows (cluster/detect_anomalies) added to SDK/simple + target-detection/evaluation agents, VERIFIED on a 2,000-row probe (KMeans silhouette 0.426, IsolationForest contamination 0.1), tests/test_sdk_extended.py 23/23. mypy is now CLEAN: the 9 gate-blocking errors (unused type: ignore at data/io.py:404, services/storage.py:365, sdk.py:288; dict-item at data/etl.py:312,317; misc at data/eda.py:93; index+arg-type at ml/target_detection/analysis.py:82; str|None arg-type at agents/model_selection/agent.py:175) were fixed; MYPY-001 evidence updated (the historical '50 errors / 26 files' figure is stale). Final gate: ruff clean (121 files formatted), mypy clean (101 source files), pytest 305 passed, uv lock --check consistent (175 pkgs), uv build + python -m build + twine check PASSED, mkdocs build --strict PASSED. Lock nuance: darwin restricted to arm64 (shap 0.51.0 pins numba<0.63 on darwin-x86_64 which forces numpy<2.4, unsatisfiable with numpy<2.5); shap split 0.51.0 (py<3.12) / 0.52.0 (py>=3.12), single numba 0.66.0. Working tree: 35 dirty entries on top of b75818c; tag v0.3.0 NOT yet created. Remaining: review + commit + push + tag."
 }

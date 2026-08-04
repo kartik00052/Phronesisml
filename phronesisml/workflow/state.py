@@ -32,6 +32,8 @@ Field ownership map:
     target_detection_confidence     → target_detection agent
     ambiguity_reason                → target_detection agent
     features                        → feature_engineering agent
+    feature_names                   → feature_engineering agent
+    feature_transform               → feature_engineering agent
     candidate_models                → model_selection agent (merged automl)
     best_pipeline                   → model_selection agent
     trained_model                   → model_selection agent
@@ -39,6 +41,8 @@ Field ownership map:
     explanation_report              → explainability agent
     final_report                    → reporting agent
     artifact_uri                    → storage agent
+    config_snapshot                 → [metadata] SDK stamp
+    engine_name                     → [metadata] SDK stamp
 """
 
 from __future__ import annotations
@@ -123,6 +127,13 @@ class WorkflowState(BaseModel):
         default=None,
         description="[feature_engineering] Names of the generated feature columns.",
     )
+    feature_transform: dict[str, Any] | None = Field(
+        default=None,
+        description=(
+            "[feature_engineering] Serialized transform recipe (fill/encode/scale/"
+            "select) that reproduces the training feature space on new rows."
+        ),
+    )
 
     # ── Target detection agent ──────────────────────────────────────
     target_column: str | None = Field(
@@ -202,6 +213,17 @@ class WorkflowState(BaseModel):
     artifact_uri: str | None = Field(
         default=None,
         description="[storage] URI where the model / artifacts were persisted.",
+    )
+
+    # ── SDK metadata stamps ─────────────────────────────────────────
+    # Set by the SDK before graph execution; used by reporting/storage.
+    config_snapshot: dict[str, Any] | None = Field(
+        default=None,
+        description="[metadata] JSON-serializable snapshot of the active PhronesisConfig.",
+    )
+    engine_name: str | None = Field(
+        default=None,
+        description="[metadata] Resolved computation engine name (pandas, polars, spark).",
     )
 
     # ── Pre-flight validation diagnostics ────────────────────────────

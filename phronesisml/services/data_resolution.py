@@ -20,7 +20,7 @@ class ResolvedData:
 
     collected: Any  # pd.DataFrame with features + target joined
     feature_names: list[str]
-    target_column: str
+    target_column: str | None
 
 
 def resolve_features_target(
@@ -39,15 +39,14 @@ def resolve_features_target(
 
     Returns:
         A ``ResolvedData`` with the collected DataFrame, feature names,
-        and target column name.
+        and target column name.  For unsupervised tasks (clustering,
+        anomaly detection) the target column is ``None`` and every
+        column is treated as a feature.
 
     Raises:
-        ValueError: If required state fields are missing.
+        ValueError: If no upstream data is available in workflow state.
     """
     target_column = getattr(state, "target_column", None)
-    if target_column is None:
-        msg = "No target_column in workflow state."
-        raise ValueError(msg)
 
     feature_names = getattr(state, "feature_names", None)
 
@@ -55,6 +54,21 @@ def resolve_features_target(
     if upstream is None:
         msg = "No validated_data or processed_data in workflow state."
         raise ValueError(msg)
+
+    if target_column is None:
+        # Unsupervised tasks (clustering, anomaly detection) have no
+        # target column — every column is a feature.
+        if state.features is not None:
+            collected = engine.cached_collect(state.features)
+        else:
+            collected = engine.cached_collect(upstream)
+        if feature_names is None:
+            feature_names = list(collected.columns)
+        return ResolvedData(
+            collected=collected,
+            feature_names=feature_names,
+            target_column=None,
+        )
 
     if state.features is not None:
         features_df = engine.cached_collect(state.features)

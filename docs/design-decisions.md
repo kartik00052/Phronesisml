@@ -210,7 +210,7 @@ SHAP is the industry standard for model explainability. PhronesisML auto-selects
 
 ### Graceful Degradation
 
-SHAP is included as a core dependency (`shap>=0.43,<1.0`). The explainability agent uses it to generate feature importance explanations automatically — no extra install needed.
+SHAP is included as a core dependency (`shap>=0.51,<0.53`; resolves to 0.51.0 on py<3.12 and 0.52.0 on py≥3.12). The explainability agent uses it to generate feature importance explanations automatically — no extra install needed.
 
 ---
 

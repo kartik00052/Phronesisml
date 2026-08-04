@@ -42,7 +42,7 @@ Compiled graphs are cached by `(agent_names, stages, agent_ids)`. Cached compile
 1. Branch: `feat/<name>` / `fix/<name>` / `docs/<name>` off `main`.
 2. Read the gate + state file; ground every claim in the tree (§11 rules).
 3. Implement; add regression tests for defects (§5 of gate).
-4. Run the gate (§9): `ruff check .` → `ruff format --check .` → `mypy phronesisml` → `pytest -q`.
+4. Run the gate (§9): `ruff check .` → `ruff format --check .` → `mypy phronesisml/ --ignore-missing-imports` → `pytest -q`.
 5. Update docs in the same change (see `Known_Issues.md` §3 for open drift to fix).
 6. Regenerate `project_state.json`.
 7. Conventional commit message; PR from feature branch.

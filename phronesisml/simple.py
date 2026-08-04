@@ -26,7 +26,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Coroutine
-from typing import Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from phronesisml._result_builders import (
     build_anomaly_result as _build_anomaly_result,
@@ -88,6 +88,9 @@ from phronesisml.results import (
     TrainResult,
     ValidationResult,
 )
+
+if TYPE_CHECKING:
+    from phronesisml.sdk import ModelComparison, SavedRun
 
 logger = logging.getLogger(__name__)
 
@@ -807,6 +810,8 @@ async def cluster_async(
 
     config = _build_config(engine=engine, null_strategy=null_strategy)
     ml = Phronesis(path, config=config)
+    ml._state.task_type = "clustering"
+    ml._state.target_column = None
     await _run_stages_async(ml, _STAGES_CLUSTER)
     return _build_clustering_result(ml)
 
@@ -864,6 +869,8 @@ async def detect_anomalies_async(
 
     config = _build_config(engine=engine, null_strategy=null_strategy)
     ml = Phronesis(path, config=config)
+    ml._state.task_type = "anomaly_detection"
+    ml._state.target_column = None
     await _run_stages_async(ml, _STAGES_ANOMALY)
     return _build_anomaly_result(ml)
 
@@ -915,3 +922,419 @@ async def detect_task_async(
     ml = Phronesis(path, config=config)
     await _run_stages_async(ml, _STAGES_DETECT_TASK)
     return _build_task_detection_result(ml)
+
+
+# ── Extended API: profiling ───────────────────────────────────────
+
+
+def profile(
+    path: str,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+) -> DatasetProfile:
+    """Profile a dataset (alias of :func:`analyze`).
+
+    Loads, cleans, validates, and summarizes a dataset.  Provided as a
+    descriptive entry point mirroring the SDK's ``profile()`` method.
+
+    Args:
+        path: Path to a data file.
+        engine: Force a specific engine. ``None`` for auto-selection.
+        null_strategy: Null handling strategy. Default ``"drop"``.
+
+    Returns:
+        A ``DatasetProfile`` with shape, dtypes, summaries, and
+        memory usage.
+
+    Example::
+
+        from phronesisml import profile
+
+        summary = profile("data.csv")
+        print(f"{summary.shape[0]} rows, {summary.shape[1]} columns")
+    """
+    return _run_sync(profile_async(path, engine=engine, null_strategy=null_strategy))
+
+
+async def profile_async(
+    path: str,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+) -> DatasetProfile:
+    """Async variant of :func:`profile`."""
+    from phronesisml.sdk import Phronesis
+
+    config = _build_config(engine=engine, null_strategy=null_strategy)
+    ml = Phronesis(path, config=config)
+    await _run_stages_async(ml, _STAGES_ANALYZE)
+    return _build_dataset_profile(ml)
+
+
+# ── Extended API: prediction ──────────────────────────────────────
+
+
+def predict(
+    path: str,
+    data: Any,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+    model_type: str | None = None,
+    already_engineered: bool = False,
+) -> list[Any]:
+    """Train a model on a dataset and predict on new rows.
+
+    Runs upload through model selection, then applies the saved feature
+    transform recipe to *data* and returns one prediction per row.  The
+    target column, if present in *data*, is ignored.
+
+    Args:
+        path: Path to the training data file.
+        data: A pandas DataFrame (or array-like) shaped like the
+            training data.
+        engine: Force a specific engine. ``None`` for auto-selection.
+        null_strategy: Null handling strategy. Default ``"drop"``.
+        variance_threshold: Drop features with variance below this.
+        correlation_threshold: Drop features with target correlation below this.
+        min_features: Minimum number of features to retain.
+        cv: Number of cross-validation folds.  ``None`` uses a single
+            train/test split.
+        model_type: Optional name of a specific model to train.
+        already_engineered: ``True`` if *data* already contains the
+            engineered feature columns.
+
+    Returns:
+        A list of model predictions, one per input row.
+
+    Example::
+
+        from phronesisml import predict
+
+        predictions = predict("data.csv", new_rows)
+        print(f"{len(predictions)} predictions")
+    """
+    return _run_sync(
+        predict_async(
+            path,
+            data,
+            engine=engine,
+            null_strategy=null_strategy,
+            variance_threshold=variance_threshold,
+            correlation_threshold=correlation_threshold,
+            min_features=min_features,
+            cv=cv,
+            model_type=model_type,
+            already_engineered=already_engineered,
+        )
+    )
+
+
+async def predict_async(
+    path: str,
+    data: Any,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+    model_type: str | None = None,
+    already_engineered: bool = False,
+) -> list[Any]:
+    """Async variant of :func:`predict`."""
+    from phronesisml.sdk import Phronesis
+
+    config = _build_config(
+        engine=engine,
+        null_strategy=null_strategy,
+        variance_threshold=variance_threshold,
+        correlation_threshold=correlation_threshold,
+        min_features=min_features,
+    )
+    overrides: dict[str, dict[str, Any]] | None = None
+    if cv is not None or model_type is not None:
+        overrides = {"model_selection": {}}
+        if cv is not None:
+            overrides["model_selection"]["cv"] = cv
+        if model_type is not None:
+            overrides["model_selection"]["model_type"] = model_type
+    ml = Phronesis(path, config=config, agent_overrides=overrides)
+    await _run_stages_async(ml, _STAGES_SELECT_MODEL)
+    return ml._predict_ready(data, already_engineered=already_engineered)
+
+
+# ── Extended API: model comparison ────────────────────────────────
+
+
+def compare(
+    path: str,
+    model_types: list[str] | None = None,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+) -> ModelComparison:
+    """Train several models on a dataset and rank them.
+
+    The recommended baseline model is included automatically.  Each
+    additional model is trained through the same resource-bounded HPO,
+    then all models are ranked by the task's primary metric.
+
+    Args:
+        path: Path to a data file.
+        model_types: Names of models to compare.  ``None`` compares
+            every model in the recommended candidate pool.
+        engine: Force a specific engine. ``None`` for auto-selection.
+        null_strategy: Null handling strategy. Default ``"drop"``.
+        variance_threshold: Drop features with variance below this.
+        correlation_threshold: Drop features with target correlation below this.
+        min_features: Minimum number of features to retain.
+        cv: Number of cross-validation folds.  ``None`` uses a single
+            train/test split.
+
+    Returns:
+        A ``ModelComparison`` with a best-first ``ranking``.
+
+    Example::
+
+        from phronesisml import compare
+
+        result = compare("data.csv", ["random_forest", "logistic_regression"])
+        print(result.best_model)
+    """
+    return _run_sync(
+        compare_async(
+            path,
+            model_types,
+            engine=engine,
+            null_strategy=null_strategy,
+            variance_threshold=variance_threshold,
+            correlation_threshold=correlation_threshold,
+            min_features=min_features,
+            cv=cv,
+        )
+    )
+
+
+async def compare_async(
+    path: str,
+    model_types: list[str] | None = None,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+) -> ModelComparison:
+    """Async variant of :func:`compare`."""
+    from phronesisml.sdk import Phronesis
+
+    config = _build_config(
+        engine=engine,
+        null_strategy=null_strategy,
+        variance_threshold=variance_threshold,
+        correlation_threshold=correlation_threshold,
+        min_features=min_features,
+    )
+    overrides: dict[str, dict[str, Any]] | None = None
+    if cv is not None:
+        overrides = {"model_selection": {"cv": cv}}
+    ml = Phronesis(path, config=config, agent_overrides=overrides)
+    await _run_stages_async(ml, _STAGES_SELECT_MODEL)
+    return await ml._compare_core(model_types)
+
+
+# ── Extended API: persistence ─────────────────────────────────────
+
+
+def save(
+    path: str,
+    directory: str | None = None,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+    model_type: str | None = None,
+) -> dict[str, Any]:
+    """Run the full pipeline and persist the artifact suite.
+
+    Runs every stage through storage, then writes the standard artifact
+    set (including the trained model) to ``<directory>/<run_id>/``.
+
+    Args:
+        path: Path to a data file.
+        directory: Base directory for artifacts.  ``None`` uses the
+            pipeline default (``./Phronesis_artifacts/<run_id>/``).
+        engine: Force a specific engine. ``None`` for auto-selection.
+        null_strategy: Null handling strategy. Default ``"drop"``.
+        variance_threshold: Drop features with variance below this.
+        correlation_threshold: Drop features with target correlation below this.
+        min_features: Minimum number of features to retain.
+        cv: Number of cross-validation folds.  ``None`` uses a single
+            train/test split.
+        model_type: Optional name of a specific model to train.
+
+    Returns:
+        A dict with ``artifact_uri``, ``saved_files``, and ``warnings``.
+
+    Example::
+
+        from phronesisml import save, restore
+
+        info = save("data.csv", "saved_runs")
+        restored = restore(info["artifact_uri"])
+        print(restored.predict(new_rows))
+    """
+    return _run_sync(
+        save_async(
+            path,
+            directory,
+            engine=engine,
+            null_strategy=null_strategy,
+            variance_threshold=variance_threshold,
+            correlation_threshold=correlation_threshold,
+            min_features=min_features,
+            cv=cv,
+            model_type=model_type,
+        )
+    )
+
+
+async def save_async(
+    path: str,
+    directory: str | None = None,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+    model_type: str | None = None,
+) -> dict[str, Any]:
+    """Async variant of :func:`save`."""
+    from phronesisml.sdk import Phronesis
+
+    config = _build_config(
+        engine=engine,
+        null_strategy=null_strategy,
+        variance_threshold=variance_threshold,
+        correlation_threshold=correlation_threshold,
+        min_features=min_features,
+    )
+    overrides: dict[str, dict[str, Any]] | None = None
+    if cv is not None or model_type is not None:
+        overrides = {"model_selection": {}}
+        if cv is not None:
+            overrides["model_selection"]["cv"] = cv
+        if model_type is not None:
+            overrides["model_selection"]["model_type"] = model_type
+    ml = Phronesis(path, config=config, agent_overrides=overrides)
+    await _run_stages_async(ml, _STAGES_TRAIN)
+    return ml._save_ready(directory)
+
+
+def restore(directory: str) -> SavedRun:
+    """Restore a saved run for offline prediction.
+
+    Args:
+        directory: The artifact directory produced by :func:`save` or
+            ``Phronesis.save``.
+
+    Returns:
+        A ``SavedRun`` with a ``predict()`` method and run metadata.
+
+    Example::
+
+        from phronesisml import restore
+
+        run = restore("saved_runs/run_abc")
+        predictions = run.predict(new_rows)
+    """
+    return _run_sync(restore_async(directory))
+
+
+async def restore_async(directory: str) -> SavedRun:
+    """Async variant of :func:`restore`."""
+    from phronesisml.sdk import Phronesis
+
+    return Phronesis.restore(directory)
+
+
+# ── Extended API: introspection ───────────────────────────────────
+
+
+def version() -> str:
+    """Return the installed ``phronesisml`` version.
+
+    Example::
+
+        from phronesisml import version
+
+        print(version())
+    """
+    from phronesisml.sdk import Phronesis
+
+    return Phronesis("").version()
+
+
+async def version_async() -> str:
+    """Async variant of :func:`version`."""
+    return version()
+
+
+def capabilities() -> dict[str, Any]:
+    """Report the SDK's capabilities: engines, tasks, stages, APIs.
+
+    Deterministic and offline — the same information surfaced by
+    ``phronesisml capabilities``.
+
+    Example::
+
+        from phronesisml import capabilities
+
+        info = capabilities()
+        print(info["version"])
+    """
+    from phronesisml.sdk import Phronesis
+
+    return Phronesis("").capabilities()
+
+
+async def capabilities_async() -> dict[str, Any]:
+    """Async variant of :func:`capabilities`."""
+    return capabilities()
+
+
+def health() -> dict[str, Any]:
+    """Run offline dependency and self checks.
+
+    Example::
+
+        from phronesisml import health
+
+        report = health()
+        print(report["status"])
+    """
+    from phronesisml.sdk import Phronesis
+
+    return Phronesis("").health()
+
+
+async def health_async() -> dict[str, Any]:
+    """Async variant of :func:`health`."""
+    return health()

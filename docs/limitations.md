@@ -65,7 +65,6 @@ PhronesisML is honest about what it does and does not support. This page lists t
 These are planned but not yet implemented:
 
 - [ ] PDF report generation
-- [ ] Clustering and unsupervised learning stages
 - [ ] Time-series forecasting support
 - [ ] Plugin system for custom agents
 - [ ] S3/GCS/Azure Blob storage backends

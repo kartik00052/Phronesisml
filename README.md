@@ -140,6 +140,8 @@ PhronesisML is built around five commitments that shape every design decision in
 | **Feature Engineering** | Automated and configurable transformation, encoding, derivation | ✅ |
 | **Target Detection** | Heuristic, overridable identification of prediction target | ✅ |
 | **Model Recommendation** | Rule- and metric-driven suggestion of candidate model families | ✅ |
+| **Clustering** | Auto-selected clustering (KMeans / DBSCAN / Agglomerative) with silhouette scoring | ✅ |
+| **Anomaly Detection** | Auto-selected Isolation Forest / LOF with labels and scores | ✅ |
 | **Explainability** | Post-training feature importance and model-behavior summaries | ✅ |
 | **Reporting** | Structured, versionable output artifacts for every stage | ✅ |
 | **Offline-First** | Core pipeline stages run without network access | ✅ |
@@ -305,7 +307,8 @@ pip install phronesisml
 | `excel` | `pip install phronesisml[excel]` | Excel (.xlsx) support via `openpyxl` |
 | `mlflow` | `pip install phronesisml[mlflow]` | MLflow tracking |
 | `spark` | `pip install phronesisml[spark]` | PySpark engine |
-| `dev` | `pip install phronesisml[dev]` | pytest, ruff, mypy |
+| `docs` | `pip install phronesisml[docs]` | Build the project docs (mkdocs + mkdocstrings) |
+| `dev` | `pip install phronesisml[dev]` | pytest (+ xdist), ruff, mypy, coverage, build, twine |
 
 ### From source
 
@@ -316,6 +319,11 @@ python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev]"
 ```
+
+> **Using [uv](https://docs.astral.sh/uv)?** `uv sync --all-extras` creates the
+> environment from the committed `uv.lock` (reproducible install), and
+> `uv build` produces the wheel + sdist. Both pip and uv are first-class,
+> CI-validated workflows.
 
 ---
 
@@ -378,6 +386,21 @@ print(f"{profile.shape[0]} rows, {profile.shape[1]} columns")
 
 result = train("data/customers.csv")
 print(f"Best model: {result.best_model_type} ({result.best_score:.4f})")
+```
+
+</details>
+
+<details>
+<summary><strong>Unsupervised — clustering & anomaly detection</strong></summary>
+
+```python
+from phronesisml import cluster, detect_anomalies
+
+clusters = cluster("data/customers.csv")
+print(f"Algorithm: {clusters.algorithm}, Clusters: {clusters.n_clusters}")
+
+anomalies = detect_anomalies("data/customers.csv", contamination=0.1)
+print(f"Anomalies: {anomalies.n_anomalies} of {anomalies.n_total}")
 ```
 
 </details>
@@ -495,6 +518,7 @@ PhronesisML's core pipeline — validation, profiling, ETL, EDA, feature enginee
 - [x] Local filesystem storage
 - [x] CLI interface
 - [x] HTML report generation
+- [x] Clustering and anomaly detection flows (unsupervised)
 - [x] Full test suites
 
 **Planned**

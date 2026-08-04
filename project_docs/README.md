@@ -51,10 +51,11 @@ PhronesisML is an automated ML lifecycle SDK (installable wheel, no server) with
 
 ## 4. Current state (verified 2026-08-05)
 
-- **Quality gate:** `pytest -q` → **274 passed, 0 failed**; `ruff check .` clean; `ruff format --check .` clean (121 files); `mypy phronesisml` → 50 errors (26 files), all documented third-party-stub category (was 51 before the 4 REST modules were removed).
-- **Packaging:** wheel + sdist build cleanly; wheel ships only the `phronesisml` package; sdist excludes `project_docs/`, `docs/`, `tests/`, Docker artifacts.
+- **Quality gate:** `pytest -q` → **305 passed, 0 failed**; `ruff check .` clean; `ruff format --check .` clean (121 files); `mypy phronesisml/ --ignore-missing-imports` → **clean (0 errors, 101 files)**.
+- **Packaging:** wheel + sdist build cleanly via `uv build` and `python -m build`; `twine check dist/*` passes; wheel ships only the `phronesisml` package; sdist excludes `project_docs/`, `docs/`, `tests/`, Docker artifacts.
 - **v0.3.0 REST decommission:** complete — no REST code/deps/docs remain (see `rest_api_removal_report.md`); SDK/CLI verified end-to-end.
-- **Working tree:** all phase-1 (v0.2.2) and v0.3.0 changes are **uncommitted** (121 entries as of the 2026-08-05 consolidation).
+- **uv migration:** complete — pyproject dynamic version, tracked cross-platform `uv.lock` (win32/darwin-arm64/linux), regenerated `requirements.txt`, dual pip+uv CI, `[docs]` extra (see `UV_MIGRATION_REPORT.md`).
+- **Working tree:** v0.2.2, v0.3.0 REST-decommission, and packaging changes are **uncommitted** (35 entries on top of `b75818c`); tag `v0.3.0` not yet created.
 
 ## 5. Golden rules (from `AI_QUALITY_GATE.md`)
 

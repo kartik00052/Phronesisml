@@ -22,6 +22,9 @@ Thank you for your interest in contributing to PhronesisML! This guide will help
    pip install -e ".[dev]"
    ```
 
+   > **Using [uv](https://docs.astral.sh/uv)?** `uv sync --all-extras` installs the
+   > exact locked environment from the committed `uv.lock` instead.
+
 4. **Install pre-commit hooks (optional but recommended):**
    ```bash
    pip install pre-commit

@@ -79,7 +79,7 @@ def class_balance_report(
     total = int(series.shape[0])
     fractions = {str(k): round(v / total, 4) for k, v in counts.items()}
 
-    majority_ratio = fractions[class_counts and next(iter(class_counts))]
+    majority_ratio = max(fractions.values())
     minority_ratio = min(fractions.values())
 
     if minority_ratio <= _SEVERE_IMBALANCE_RATIO:

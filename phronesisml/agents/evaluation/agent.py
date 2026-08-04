@@ -60,13 +60,28 @@ class EvaluationAgent:
         """
         # ── Resolve inputs ───────────────────────────────────────────
         trained_model = getattr(state, "trained_model", None)
+        task_type = getattr(state, "task_type", None)
+
+        # ── Unsupervised tasks have no trained model to evaluate ─────
+        # Clustering/anomaly metrics are already produced by the
+        # model-selection agent; the evaluation stage is a pass-through
+        # for those runs.
+        if task_type in ("clustering", "anomaly_detection") and trained_model is None:
+            logger.info(
+                "Evaluation skipped: unsupervised task '%s' has no trained model.",
+                task_type,
+            )
+            return AgentResult(
+                success=True,
+                data={},
+                metadata={"skipped": True, "task_type": task_type},
+            )
+
         if trained_model is None:
             return AgentResult(
                 success=False,
                 error="No trained_model in workflow state. Run model selection first.",
             )
-
-        task_type = getattr(state, "task_type", None)
 
         best_pipeline = getattr(state, "best_pipeline", None)
         # Prefer "best_params"; fall back to legacy "params" during the

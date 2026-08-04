@@ -42,6 +42,19 @@ def test_cli_help_exposes_commands() -> None:
     assert result.exit_code == 0
     assert "run" in result.output
     assert "info" in result.output
+    for command in (
+        "train",
+        "analyze",
+        "validate",
+        "profile",
+        "explain",
+        "report",
+        "compare",
+        "version",
+        "capabilities",
+        "doctor",
+    ):
+        assert command in result.output
 
 
 def test_cli_run_help_documents_options() -> None:
@@ -69,4 +82,65 @@ def test_cli_run_completes_on_tiny_dataset(tiny_csv: str) -> None:
 def test_cli_run_missing_file_exits_nonzero(tmp_path_factory) -> None:
     missing = tmp_path_factory.mktemp("cli_missing") / "nope.csv"
     result = CLI_RUNNER.invoke(cli_app, ["run", str(missing)])
+    assert result.exit_code == 1
+
+
+# ── Extended CLI surface (v0.3.0) ────────────────────────────────
+
+
+def test_cli_version_reports_version() -> None:
+    from phronesisml import __version__
+
+    result = CLI_RUNNER.invoke(cli_app, ["version"])
+    assert result.exit_code == 0
+    assert __version__ in result.output
+
+
+def test_cli_capabilities_reports_surface() -> None:
+    from phronesisml import __version__
+
+    result = CLI_RUNNER.invoke(cli_app, ["capabilities"])
+    assert result.exit_code == 0
+    assert __version__ in result.output
+    assert "upload" in result.output
+    assert "doctor" in result.output
+
+
+def test_cli_doctor_reports_ok() -> None:
+    result = CLI_RUNNER.invoke(cli_app, ["doctor"])
+    assert result.exit_code == 0
+    assert "status: ok" in result.output
+
+
+def test_cli_analyze_on_tiny_dataset(tiny_csv: str) -> None:
+    result = CLI_RUNNER.invoke(cli_app, ["analyze", tiny_csv, "--engine", "pandas"])
+    assert result.exit_code == 0
+    assert "rows ×" in result.output
+
+
+def test_cli_profile_on_tiny_dataset(tiny_csv: str) -> None:
+    result = CLI_RUNNER.invoke(cli_app, ["profile", tiny_csv, "--engine", "pandas"])
+    assert result.exit_code == 0
+    assert "rows ×" in result.output
+
+
+def test_cli_validate_on_tiny_dataset(tiny_csv: str) -> None:
+    result = CLI_RUNNER.invoke(cli_app, ["validate", tiny_csv, "--engine", "pandas"])
+    assert result.exit_code == 0
+    assert "Validation" in result.output
+
+
+def test_cli_report_writes_output_file(tiny_csv: str, tmp_path) -> None:
+    output = tmp_path / "report.md"
+    result = CLI_RUNNER.invoke(
+        cli_app, ["report", tiny_csv, "--engine", "pandas", "--output", str(output)]
+    )
+    assert result.exit_code == 0
+    assert output.is_file()
+    assert output.read_text(encoding="utf-8").startswith("#")
+
+
+def test_cli_command_missing_file_exits_nonzero(tmp_path_factory) -> None:
+    missing = tmp_path_factory.mktemp("cli_missing2") / "nope.csv"
+    result = CLI_RUNNER.invoke(cli_app, ["analyze", str(missing)])
     assert result.exit_code == 1
