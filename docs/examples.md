@@ -195,63 +195,6 @@ print(ml.report())
 
 ---
 
-## REST API Usage
-
-### Start the Server
-
-```bash
-pip install phronesisml[api]
-uvicorn phronesisml.interfaces.api.app:app --host 0.0.0.0 --port 8000
-```
-
-### cURL Examples
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Analyze a dataset
-curl -X POST http://localhost:8000/analyze \
-  -F "file=@data.csv" \
-  -F "engine=pandas"
-
-# Full training
-curl -X POST http://localhost:8000/train \
-  -F "file=@customers.csv" \
-  -F "engine=polars" \
-  -F "null_strategy=fill"
-
-# Check job status
-curl http://localhost:8000/jobs/{job_id}
-```
-
-### Python Requests
-
-```python
-import requests
-
-# Analyze
-with open("data.csv", "rb") as f:
-    response = requests.post(
-        "http://localhost:8000/analyze",
-        files={"file": f},
-        data={"engine": "polars"},
-    )
-print(response.json())
-
-# Train
-with open("data.csv", "rb") as f:
-    response = requests.post(
-        "http://localhost:8000/train",
-        files={"file": f},
-        data={"null_strategy": "fill"},
-    )
-result = response.json()
-print(f"Job ID: {result['data']['job_id']}")
-```
-
----
-
 ## CLI Usage
 
 ### Basic Commands
@@ -271,17 +214,6 @@ phronesisml run data.csv -v
 
 # Show version info
 phronesisml info
-```
-
-### Docker
-
-```bash
-# Pull and run
-docker run -p 8000:8000 ghcr.io/kartik00052/phronesisml:v0.2.2
-
-# With volume mount for data
-docker run -p 8000:8000 -v $(pwd)/data:/app/data \
-  ghcr.io/kartik00052/phronesisml:v0.2.1
 ```
 
 ---

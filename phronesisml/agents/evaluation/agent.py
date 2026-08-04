@@ -69,7 +69,11 @@ class EvaluationAgent:
         task_type = getattr(state, "task_type", None)
 
         best_pipeline = getattr(state, "best_pipeline", None)
-        best_params = best_pipeline.get("params", {}) if best_pipeline else {}
+        # Prefer "best_params"; fall back to legacy "params" during the
+        # deprecation window (BUG-04 fix).
+        best_params: dict[str, Any] = {}
+        if best_pipeline:
+            best_params = best_pipeline.get("best_params") or best_pipeline.get("params", {})
 
         target_detection_confidence = getattr(state, "target_detection_confidence", None)
         ambiguity_reason = getattr(state, "ambiguity_reason", None)

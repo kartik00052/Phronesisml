@@ -16,7 +16,8 @@ Heuristic pipeline (applied in order):
      classification target.
    - Numeric column with 2–5 unique values → ambiguous between
      classification and regression.  **Must not be silently guessed.**
-   - Numeric column with >50 unique values → likely regression target.
+   - Numeric column with more than ``MAX_CLASSIFICATION_UNIQUE_VALUES``
+     (20) unique values → likely regression target.
 3. **Ambiguity handling**: when a column falls into the ambiguous zone
    (2–5 unique values and numeric), a confidence score below
    ``AMBIGUITY_THRESHOLD`` (0.6) is returned along with a human-readable
@@ -37,6 +38,7 @@ import re
 from typing import Any
 
 from phronesisml.engines.base_engine import BaseEngine
+from phronesisml.ml.automl.auto_selector import MAX_CLASSIFICATION_UNIQUE_VALUES
 from phronesisml.utils.dtypes import NUMERIC_DTYPES
 
 logger = logging.getLogger(__name__)
@@ -309,7 +311,7 @@ def _score_column(
             f"or regression. Manual review recommended."
         )
         signals.append("numeric_low_cardinality_ambiguous")
-    elif is_numeric and n_unique > 50:
+    elif is_numeric and n_unique > MAX_CLASSIFICATION_UNIQUE_VALUES:
         # High-cardinality numeric: likely regression
         confidence += 0.5
         task_type = "regression"
@@ -534,7 +536,7 @@ def validate_target_safety(
         "warnings": warnings,
         "blockers": blockers,
         "estimated_memory_mb": estimated_memory_mb,
-        "n_rows": n_rows,
-        "n_cols": n_cols,
+        "row_count": n_rows,
+        "column_count": n_cols,
         "estimated_new_cols": estimated_new_cols,
     }

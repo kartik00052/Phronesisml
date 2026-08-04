@@ -1,7 +1,7 @@
 """Minimal configuration for Phronesis.
 
-Uses Pydantic ``BaseSettings`` so that values can be overridden via
-environment variables or constructor arguments.  This is the minimal
+Values are declared as Pydantic ``BaseModel`` fields so they can be
+overridden via constructor arguments.  This is the minimal
 configuration needed to make the Upload → ETL vertical slice runnable.
 Full configuration infrastructure is deferred to a later pass.
 """
@@ -13,12 +13,29 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 __all__ = [
+    "PANDAS_MAX_BYTES",
+    "DEFAULT_MAX_MEMORY_BYTES",
+    "DEFAULT_MAX_FILE_SIZE_BYTES",
     "PhronesisConfig",
     "DataConfig",
     "EngineConfig",
     "FeatureSelectionConfig",
     "SamplingConfig",
 ]
+
+# ── Canonical byte-limit defaults ──────────────────────────────────
+# Single source of truth for engine-routing and upload thresholds,
+# shared by ``engines.recommend``, ``engines.engine_selector``, and
+# ``agents.upload`` so they cannot drift apart.
+
+# Below this in-memory footprint, Pandas is preferred.
+PANDAS_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+
+# Default boundary above which Spark is preferred over in-process engines.
+DEFAULT_MAX_MEMORY_BYTES = 500 * 1024 * 1024  # 500 MB
+
+# Default maximum file size accepted by the upload agent.
+DEFAULT_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024  # 2 GB
 
 
 class EngineConfig(BaseModel):
@@ -45,13 +62,13 @@ class DataConfig(BaseModel):
         ),
     )
     max_memory_bytes: int = Field(
-        default=500 * 1024 * 1024,  # 500 MB
+        default=DEFAULT_MAX_MEMORY_BYTES,  # 500 MB
         description=(
             "Memory threshold (bytes) above which Spark is preferred over in-process engines."
         ),
     )
     max_file_size_bytes: int = Field(
-        default=2 * 1024 * 1024 * 1024,  # 2 GB
+        default=DEFAULT_MAX_FILE_SIZE_BYTES,  # 2 GB
         description=(
             "Maximum file size (bytes) allowed for upload. "
             "Files exceeding this limit are rejected before loading."
@@ -91,6 +108,15 @@ class FeatureSelectionConfig(BaseModel):
         description=(
             "Minimum number of features to retain.  Prevents feature "
             "selection from dropping ALL features on small datasets."
+        ),
+    )
+    include_outlier_flag: bool = Field(
+        default=False,
+        description=(
+            "Expose the IQR outlier indicator as a feature column "
+            "named ``outlier_flag``.  Default ``False``: the flag is "
+            "recorded as metadata only and never leaks into the trained "
+            "model (BUG-01 fix)."
         ),
     )
 

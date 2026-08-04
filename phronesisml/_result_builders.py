@@ -174,7 +174,8 @@ def build_model_result(ml: Any) -> ModelResult:
         best_model_type=bp.get("model_type", "unknown"),
         best_score=bp.get("score", 0.0),
         candidates=state.candidate_models or [],
-        best_params=bp.get("best_params", {}),
+        # Prefer "best_params"; fall back to legacy "params" (BUG-04 fix).
+        best_params=bp.get("best_params") or bp.get("params", {}),
         truncated=bp.get("truncated", False),
         trials_used=bp.get("trials_used", 0),
         task_type=state.task_type,
@@ -193,6 +194,8 @@ def build_explain_result(ml: Any) -> ExplainResult:
         explainer_type=er.get("explainer_type", "none"),
         sampled=er.get("sampled", False),
         n_samples_used=er.get("n_samples_used", 0),
+        n_features_used=er.get("n_features_used", 0),
+        max_samples=er.get("max_samples", 0),
     )
 
 
@@ -205,7 +208,8 @@ def build_train_result(ml: Any) -> TrainResult:
         best_model_type=bp.get("model_type", "unknown"),
         best_score=bp.get("score", 0.0),
         candidates=state.candidate_models or [],
-        best_params=bp.get("best_params", {}),
+        # Prefer "best_params"; fall back to legacy "params" (BUG-04 fix).
+        best_params=bp.get("best_params") or bp.get("params", {}),
         task_type=state.task_type,
         feature_importance=er.get("feature_importance", {}),
         explainer_type=er.get("explainer_type", "none"),

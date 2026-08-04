@@ -124,41 +124,6 @@ phronesisml run data.csv --engine spark
 
 ---
 
-## Running via Docker
-
-```bash
-docker run -p 8000:8000 ghcr.io/kartik00052/phronesisml:v0.2.2
-```
-
-This starts the **REST API server**, not the CLI. The CLI runs locally.
-
-### Docker with Volume Mount
-
-```bash
-docker run -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  ghcr.io/kartik00052/phronesisml:v0.2.1
-```
-
-### Docker Compose
-
-```yaml
-services:
-  phronesisml:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - PHRONESISML_ENGINE=polars
-    restart: unless-stopped
-```
-
-```bash
-docker compose up
-```
-
----
-
 ## Exit Codes
 
 | Code | Meaning |
@@ -216,7 +181,7 @@ pip install phronesisml[cli]
 
 ### `Click requires a unicode text terminal`
 
-This happens in non-interactive environments (CI, Docker). Use the Python SDK instead:
+This happens in non-interactive environments (CI). Use the Python SDK instead:
 
 ```python
 from phronesisml import Phronesis
@@ -234,4 +199,3 @@ The first `run()` call compiles the LangGraph graph (~0.5s overhead). Subsequent
 
 - [Simple API](simple-api.md) — One-liner Python functions
 - [Advanced API](advanced-api.md) — Full pipeline control
-- [REST API](rest-api.md) — HTTP endpoints

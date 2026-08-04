@@ -1,4 +1,4 @@
-.PHONY: lint format typecheck test check clean build docker
+.PHONY: lint format typecheck test check build clean
 
 lint:
 	python -m ruff check phronesisml/ tests/ --no-fix
@@ -18,10 +18,6 @@ check: lint typecheck test
 
 build:
 	python -m build
-
-docker:
-	docker build -t phronesisml:latest .
-	docker run -d --name phronesisml -p 8000:8000 phronesisml:latest
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

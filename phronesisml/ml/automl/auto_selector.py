@@ -17,11 +17,70 @@ Scalability:
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
+import pandas as pd
+
 logger = logging.getLogger(__name__)
+
+# Numeric targets with more than this many unique values are treated as
+# regression, never classification or ambiguous.  Single source of truth
+# shared by target detection, model selection, training, and evaluation —
+# this exact boundary was the source of BUG-02 drift; do not reintroduce
+# per-module copies.
+MAX_CLASSIFICATION_UNIQUE_VALUES = 20
+
+
+def resolve_task_class(target_values: Any, task_type: str) -> str:
+    """Resolve an ``ambiguous`` task type to a concrete task class.
+
+    Explicit ``task_type`` values pass through unchanged.  For
+    ``"ambiguous"``, the actual target values decide the class:
+
+    - Non-numeric targets are treated as classification.
+    - Numeric targets with more than ``MAX_CLASSIFICATION_UNIQUE_VALUES``
+      unique values are regression.
+    - Numeric targets within the cardinality window with non-integral
+      values are regression (continuous).
+    - Everything else is treated as classification.
+
+    This is the selector-side rule (BUG-02 fix) that keeps the candidate
+    pool, the scoring metric, and evaluation consistent for continuous
+    targets.
+
+    Args:
+        target_values: Array-like of target values (e.g. a pandas Series).
+        task_type: Recorded task type from Target Detection.
+
+    Returns:
+        ``"classification"``, ``"regression"``, or the original value of
+        ``task_type`` if it was not ``"ambiguous"``.
+
+    """
+    if task_type != "ambiguous":
+        return task_type
+
+    try:
+        target_series = pd.Series(target_values)
+    except Exception:
+        return "classification"
+
+    if not pd.api.types.is_numeric_dtype(target_series):
+        return "classification"
+
+    unique_target = np.unique(target_series.dropna().to_numpy())
+    if len(unique_target) > MAX_CLASSIFICATION_UNIQUE_VALUES:
+        return "regression"
+
+    with contextlib.suppress(ValueError, TypeError):
+        if not np.all(unique_target == unique_target.astype(int)):
+            return "regression"
+
+    return "classification"
 
 
 @dataclass(frozen=True)
@@ -292,6 +351,53 @@ def candidate_to_dict(candidate: CandidateModel) -> dict[str, Any]:
         "estimator_path": candidate.estimator_path,
         "param_space": candidate.param_space,
         "tags": candidate.tags,
+    }
+
+
+def build_recommendation_report(
+    df: pd.DataFrame,
+    task_type: str,
+    target_column: str | None = None,
+) -> dict[str, Any]:
+    """Produce a JSON-able model recommendation report from a DataFrame.
+
+    Engine-light wrapper over ``recommend_models`` that derives dataset
+    characteristics (rows, feature counts) directly from the DataFrame
+    and serialises the ranked candidates.
+
+    Args:
+        df: Engineered feature DataFrame (engine-light pandas).
+        task_type: ``"classification"``, ``"regression"``, ``"clustering"``,
+            ``"anomaly_detection"``, or ``"ambiguous"``.
+        target_column: Target column to exclude from the feature count.
+
+    Returns:
+        A dict with ``task_type``, ``n_rows``, ``n_features``,
+        ``n_numeric_features``, ``n_categorical_features``, ``cost``
+        (low/medium/high), and ``candidates`` (list of serialized
+        ``CandidateModel`` dicts).
+    """
+    feature_cols = [c for c in df.columns if c != target_column]
+    numeric_features = [c for c in feature_cols if pd.api.types.is_numeric_dtype(df[c])]
+    categorical_features = [c for c in feature_cols if c not in numeric_features]
+
+    candidates = recommend_models(
+        task_type=task_type,
+        n_rows=int(df.shape[0]),
+        n_features=len(feature_cols),
+        n_numeric_features=len(numeric_features),
+        n_categorical_features=len(categorical_features),
+    )
+
+    return {
+        "task_type": task_type,
+        "target_column": target_column,
+        "n_rows": int(df.shape[0]),
+        "n_features": len(feature_cols),
+        "n_numeric_features": len(numeric_features),
+        "n_categorical_features": len(categorical_features),
+        "cost": estimate_training_cost(int(df.shape[0]), len(feature_cols), candidates),
+        "candidates": [candidate_to_dict(c) for c in candidates],
     }
 
 

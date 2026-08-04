@@ -146,7 +146,7 @@ result.candidates          # list[dict] (all evaluated models)
 
 ## Async Variants
 
-Every function has an `_async` variant for use inside FastAPI or Jupyter async mode:
+Every function has an `_async` variant for use inside a running async context (e.g. Jupyter async cells, your own asyncio app):
 
 ```python
 from phronesisml import analyze_async, train_async
@@ -157,7 +157,7 @@ result = await train_async("data.csv")
 ```
 
 !!! warning
-    The sync functions use `asyncio.run()` internally. Do not call them from inside a running event loop (FastAPI handlers, Jupyter async cells). Use the `_async` variants instead.
+    The sync functions use `asyncio.run()` internally. Do not call them from inside a running event loop (Jupyter async cells). Use the `_async` variants instead.
 
 ---
 

@@ -184,36 +184,7 @@ A plugin system is on the roadmap but not yet implemented.
 
 ---
 
-## 6. Why In-Memory Job Store?
-
-### The Problem
-
-The REST API needs to track background jobs (training takes time). We needed a simple way to store job status and results.
-
-### Fallbacks Considered
-
-| Approach | Why It Was Deferred |
-|----------|---------------------|
-| **SQLite/PostgreSQL** | Adds dependency, deployment complexity |
-| **Redis** | Another service to run, overkill for alpha |
-| **Celery/RQ** | Heavy for a lightweight SDK |
-
-### The Decision: In-Memory Dictionary
-
-```python
-class JobStore:
-    _jobs: dict[str, JobInfo] = {}  # Lost on server restart
-```
-
-Jobs are tracked in-memory with a simple dict. This is fine for development, prototyping, and small-scale deployments.
-
-### Known Limitation
-
-Jobs are lost on server restart. A database-backed store is planned for production use.
-
----
-
-## 7. Why SHAP for Explainability?
+## 6. Why SHAP for Explainability?
 
 ### The Problem
 
@@ -243,7 +214,7 @@ SHAP is included as a core dependency (`shap>=0.43,<1.0`). The explainability ag
 
 ---
 
-## 8. Why Pydantic for Workflow State?
+## 7. Why Pydantic for Workflow State?
 
 ### The Problem
 

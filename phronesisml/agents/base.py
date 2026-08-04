@@ -112,7 +112,7 @@ class _StubAgent:
     """Minimal stub that satisfies ``BaseAgent`` for agents not yet implemented.
 
     This is used only during the initial skeleton pass to validate that
-    the protocol works structurally across all 15 agent directories.
+    the protocol works structurally across all 11 agent directories.
     It will be replaced by real implementations in subsequent passes.
     """
 

@@ -16,8 +16,8 @@ Distinction from ETL cleaning (``data.transformers.cleaning``):
   2. Encodes categoricals *excluding* the target column (the target
      must not be transformed by feature engineering).
   3. Scales numeric features (again excluding the target).
-  4. Detects and flags outliers (flag by default, drop only if
-     explicitly configured).
+   4. Detects and flags outliers (metadata by default; only included as
+      a feature when ``include_outlier_flag=True``).
   5. Selects features via variance threshold and correlation-with-target
      (for supervised cases).
 
@@ -56,6 +56,7 @@ def engineer_features(
     scale_numeric: bool = True,
     detect_outliers: bool = True,
     drop_outlier_rows: bool = False,
+    include_outlier_flag: bool = False,
     select_features: bool = True,
     min_features: int = 1,
     variance_threshold: float = _VARIANCE_THRESHOLD,
@@ -76,6 +77,12 @@ def engineer_features(
         detect_outliers: Whether to flag outlier rows.
         drop_outlier_rows: If ``True``, drop outlier rows instead of
             flagging them.  Default ``False`` (flag only).
+        include_outlier_flag: If ``True``, expose the IQR outlier flag
+            as a feature column named ``outlier_flag``.  Default
+            ``False`` — the flag is recorded as metadata in the log
+            entry only and is NOT part of ``feature_cols``.  This
+            prevents a derived column from silently leaking into the
+            trained model (BUG-01 fix).
         select_features: Whether to apply variance-threshold and
             correlation-based feature selection.
         min_features: Minimum number of features to retain.  Prevents
@@ -95,7 +102,11 @@ def engineer_features(
     columns = engine.columns(df)
 
     transform_log: list[dict[str, Any]] = []
-    result = collected  # work in-place — collected is already a fresh DataFrame from engine
+    # Defensive copy: engine.cached_collect() may return a cached frame
+    # that aliases upstream state (e.g. state.validated_data).  Every
+    # transform below mutates the frame in place — work on a copy so
+    # caller data is never modified (BUG-01 fix).
+    result = collected.copy()
 
     # Determine feature columns (exclude target)
     feature_cols = [c for c in columns if c != target_column]
@@ -127,6 +138,7 @@ def engineer_features(
             result,
             numeric_cols,
             drop_outlier_rows,
+            include_outlier_flag,
         )
         transform_log.append(outlier_log)
 
@@ -247,14 +259,23 @@ def _detect_outliers(
     df: Any,
     numeric_cols: list[str],
     drop: bool,
+    include_outlier_flag: bool,
 ) -> tuple[Any, dict[str, Any]]:
     """Flag (or drop) rows with outliers based on IQR.
 
     Outliers are defined as values outside
     ``[Q1 - 1.5*IQR, Q3 + 1.5*IQR]`` for any numeric column.
+
+    The outlier indicator is metadata by default: it is only added as a
+    feature column when ``include_outlier_flag`` is ``True`` (BUG-01 fix).
     """
     if not numeric_cols:
-        return df, {"action": "detect_outliers", "outliers_flagged": 0, "rows_dropped": 0}
+        return df, {
+            "action": "detect_outliers",
+            "outliers_flagged": 0,
+            "rows_dropped": 0,
+            "outlier_flag_included": False,
+        }
 
     outlier_mask = df[numeric_cols].apply(_is_outlier_iqr)
     outlier_rows = outlier_mask.any(axis=1)
@@ -267,10 +288,11 @@ def _detect_outliers(
             "method": "iqr",
             "outliers_detected": n_outliers,
             "rows_dropped": n_outliers,
+            "outlier_flag_included": False,
         }
 
-    # Flag outliers
-    if n_outliers > 0:
+    # Flag outliers — only as a feature when explicitly requested
+    if n_outliers > 0 and include_outlier_flag:
         df["outlier_flag"] = outlier_rows.astype(int)
 
     return df, {
@@ -278,6 +300,7 @@ def _detect_outliers(
         "method": "iqr",
         "outliers_detected": n_outliers,
         "rows_dropped": 0,
+        "outlier_flag_included": include_outlier_flag,
     }
 
 

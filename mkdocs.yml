@@ -72,7 +72,6 @@ nav:
     - Incremental Usage: guides/incremental.md
     - Simple API: guides/simple-api.md
     - Advanced API: guides/advanced-api.md
-    - REST API: guides/rest-api.md
     - CLI: guides/cli.md
   - Examples: examples.md
   - API Reference: api.md

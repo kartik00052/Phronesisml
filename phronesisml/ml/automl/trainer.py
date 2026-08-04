@@ -2,8 +2,10 @@
 
 Trains each candidate model from ``auto_selector`` using a train/test
 split and optional grid search over the candidate's parameter space.
-All HPO is enforced to respect ``max_trials`` and ``max_time_seconds``
-— the search cannot run unbounded under any code path.
+HPO respects ``max_trials`` as a hard ceiling and ``max_time_seconds``
+as a soft ceiling — a single running trial cannot be interrupted, so a
+long ``fit()`` may overshoot the time budget by up to that trial's
+duration (ISSUE-07).
 
 Design:
 - ``train_models()`` is the single entry point.  It iterates over
@@ -13,12 +15,20 @@ Design:
   evaluated across ALL candidates (not per-candidate).  This is a
   hard ceiling — once exhausted, remaining candidates are skipped.
 - ``max_time_seconds`` caps total wall-clock time.  A monotonic clock
-  is checked before each trial; if exceeded, the search stops and the
-  best result found so far is returned with ``truncated=True``.
+  is checked before each trial; once the deadline has passed, no
+  further trials are started and the best result found so far is
+  returned with ``truncated=True``.  Because a started trial runs to
+  completion, ``time_elapsed`` may exceed the budget by at most the
+  duration of the longest single trial.
 - All data operations use ``engine.collect()`` to materialise DataFrames.
   sklearn model imports are allowed per the established convention.
 - The train/test split is stratified for classification and random
   for regression, using ``task_type`` from Target Detection.
+- ``ambiguous`` tasks are resolved to a concrete task class from the
+  actual target values (see ``resolve_task_class``), and every candidate
+  is scored on the SAME task-appropriate metric (accuracy for
+  classification, R² for regression) so classifier and regressor scores
+  are never compared directly (BUG-02 fix).
 
 Scalability:
 - For very large datasets, the train/test split holds in memory (pandas).
@@ -39,7 +49,10 @@ import pandas as pd
 
 from phronesisml.engines.base_engine import BaseEngine
 from phronesisml.exceptions import AgentError
-from phronesisml.ml.automl.auto_selector import CandidateModel
+from phronesisml.ml.automl.auto_selector import (
+    CandidateModel,
+    resolve_task_class,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -138,14 +151,42 @@ def train_models(
 
     n_rows, n_features = features.shape
 
+    # ── Resolve ambiguous tasks to a concrete class ──────────────────
+    # The candidate pool and scoring metric must be consistent with the
+    # actual target values (BUG-02 fix).  Explicit task types pass
+    # through unchanged.
+    task_class = resolve_task_class(df[target_column], task_type)
+
+    # Drop candidates that cannot possibly handle the resolved task —
+    # a regressor scored with accuracy (or a classifier with R²) yields
+    # meaningless NaN scores and corrupts the comparison (BUG-02 fix).
+    candidates = [
+        candidate for candidate in candidates if _candidate_matches_task(candidate, task_class)
+    ]
+    if not candidates:
+        raise AgentError(
+            f"No candidates remain for resolved task class '{task_class}'. "
+            "Check the recommended candidate pool."
+        )
+
     # ── Adaptive resource bounds ─────────────────────────────────────
     if max_trials is None:
         max_trials = _adaptive_max_trials(n_rows, n_features)
     if max_time_seconds is None:
         max_time_seconds = _adaptive_max_time(n_rows, n_features)
 
+    # A non-positive time budget is a configuration error, never a
+    # silently-truncated search (ISSUE-07).
+    if max_time_seconds <= 0:
+        raise AgentError(
+            f"max_time_seconds must be a positive number of seconds; got {max_time_seconds}."
+        )
+    if max_trials <= 0:
+        raise AgentError(f"max_trials must be positive; got {max_trials}.")
+
     logger.info(
-        "HPO config: max_trials=%d, max_time_seconds=%d (n_rows=%d, n_features=%d)",
+        "HPO config: task_class=%s, max_trials=%d, max_time_seconds=%d (n_rows=%d, n_features=%d)",
+        task_class,
         max_trials,
         max_time_seconds,
         n_rows,
@@ -163,7 +204,7 @@ def train_models(
         features_train, features_test, target_train, target_test = _split_data(
             features,
             target,
-            task_type,
+            task_class,
             test_size,
             random_state,
         )
@@ -240,14 +281,30 @@ def train_models(
                         features_train,
                         target_train,
                         cv=cv,
-                        scoring="accuracy" if task_type == "classification" else "r2",
+                        scoring="accuracy" if task_class == "classification" else "r2",
                     )
                     score = float(cv_scores.mean())
                 else:
                     model.fit(features_train, target_train)
-                    score = model.score(features_test, target_test)
+                    # Score every candidate on the SAME, task-appropriate
+                    # metric — never compare classifier accuracy against
+                    # regressor R² (BUG-02 fix).
+                    predictions = model.predict(features_test)
+                    if task_class == "classification":
+                        from sklearn.metrics import accuracy_score
+
+                        score = float(accuracy_score(target_test, predictions))
+                    else:
+                        from sklearn.metrics import r2_score
+
+                        score = float(r2_score(target_test, predictions))
 
                 trials_used += 1
+
+                # Guard against NaN/inf scores leaking into results
+                # (e.g. a cross_val_score that silently returned NaN).
+                if not np.isfinite(score):
+                    raise ValueError(f"non-finite score: {score}")
 
                 result_entry = {
                     "candidate": candidate.name,
@@ -315,13 +372,14 @@ def train_models(
         "time_elapsed": float(elapsed),
         "truncated": truncated,
         "feature_names": feature_cols,
+        "task_class": task_class,
     }
 
 
 def _split_data(
     features: np.ndarray[Any, Any],
     target: np.ndarray[Any, Any],
-    task_type: str,
+    task_class: str,
     test_size: float,
     random_state: int,
 ) -> tuple[
@@ -337,7 +395,7 @@ def _split_data(
     """
     from sklearn.model_selection import train_test_split
 
-    stratify = target if task_type == "classification" else None
+    stratify = target if task_class == "classification" else None
     result: tuple[
         np.ndarray[Any, Any],
         np.ndarray[Any, Any],
@@ -358,6 +416,33 @@ def _import_estimator(estimator_path: str) -> type[Any]:
     module_path, class_name = estimator_path.rsplit(".", 1)
     module = importlib.import_module(module_path)
     return getattr(module, class_name)  # type: ignore[no-any-return]
+
+
+def _candidate_matches_task(candidate: CandidateModel, task_class: str) -> bool:
+    """Return True if the candidate's estimator fits the resolved task class.
+
+    Inspects the actual sklearn estimator (not tags) so classification and
+    regression pools stay consistent with the resolved task class (BUG-02).
+    If the estimator cannot be imported or introspected, it is kept and the
+    main loop skips it with a warning if it fails to fit.
+    """
+    if task_class not in ("classification", "regression"):
+        return True
+
+    try:
+        model_class = _import_estimator(candidate.estimator_path)
+        probe = model_class()
+    except (ImportError, ModuleNotFoundError, TypeError):
+        return True
+
+    from sklearn.base import is_classifier, is_regressor
+
+    try:
+        if task_class == "classification":
+            return bool(is_classifier(probe))
+        return bool(is_regressor(probe))
+    except TypeError:
+        return True
 
 
 def _build_param_grid(

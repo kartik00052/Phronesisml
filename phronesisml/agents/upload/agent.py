@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from phronesisml.agents.base import AgentResult, Tool
+from phronesisml.configs.settings import DEFAULT_MAX_FILE_SIZE_BYTES
 from phronesisml.data.loaders.file_loader import (
     _EXCEL_EXTENSIONS,
     detect_format,
@@ -34,9 +35,6 @@ from phronesisml.engines.base_engine import BaseEngine
 from phronesisml.exceptions import DataLoadError
 
 logger = logging.getLogger(__name__)
-
-# Default max file size: 2 GB — avoids constructing PhronesisConfig just to read this.
-_DEFAULT_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024
 
 
 class UploadAgent:
@@ -66,7 +64,7 @@ class UploadAgent:
             # Size guard: reject files exceeding the configured limit.
             max_bytes = getattr(state, "max_file_size_bytes", None)
             if max_bytes is None:
-                max_bytes = _DEFAULT_MAX_FILE_SIZE_BYTES
+                max_bytes = DEFAULT_MAX_FILE_SIZE_BYTES
             if os.path.exists(data_path):
                 file_size = os.path.getsize(data_path)
                 if file_size > max_bytes:

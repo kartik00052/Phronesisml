@@ -35,6 +35,7 @@ from typing import Any
 
 from langgraph.graph import END, StateGraph
 
+from phronesisml._stages import _FULL_PIPELINE_STAGES
 from phronesisml.agents.base import BaseAgent
 from phronesisml.exceptions import ConfigurationError
 from phronesisml.workflow.nodes import make_node
@@ -55,21 +56,10 @@ from phronesisml.workflow.state import WorkflowState
 logger = logging.getLogger(__name__)
 
 # Canonical pipeline order — stages must appear in this sequence.
+# Single source: ``phronesisml._stages._FULL_PIPELINE_STAGES``.
 # Target detection must run before feature engineering (FE needs to
 # know which column is the target to exclude it from transforms).
-PIPELINE_ORDER: list[str] = [
-    "upload",
-    "etl",
-    "validation",
-    "eda",
-    "target_detection",
-    "feature_engineering",
-    "model_selection",
-    "evaluation",
-    "explainability",
-    "reporting",
-    "storage",
-]
+PIPELINE_ORDER: list[str] = list(_FULL_PIPELINE_STAGES)
 
 # Stages that should be preceded by a sampling node.
 # Sampling occurs BEFORE these expensive stages to prevent OOM.

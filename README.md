@@ -86,7 +86,7 @@
 
 > **In short:** PhronesisML recommends; it does not obscure. Every stage of the pipeline is a discrete, testable, reusable unit of code operating on a shared, typed `WorkflowState`.
 
-PhronesisML is **SDK-first** — the CLI, the FastAPI service, and any future GUI are thin clients built on the same SDK a data scientist would `import` directly. There is exactly **one source of truth** for ML logic.
+PhronesisML is an **SDK-first and CLI-first offline Machine Learning Engineering SDK**. The Python SDK — and the CLI built on it — are the canonical interfaces; any future GUI would be a thin client over the same SDK a data scientist would `import` directly. There is exactly **one source of truth** for ML logic.
 
 ---
 
@@ -142,7 +142,6 @@ PhronesisML is built around five commitments that shape every design decision in
 | **Model Recommendation** | Rule- and metric-driven suggestion of candidate model families | ✅ |
 | **Explainability** | Post-training feature importance and model-behavior summaries | ✅ |
 | **Reporting** | Structured, versionable output artifacts for every stage | ✅ |
-| **FastAPI Interface** | REST API with file upload, background jobs, OpenAPI docs | ✅ |
 | **Offline-First** | Core pipeline stages run without network access | ✅ |
 | **SDK-First** | Every interface is a client of the SDK | ✅ |
 | **Plugin System** | Extension points for custom agents, models, engines, storage | 🔜 Planned |
@@ -195,30 +194,28 @@ graph TD
 
 ```mermaid
 graph TD
-    A["1. Dataset Upload"] --> B["2. Validation"]
-    B --> C["3. Profiling"]
-    C --> D["4. ETL"]
-    D --> E["5. EDA"]
+    A["1. Dataset Upload"] --> B["2. ETL / Cleaning"]
+    B --> C["3. Validation"]
+    C --> D["4. EDA & Profiling"]
+    D --> E["5. Target Detection"]
     E --> F["6. Feature Engineering"]
-    F --> G["7. Target Detection"]
-    G --> H["8. Model Recommendation"]
-    H --> I["9. Training"]
-    I --> J["10. Evaluation"]
-    J --> K["11. Explainability"]
-    K --> L["12. Reporting"]
+    F --> G["7. Model Recommendation & Training"]
+    G --> H["8. Evaluation"]
+    H --> I["9. Explainability"]
+    I --> J["10. Reporting"]
+    J --> K["11. Storage"]
 
     style A fill:#6366F1,color:#fff
-    style B fill:#EF4444,color:#fff
-    style C fill:#F97316,color:#fff
-    style D fill:#0EA5E9,color:#fff
-    style E fill:#F97316,color:#fff
+    style B fill:#0EA5E9,color:#fff
+    style C fill:#EF4444,color:#fff
+    style D fill:#F97316,color:#fff
+    style E fill:#EF4444,color:#fff
     style F fill:#EAB308,color:#000
-    style G fill:#EF4444,color:#fff
-    style H fill:#8B5CF6,color:#fff
-    style I fill:#8B5CF6,color:#fff
-    style J fill:#14B8A6,color:#fff
-    style K fill:#EC4899,color:#fff
-    style L fill:#06B6D4,color:#fff
+    style G fill:#8B5CF6,color:#fff
+    style H fill:#14B8A6,color:#fff
+    style I fill:#EC4899,color:#fff
+    style J fill:#06B6D4,color:#fff
+    style K fill:#10B981,color:#fff
 ```
 
 Each numbered stage is implemented as its own agent — see [Project Structure](#project-structure) for where each one lives in the codebase.
@@ -268,7 +265,7 @@ Selection is automatic by default but can always be forced explicitly — see [Q
 ![PySpark](https://img.shields.io/badge/PySpark-E25A1C?style=flat-square&logo=apachespark&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)
 ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=flat-square&logo=pydantic&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Typer](https://img.shields.io/badge/Typer-000000?style=flat-square&logo=python&logoColor=white)
 ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white)
 
 </div>
@@ -294,7 +291,7 @@ pip install phronesisml
 | Format | Supported | Dependency |
 |---|:---:|---|
 | CSV / TSV | ✅ | `pandas` (core) |
-| Excel (.xlsx) | ✅ | `openpyxl` (core) |
+| Excel (.xlsx) | ✅ | `openpyxl` (`[excel]` extra) |
 | Parquet | ✅ | `pyarrow` (core) |
 | JSON / JSONL | ✅ | `pandas` (core) |
 | Feather / Arrow | ✅ | `pyarrow` (core) |
@@ -304,13 +301,10 @@ pip install phronesisml
 | Extra | Install | What it adds |
 |---|---|---|
 | `all` | `pip install phronesisml[all]` | Everything below |
-| `api` | `pip install phronesisml[api]` | FastAPI REST endpoints |
 | `cli` | `pip install phronesisml[cli]` | CLI commands |
-| `explain` | `pip install phronesisml[explain]` | SHAP explanations |
-| `boost` | `pip install phronesisml[boost]` | XGBoost models |
+| `excel` | `pip install phronesisml[excel]` | Excel (.xlsx) support via `openpyxl` |
 | `mlflow` | `pip install phronesisml[mlflow]` | MLflow tracking |
 | `spark` | `pip install phronesisml[spark]` | PySpark engine |
-| `parquet` | `pip install phronesisml[parquet]` | Parquet support |
 | `dev` | `pip install phronesisml[dev]` | pytest, ruff, mypy |
 
 ### From source
@@ -343,13 +337,6 @@ print(ml.report())
 phronesisml run data/customers.csv
 phronesisml run data/customers.csv --engine polars
 phronesisml info
-```
-
-### FastAPI
-
-```bash
-pip install phronesisml[api]
-uvicorn phronesisml.interfaces.api.app:app --reload
 ```
 
 ---
@@ -450,13 +437,12 @@ asyncio.run(main())
 
 ## SDK Interfaces
 
-PhronesisML is **SDK-first**: the CLI and FastAPI service are thin clients that call the same SDK you `import` directly.
+PhronesisML is **SDK-first and CLI-first**: the CLI is a thin client that calls the same SDK you `import` directly.
 
 | Interface | Install | Description |
 |---|---|---|
 | **Python SDK** | `pip install phronesisml` | `from phronesisml import Phronesis` |
 | **CLI** | `pip install phronesisml[cli]` | `phronesisml run data.csv` |
-| **FastAPI** | `pip install phronesisml[api]` | `uvicorn phronesisml.interfaces.api.app:app` |
 
 ---
 
@@ -470,7 +456,7 @@ phronesisml/
   configs/             # Pydantic configuration
   data/                # Data loading, validation, profiling
   engines/             # Pandas/Polars/Spark abstraction
-  interfaces/           # CLI (Typer) + FastAPI
+  interfaces/           # CLI (Typer)
   ml/                   # Model definitions, training, metrics
   rag/                   # RAG infrastructure
   workflow/             # LangGraph workflow orchestration
@@ -507,7 +493,7 @@ PhronesisML's core pipeline — validation, profiling, ETL, EDA, feature enginee
 - [x] All 11 pipeline agents
 - [x] Pandas, Polars, PySpark engines with auto-selection
 - [x] Local filesystem storage
-- [x] CLI and FastAPI interfaces
+- [x] CLI interface
 - [x] HTML report generation
 - [x] Full test suites
 
@@ -535,7 +521,6 @@ PhronesisML's core pipeline — validation, profiling, ETL, EDA, feature enginee
 make check       # lint + typecheck + test
 make format      # auto-fix formatting
 make build        # build wheel + sdist
-make docker      # build and run Docker image
 ```
 
 New to the project? Look for issues labeled `good first issue`. Please open an issue before starting on a large change, so the design can be discussed first.
@@ -600,7 +585,6 @@ Licensed under the MIT License — see [LICENSE](LICENSE) for the full text.
 <div align="center">
 
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat-square&logo=scikitlearn&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
 ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=flat-square&logo=langchain&logoColor=white)
 ![MLflow](https://img.shields.io/badge/MLflow-0194E2?style=flat-square&logo=mlflow&logoColor=white)
 ![Polars](https://img.shields.io/badge/Polars-CD792C?style=flat-square&logo=polars&logoColor=white)

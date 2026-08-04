@@ -107,6 +107,13 @@ class ExplainabilityAgent:
         if feature_names is None:
             feature_names = [c for c in collected.columns if c != target_column]
 
+        # Defensive guard: never explain with the target column or with
+        # stale names that are absent from the collected frame (label
+        # leakage protection even if an upstream stage mislabels features).
+        feature_names = [c for c in feature_names if c in collected.columns]
+        if target_column is not None and target_column in feature_names:
+            feature_names = [c for c in feature_names if c != target_column]
+
         # ── Build feature matrix ─────────────────────────────────────
         X = collected[feature_names].values
 

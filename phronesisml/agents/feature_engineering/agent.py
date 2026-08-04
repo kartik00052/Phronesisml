@@ -93,6 +93,7 @@ class FeatureEngineeringAgent:
                 min_features=min_features,
                 variance_threshold=self._fs_config.variance_threshold,
                 correlation_threshold=self._fs_config.correlation_threshold,
+                include_outlier_flag=self._fs_config.include_outlier_flag,
             )
 
             feature_names = [c for c in self._engine.columns(features) if c != target_column]

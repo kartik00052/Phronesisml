@@ -1,6 +1,6 @@
 # Phronesis — Pinned dependency lock file
 # Generated from the installed environment. Regenerate with:
-#   pip install -e ".[dev,cli,api,excel]" && pip freeze > requirements.txt
+#   pip install -e ".[dev,cli,excel]" && pip freeze > requirements.txt
 #
 # Core
 pydantic==2.13.3

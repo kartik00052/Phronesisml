@@ -147,40 +147,6 @@ model = ml.train()  # This is where it might fail
 
 ---
 
-## API Issues
-
-### `Connection refused` when accessing REST API
-
-**Cause:** Server not running or wrong port.
-
-```bash
-# Start the server
-uvicorn phronesisml.interfaces.api.app:app --host 0.0.0.0 --port 8000
-
-# In another terminal, test
-curl http://localhost:8000/health
-```
-
-### `413 Request Entity Too Large`
-
-**Cause:** File exceeds the 2 GB upload limit.
-
-**Solution:** Split the file or use the Python SDK directly:
-
-```python
-from phronesisml import Phronesis
-ml = Phronesis("large_file.csv")
-ml.run()
-```
-
-### Jobs disappear after server restart
-
-**Known limitation:** The job store is in-memory. Jobs are lost on restart.
-
-**Workaround:** Use the Python SDK for persistent results, or implement a custom job store.
-
----
-
 ## CLI Issues
 
 ### `phronesisml: command not found`
@@ -193,7 +159,7 @@ pip install phronesisml[cli]
 
 ### `Click requires a unicode text terminal`
 
-**Cause:** Running CLI in a non-interactive environment (CI, Docker).
+**Cause:** Running CLI in a non-interactive environment (CI).
 
 **Solution:** Use the Python SDK instead:
 

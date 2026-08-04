@@ -17,7 +17,6 @@ This installs everything you need for CSV, Excel (.xlsx), Parquet, JSON, and Fea
 ### With Extras
 
 ```bash
-pip install phronesisml[api]       # FastAPI REST endpoints
 pip install phronesisml[cli]       # CLI commands
 pip install phronesisml[all]       # everything
 ```
@@ -248,45 +247,6 @@ phronesisml run data.csv --engine polars --nulls fill --verbose
 # Show version info
 phronesisml info
 ```
-
----
-
-## Using the REST API
-
-```bash
-# Install API extras
-pip install phronesisml[api]
-
-# Start the server
-uvicorn phronesisml.interfaces.api.app:app --host 0.0.0.0 --port 8000
-```
-
-Or with Docker:
-
-```bash
-docker run -p 8000:8000 ghcr.io/kartik00052/phronesisml:v0.2.2
-```
-
-### Test the API
-
-```bash
-# Health check
-curl http://localhost:8000/health
-
-# Analyze a dataset
-curl -X POST http://localhost:8000/analyze \
-  -F "file=@data.csv"
-
-# Full training
-curl -X POST http://localhost:8000/train \
-  -F "file=@data.csv" \
-  -F "engine=polars"
-```
-
-### Interactive Docs
-
-- **Swagger UI:** `http://localhost:8000/docs`
-- **ReDoc:** `http://localhost:8000/redoc`
 
 ---
 

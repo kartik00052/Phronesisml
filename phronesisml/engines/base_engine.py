@@ -7,8 +7,8 @@ transparent to the rest of the framework.
 
 Design rationale:
 - ABC over Protocol: engines have shared default behaviour (e.g.
-  ``__repr__``) and we want强制 subclassing so that every new engine
-  is audited against the full interface.
+  ``__repr__``) and we want to enforce subclassing so that every new
+  engine is audited against the full interface.
 - Polars lazy semantics as the internal standard: ``collect()`` and
   ``lazy()`` are first-class.  Engines that do not natively support
   lazy evaluation (Pandas) convert at the boundary.

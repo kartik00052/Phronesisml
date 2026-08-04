@@ -160,6 +160,8 @@ class ExplainResult:
     explainer_type: str
     sampled: bool
     n_samples_used: int
+    n_features_used: int = 0
+    max_samples: int = 0
 
 
 @dataclass(frozen=True)

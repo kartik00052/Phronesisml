@@ -10,8 +10,9 @@ Supported metric sets:
 - **Regression**: RMSE, MAE, R².
 - **Clustering**: silhouette, davies-bouldin, calinski-harabasz.
 - **Anomaly Detection**: contamination ratio, anomaly count.
-- **Ambiguous**: computes both classification and regression metrics
-  where applicable, and includes the ambiguity caveat in the report.
+- **Ambiguous**: derives the metric set from the **selected model class**
+  (classifier → classification metrics, regressor → regression metrics)
+  and includes the ambiguity caveat in the report.
 
 MLflow integration:
 - If MLflow is configured and reachable, logs experiment, params,
@@ -32,6 +33,9 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
+from phronesisml.ml.automl.auto_selector import MAX_CLASSIFICATION_UNIQUE_VALUES
+from phronesisml.ml.target_detection.detector import AMBIGUITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -113,23 +117,31 @@ def evaluate_model(
         y_pred = model.predict(features)
 
         if task_type == "classification":
-            metrics = _classification_metrics(target, y_pred)
+            y_proba = _try_predict_proba(model, features)
+            metrics = _classification_metrics(target, y_pred, y_proba)
         elif task_type == "regression":
             metrics = _regression_metrics(target, y_pred)
         elif task_type == "ambiguous":
-            unique_target = np.unique(target)
-            is_classification_like = len(unique_target) <= 20 and np.all(
-                unique_target == unique_target.astype(int)
-            )
-            if is_classification_like:
-                metrics = _classification_metrics(target, y_pred)
-                with contextlib.suppress(ValueError, TypeError):
-                    metrics.update(_regression_metrics(target, y_pred))
+            # Derive metrics from the SELECTED model class, never the
+            # target cardinality alone (BUG-02 fix): a classifier reports
+            # classification metrics, a regressor reports regression
+            # metrics — never classifier-with-regression-metrics.
+            if hasattr(model, "classes_"):
+                try:
+                    y_proba = _try_predict_proba(model, features)
+                    metrics = _classification_metrics(target, y_pred, y_proba)
+                except (ValueError, TypeError):
+                    # e.g. a classifier that was silently fit on a
+                    # continuous target — do not fabricate regression
+                    # metrics for a classifier.  Reported honestly below.
+                    metrics = {}
             else:
                 metrics = _regression_metrics(target, y_pred)
         else:
             unique_target = np.unique(target)
-            if len(unique_target) <= 20 and np.all(unique_target == unique_target.astype(int)):
+            if len(unique_target) <= MAX_CLASSIFICATION_UNIQUE_VALUES and np.all(
+                unique_target == unique_target.astype(int)
+            ):
                 metrics = _classification_metrics(target, y_pred)
             else:
                 metrics = _regression_metrics(target, y_pred)
@@ -145,12 +157,30 @@ def evaluate_model(
             f"{ambiguity_reason} "
             f"Metrics below should be interpreted with caution."
         )
-    elif target_detection_confidence is not None and target_detection_confidence < 0.6:
+    elif (
+        target_detection_confidence is not None
+        and target_detection_confidence < AMBIGUITY_THRESHOLD
+    ):
         ambiguity_caveat = (
             f"Target detection confidence is low "
             f"({target_detection_confidence:.2f}). "
             f"Metrics below should be interpreted with caution."
         )
+
+    # If an ambiguous run produced a model incompatible with the target
+    # values (e.g. a classifier on a continuous target), say so explicitly
+    # instead of returning an empty report with no explanation.
+    if task_type == "ambiguous" and not metrics:
+        mismatch_note = (
+            f"The selected model ({type(model).__name__}) is a classifier "
+            f"but the target values are not compatible with classification, "
+            f"so no metrics could be computed. Rerun with a regression "
+            f"friendly model or review the detected task type."
+        )
+        if ambiguity_caveat:
+            ambiguity_caveat = f"{ambiguity_caveat} {mismatch_note}"
+        else:
+            ambiguity_caveat = mismatch_note
 
     # ── Model info ───────────────────────────────────────────────────
     model_name = type(model).__name__ if model is not None else "unsupervised"
@@ -192,11 +222,96 @@ def evaluate_model(
     return report
 
 
+def _try_predict_proba(
+    model: Any,
+    features: np.ndarray[Any, Any],
+) -> np.ndarray[Any, Any] | None:
+    """Best-effort probability extraction for a fitted classifier.
+
+    Returns ``None`` when the model has no ``predict_proba`` (e.g. an
+    SVM without probability calibration or a regressor).
+    """
+    if not hasattr(model, "predict_proba"):
+        return None
+    try:
+        proba = model.predict_proba(features)
+    except Exception:
+        return None
+    if not hasattr(proba, "shape") or len(proba.shape) != 2 or proba.shape[1] < 2:
+        return None
+    return np.asarray(proba)
+
+
+def _curve_points(
+    y_true: np.ndarray[Any, Any],
+    y_proba: np.ndarray[Any, Any] | None,
+) -> dict[str, Any]:
+    """Compute ROC + precision-recall curve points for binary targets.
+
+    Returns a JSON-able dict with ``roc_curve`` (x=fpr, y=tpr, threshold),
+    ``precision_recall_curve`` (x=recall, y=precision, threshold) and their
+    AUCs.  All keys are ``None`` when probabilities are unavailable or the
+    target is not binary.
+    """
+    if y_proba is None:
+        return {
+            "roc_curve": None,
+            "roc_auc": None,
+            "precision_recall_curve": None,
+            "average_precision": None,
+        }
+
+    from sklearn.metrics import (
+        average_precision_score,
+        precision_recall_curve,
+        roc_auc_score,
+        roc_curve,
+    )
+
+    unique = np.unique(y_true)
+    if len(unique) != 2:
+        return {
+            "roc_curve": None,
+            "roc_auc": None,
+            "precision_recall_curve": None,
+            "average_precision": None,
+        }
+
+    pos_index = int(np.argmax(y_proba.mean(axis=0)))
+    positive = y_proba[:, pos_index]
+
+    with contextlib.suppress(ValueError, TypeError):
+        fpr, tpr, roc_thr = roc_curve(y_true, positive)
+        precision, recall, pr_thr = precision_recall_curve(y_true, positive)
+        return {
+            "roc_curve": {
+                "fpr": [float(x) for x in fpr],
+                "tpr": [float(x) for x in tpr],
+                "thresholds": [float(x) for x in roc_thr],
+            },
+            "roc_auc": float(roc_auc_score(y_true, positive)),
+            "precision_recall_curve": {
+                "precision": [float(x) for x in precision],
+                "recall": [float(x) for x in recall],
+                "thresholds": [float(x) for x in pr_thr],
+            },
+            "average_precision": float(average_precision_score(y_true, positive)),
+        }
+
+    return {
+        "roc_curve": None,
+        "roc_auc": None,
+        "precision_recall_curve": None,
+        "average_precision": None,
+    }
+
+
 def _classification_metrics(
     y_true: np.ndarray[Any, Any],
     y_pred: np.ndarray[Any, Any],
+    y_proba: np.ndarray[Any, Any] | None = None,
 ) -> dict[str, Any]:
-    """Compute classification metrics: accuracy, precision, recall, F1, ROC-AUC, CM."""
+    """Compute classification metrics: accuracy, precision, recall, F1, curves."""
     from sklearn.metrics import (
         accuracy_score,
         confusion_matrix,
@@ -211,27 +326,26 @@ def _classification_metrics(
     recall = float(recall_score(y_true, y_pred, average="macro", zero_division=0))
     f1 = float(f1_score(y_true, y_pred, average="macro", zero_division=0))
     cm = confusion_matrix(y_true, y_pred)
+    curves = _curve_points(y_true, y_proba)
 
-    # ROC-AUC: requires probability estimates or binary labels
-    with contextlib.suppress(ValueError, TypeError):
-        roc_auc = float(roc_auc_score(y_true, y_pred))
-        return {
-            "accuracy": accuracy,
-            "precision_macro": precision,
-            "recall_macro": recall,
-            "f1_macro": f1,
-            "roc_auc": roc_auc,
-            "confusion_matrix": cm.tolist(),
-        }
-
-    return {
+    result: dict[str, Any] = {
         "accuracy": accuracy,
         "precision_macro": precision,
         "recall_macro": recall,
         "f1_macro": f1,
-        "roc_auc": None,
         "confusion_matrix": cm.tolist(),
+        "roc_curve": curves["roc_curve"],
+        "roc_auc": curves["roc_auc"],
+        "precision_recall_curve": curves["precision_recall_curve"],
+        "average_precision": curves["average_precision"],
     }
+
+    # ROC-AUC fallback on hard labels when probabilities are unavailable
+    if result["roc_auc"] is None:
+        with contextlib.suppress(ValueError, TypeError):
+            result["roc_auc"] = float(roc_auc_score(y_true, y_pred))
+
+    return result
 
 
 def _regression_metrics(

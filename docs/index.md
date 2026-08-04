@@ -103,7 +103,6 @@ ml.run()
 pip install phronesisml
 
 # With extras
-pip install phronesisml[api]       # FastAPI REST endpoints
 pip install phronesisml[cli]       # CLI commands
 pip install phronesisml[all]       # everything
 ```
@@ -188,13 +187,13 @@ pip install phronesisml[all]       # everything
 
     [:octicons-arrow-right-24: Guides](guides/simple-api.md)
 
--   **:material-server:{ .lg .middle } REST API + CLI**
+-   **:material-server:{ .lg .middle } CLI**
 
     ---
 
-    FastAPI endpoints or Typer CLI — same SDK underneath.
+    Typer CLI — the same SDK underneath.
 
-    [:octicons-arrow-right-24: REST API](guides/rest-api.md)
+    [:octicons-arrow-right-24: CLI](guides/cli.md)
 
 </div>
 

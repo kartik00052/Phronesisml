@@ -31,6 +31,7 @@ import logging
 from typing import Any
 
 # Lightweight imports (always loaded)
+from phronesisml._stages import _FULL_PIPELINE_STAGES
 from phronesisml.configs.settings import PhronesisConfig, SamplingConfig
 from phronesisml.exceptions import ConfigurationError, PhronesisError, WorkflowError
 from phronesisml.results import (
@@ -74,6 +75,8 @@ __all__ = [
     "engineer_async",
     "select_model",
     "select_model_async",
+    "evaluate",
+    "evaluate_async",
     "explain",
     "explain_async",
     "report",
@@ -153,6 +156,8 @@ _LAZY_IMPORTS: dict[str, str] = {
     "report_async": "phronesisml.simple",
     "select_model": "phronesisml.simple",
     "select_model_async": "phronesisml.simple",
+    "evaluate": "phronesisml.simple",
+    "evaluate_async": "phronesisml.simple",
     "train": "phronesisml.simple",
     "train_async": "phronesisml.simple",
     "validate": "phronesisml.simple",
@@ -185,21 +190,6 @@ def _compose_agents(
     from phronesisml.agents.compose import compose_agents
 
     return compose_agents(config=config, data_path=data_path)
-
-
-_FULL_PIPELINE_STAGES: list[str] = [
-    "upload",
-    "etl",
-    "validation",
-    "eda",
-    "target_detection",
-    "feature_engineering",
-    "model_selection",
-    "evaluation",
-    "explainability",
-    "reporting",
-    "storage",
-]
 
 
 async def run_pipeline(

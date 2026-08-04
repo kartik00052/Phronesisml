@@ -13,7 +13,6 @@ PhronesisML is honest about what it does and does not support. This page lists t
 | **Time-series** | Not supported | No special handling for temporal features, forecasting, seasonal decomposition, or time-based train/test splits. | Use dedicated time-series libraries (Prophet, statsmodels). |
 | **Plugin system** | Not implemented | The `plugins/` directory and entry-points-based discovery mechanism are planned but not built. | Extend the SDK via subclassing or use the OOP API. |
 | **Storage backends** | Local only | Only local filesystem storage is implemented. S3, GCS, and Azure Blob backends are planned. | Save artifacts locally, then upload manually. |
-| **Job store** | In-memory only | FastAPI background jobs use an in-memory dictionary. Jobs are lost on server restart. | Use the Python SDK for persistent results. |
 | **Legacy Excel (.xls)** | Requires manual install | `.xls` files (pre-2007 Excel) require `pip install xlrd`. The base install only supports `.xlsx` via `openpyxl`. | Convert to `.xlsx` or install xlrd. |
 | **GPU acceleration** | Not supported | All training runs on CPU via scikit-learn. No GPU-accelerated model training (e.g., XGBoost GPU, PyTorch). | Use the trained model with a GPU-accelerated framework. |
 | **Custom models** | Not supported | Model candidates are hardcoded in the selection agent. You cannot add custom model classes without modifying the source code. | Use `train(model_type=...)` to train a specific model. |
@@ -70,7 +69,6 @@ These are planned but not yet implemented:
 - [ ] Time-series forecasting support
 - [ ] Plugin system for custom agents
 - [ ] S3/GCS/Azure Blob storage backends
-- [ ] Database-backed job store for the REST API
 - [ ] Online/streaming learning mode
 - [ ] XGBoost, LightGBM, CatBoost model candidates
 - [ ] Bayesian hyperparameter optimization
@@ -78,8 +76,6 @@ These are planned but not yet implemented:
 - [ ] Multi-output prediction
 - [ ] NLP preprocessing pipeline
 - [ ] Image feature extraction pipeline
-- [ ] Rate limiting for REST API
-- [ ] Authentication for REST API
 - [ ] WebSocket support for real-time training progress
 
 ---

@@ -69,7 +69,6 @@ from phronesisml._stages import (
     _STAGES_DETECT_TARGET,
     _STAGES_DETECT_TASK,
     _STAGES_ENGINEER,
-    _STAGES_EVALUATE,
     _STAGES_EXPLAIN,
     _STAGES_REPORT,
     _STAGES_SELECT_MODEL,
@@ -118,6 +117,7 @@ def _build_config(
     variance_threshold: float = 0.01,
     correlation_threshold: float = 0.05,
     min_features: int = 1,
+    include_outlier_flag: bool = False,
 ) -> Any:
     """Build an PhronesisConfig from flat keyword arguments."""
     from phronesisml.configs.settings import (
@@ -133,6 +133,7 @@ def _build_config(
             variance_threshold=variance_threshold,
             correlation_threshold=correlation_threshold,
             min_features=min_features,
+            include_outlier_flag=include_outlier_flag,
         ),
     )
 
@@ -460,17 +461,55 @@ async def select_model_async(
         correlation_threshold=correlation_threshold,
         min_features=min_features,
     )
-    ml = Phronesis(path, config=config)
+    overrides: dict[str, dict[str, Any]] | None = None
     if cv is not None:
-        from phronesisml.agents.model_selection.agent import ModelSelectionAgent
-
-        ml._get_agents()  # ensure agents exist
-        ml._agents["model_selection"] = ModelSelectionAgent(
-            engine=ml._eng,
-            cv=cv,
-        )
+        overrides = {"model_selection": {"cv": cv}}
+    ml = Phronesis(path, config=config, agent_overrides=overrides)
     await _run_stages_async(ml, _STAGES_SELECT_MODEL)
     return _build_model_result(ml)
+
+
+def evaluate(
+    path: str,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+) -> ModelResult:
+    """Evaluate models on a dataset (alias of :func:`select_model`).
+
+    Runs model selection and evaluation, returning the best model with
+    its metrics.  Equivalent to ``select_model`` with the same
+    arguments.
+
+    Args:
+        path: Path to a data file.
+        engine: Force a specific engine. ``None`` for auto-selection.
+        null_strategy: Null handling strategy. Default ``"drop"``.
+        variance_threshold: Drop features with variance below this.
+        correlation_threshold: Drop features with target correlation below this.
+        min_features: Minimum number of features to retain.
+        cv: Number of cross-validation folds.  If ``None`` (default),
+            uses a single train/test split.  Pass an integer ≥ 2 to
+            enable k-fold cross-validation.
+
+    Returns:
+        A ``ModelResult`` with model type, score, and metrics.
+    """
+    return _run_sync(
+        evaluate_async(
+            path,
+            engine=engine,
+            null_strategy=null_strategy,
+            variance_threshold=variance_threshold,
+            correlation_threshold=correlation_threshold,
+            min_features=min_features,
+            cv=cv,
+        )
+    )
 
 
 async def evaluate_async(
@@ -483,27 +522,20 @@ async def evaluate_async(
     min_features: int = 1,
     cv: int | None = None,
 ) -> ModelResult:
-    """Async variant of :func:`select_model` -- selects and evaluates models."""
-    from phronesisml.sdk import Phronesis
+    """Async variant of :func:`evaluate` -- selects and evaluates models.
 
-    config = _build_config(
+    Delegates to :func:`select_model_async` (identical stage set:
+    model selection plus evaluation).
+    """
+    return await select_model_async(
+        path,
         engine=engine,
         null_strategy=null_strategy,
         variance_threshold=variance_threshold,
         correlation_threshold=correlation_threshold,
         min_features=min_features,
+        cv=cv,
     )
-    ml = Phronesis(path, config=config)
-    if cv is not None:
-        from phronesisml.agents.model_selection.agent import ModelSelectionAgent
-
-        ml._get_agents()
-        ml._agents["model_selection"] = ModelSelectionAgent(
-            engine=ml._eng,
-            cv=cv,
-        )
-    await _run_stages_async(ml, _STAGES_EVALUATE)
-    return _build_model_result(ml)
 
 
 def explain(
@@ -719,16 +751,14 @@ async def train_async(
         correlation_threshold=correlation_threshold,
         min_features=min_features,
     )
-    ml = Phronesis(path, config=config)
+    overrides: dict[str, dict[str, Any]] | None = None
     if cv is not None or model_type is not None:
-        from phronesisml.agents.model_selection.agent import ModelSelectionAgent
-
-        ml._get_agents()
-        ml._agents["model_selection"] = ModelSelectionAgent(
-            engine=ml._eng,
-            cv=cv,
-            model_type=model_type,
-        )
+        overrides = {"model_selection": {}}
+        if cv is not None:
+            overrides["model_selection"]["cv"] = cv
+        if model_type is not None:
+            overrides["model_selection"]["model_type"] = model_type
+    ml = Phronesis(path, config=config, agent_overrides=overrides)
     await _run_stages_async(ml, _STAGES_TRAIN)
     return _build_train_result(ml)
 

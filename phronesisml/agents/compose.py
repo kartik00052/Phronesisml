@@ -27,6 +27,7 @@ def compose_agents(
     engine: Any | None = None,
     config: Any | None = None,
     data_path: str | None = None,
+    agent_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compose all agents via constructor injection.
 
@@ -39,9 +40,15 @@ def compose_agents(
         config: SDK configuration.  Uses defaults if ``None``.
         data_path: Path to the dataset.  Used for engine selection
             when *engine* is ``None``.
+        agent_overrides: Optional mapping of agent name → constructor
+            kwargs merged into the agent's defaults before
+            instantiation (e.g. ``{"model_selection": {"cv": 5}}``).
 
     Returns:
         Mapping of agent name → agent instance (11 agents).
+
+    Raises:
+        ValueError: If an override names an unknown agent.
 
     """
     from phronesisml.configs.settings import PhronesisConfig
@@ -68,22 +75,32 @@ def compose_agents(
     from phronesisml.agents.upload.agent import UploadAgent
     from phronesisml.agents.validation.agent import ValidationAgent
 
-    agents: dict[str, Any] = {
-        "upload": UploadAgent(engine=engine),
-        "validation": ValidationAgent(engine=engine),
-        "etl": ETLAgent(config=ETLConfig(null_strategy=config.null_strategy)),
-        "eda": EDAAgent(engine=engine),
-        "target_detection": TargetDetectionAgent(engine=engine),
-        "feature_engineering": FeatureEngineeringAgent(
-            engine=engine,
-            feature_selection_config=config.feature_selection,
+    factories: dict[str, Any] = {
+        "upload": (UploadAgent, {"engine": engine}),
+        "validation": (ValidationAgent, {"engine": engine}),
+        "etl": (ETLAgent, {"config": ETLConfig(null_strategy=config.null_strategy)}),
+        "eda": (EDAAgent, {"engine": engine}),
+        "target_detection": (TargetDetectionAgent, {"engine": engine}),
+        "feature_engineering": (
+            FeatureEngineeringAgent,
+            {"engine": engine, "feature_selection_config": config.feature_selection},
         ),
-        "model_selection": ModelSelectionAgent(engine=engine),
-        "evaluation": EvaluationAgent(engine=engine),
-        "explainability": ExplainabilityAgent(engine=engine),
-        "reporting": ReportingAgent(),
-        "storage": StorageAgent(),
+        "model_selection": (ModelSelectionAgent, {"engine": engine}),
+        "evaluation": (EvaluationAgent, {"engine": engine}),
+        "explainability": (ExplainabilityAgent, {"engine": engine}),
+        "reporting": (ReportingAgent, {}),
+        "storage": (StorageAgent, {}),
     }
+
+    overrides = agent_overrides or {}
+    unknown = set(overrides) - set(factories)
+    if unknown:
+        raise ValueError(f"Unknown agent override(s): {sorted(unknown)!r}")
+
+    agents: dict[str, Any] = {}
+    for name, (factory, kwargs) in factories.items():
+        merged = {**kwargs, **(overrides.get(name) or {})}
+        agents[name] = factory(**merged)
 
     logger.debug("Composed %d agents", len(agents))
     return agents

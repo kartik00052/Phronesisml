@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-08-05T00:00:00Z",
+  "current_version": "0.2.2",
+  "phase": 1,
+  "git": {
+    "branch": "main",
+    "commit": "835d036",
+    "dirty": true,
+    "dirty_files": 99
+  },
+  "completed_roadmap_items": [
+    {
+      "id": "BUG-01",
+      "title": "Feature engineering mutates upstream state + outlier_flag leaks into features",
+      "status": "in_working_tree",
+      "notes": "engineer_features() defensively copies; outlier_flag is metadata-only by default, opt-in via FeatureSelectionConfig.include_outlier_flag. Regression tests in tests/test_regressions.py."
+    },
+    {
+      "id": "BUG-02",
+      "title": "Ambiguous-task contract broken: classifier on continuous target with regression metrics",
+      "status": "in_working_tree",
+      "notes": "resolve_task_class() + MAX_CLASSIFICATION_UNIQUE_VALUES=20 live in auto_selector.py as single source of truth; trainer filters candidates by resolved task class via is_classifier/is_regressor and guards non-finite scores; metrics.py derives from model class and returns {} + caveat for classifier-on-continuous. Regression tests included."
+    },
+    {
+      "id": "BUG-03",
+      "title": "REST API blocks its own event loop during jobs; /health unresponsive",
+      "status": "in_working_tree",
+      "notes": "Obsolete since v0.3.0 (REST layer removed): JobStore.start_job wrapped pipeline coroutines as asyncio.to_thread(_run_coroutine, coro); /health responsive during long jobs."
+    },
+    {
+      "id": "BUG-04",
+      "title": "best_params always {} through SDK/API (params vs best_params key mismatch)",
+      "status": "in_working_tree",
+      "notes": "Writer emits both params and best_params; readers prefer best_params with params fallback. Round-trip + fallback tests added."
+    },
+    {
+      "id": "BUG-05",
+      "title": "run_id/status never populated; report header None",
+      "status": "in_working_tree",
+      "notes": "run_id/status populated in WorkflowState for successful and failed runs. Tests added."
+    },
+    {
+      "id": "ISSUE-06",
+      "title": "README drift vs pyproject.toml extras / graph order",
+      "status": "in_working_tree",
+      "notes": "README extras tables and pipeline description corrected."
+    },
+    {
+      "id": "ISSUE-07",
+      "title": "max_time_seconds is a soft ceiling",
+      "status": "in_working_tree",
+      "notes": "Budget enforced between trials with bounded single-trial overshoot; non-positive budgets raise AgentError immediately. Tests added."
+    },
+    {
+      "id": "ISSUE-08",
+      "title": "Docker installs .[api] only; .xlsx fails in container",
+      "status": "in_working_tree",
+      "notes": "Obsolete since v0.3.0 (Docker image and [api] extra removed)."
+    }
+  ],
+  "pending_roadmap_items": [
+    {"id": "P2-1", "title": "Schema/constraint validation + validate_schema()", "phase": 2, "priority": "high"},
+    {"id": "P2-2", "title": "Model recommendation with plain-language rationale", "phase": 2, "priority": "high"},
+    {"id": "P2-3", "title": "Data-drift check API", "phase": 2, "priority": "medium"},
+    {"id": "P2-4", "title": "Local run ledger / compare_runs()", "phase": 2, "priority": "medium"},
+    {"id": "P2-7", "title": "PDF + structured-JSON report variants", "phase": 2, "priority": "low"},
+    {"id": "P2-8", "title": "User-configurable HPO grids", "phase": 2, "priority": "medium"},
+    {"id": "P3-1", "title": "Pipeline serialization + local serving", "phase": 3, "priority": "high"},
+    {"id": "P3-2", "title": "ONNX export + model registry", "phase": 3, "priority": "high"},
+    {"id": "P3-4", "title": "Spark scale-out hardening + benchmarks", "phase": 3, "priority": "medium"},
+    {"id": "P3-5", "title": "Strict-mypy cleanup (targeted stub ignores for baseline errors)", "phase": 3, "priority": "medium"}
+  ],
+  "known_issues": [
+    {
+      "id": "ISSUE-07-residual",
+      "severity": "low",
+      "title": "Single in-flight HPO trial may overshoot max_time_seconds",
+      "evidence": "By design: a started trial runs to completion; budget checked between trials. Tests assert time_elapsed < 15s for a 1s budget."
+    },
+    {
+      "id": "MYPY-001",
+      "severity": "medium",
+      "title": "Strict mypy: third-party-stub errors (pandas/sklearn/mlflow/pyspark)",
+      "evidence": "mypy phronesisml: 50 errors in 26 files, all in the documented import-untyped/import-not-found category (pandas, sklearn, mlflow, pyspark). No new error category introduced by this task; count fell from 51 when the 4 REST modules under interfaces/api/ were removed in v0.3.0."
+    },
+    {
+      "id": "KNOWN-001",
+      "severity": "medium",
+      "title": "In-memory API job store; jobs lost on restart",
+      "evidence": "Obsolete since v0.3.0: interfaces/api/ removed; the REST job store no longer exists."
+    },
+    {
+      "id": "KNOWN-002",
+      "severity": "medium",
+      "title": "Workflow graph linear; no feedback loops / conditional task-type branches",
+      "evidence": "workflow/router.py documented TODO. Phase 2/3."
+    },
+    {
+      "id": "KNOWN-003",
+      "severity": "low",
+      "title": "PDF reports raise NotImplementedError",
+      "evidence": "Markdown/HTML only. Phase 2."
+    },
+    {
+      "id": "KNOWN-004",
+      "severity": "low",
+      "title": "No time-series support",
+      "evidence": "Planned; no date-aware modeling."
+    },
+    {
+      "id": "KNOWN-005",
+      "severity": "low",
+      "title": "Spark path and MLflow active path not verified in this environment",
+      "evidence": "Require pyspark+JVM / mlflow install; out of scope for local verification."
+    }
+  ],
+  "verified_features": [
+    "19-section master function matrix verified in working tree (REST §18 removed in v0.3.0); see project_docs/MASTER_FUNCTION_MATRIX.md",
+    "11-stage deterministic LangGraph pipeline (upload->etl->validation->eda->target_detection->feature_engineering->model_selection->evaluation->explainability->report->storage)",
+    "Engine abstraction with size auto-routing (<2MB pandas, 2-500MB polars, >500MB spark) and cached collect()",
+    "Task/target detection heuristics; ambiguous-task resolution now consistent via resolve_task_class (MAX_CLASSIFICATION_UNIQUE_VALUES=20)",
+    "Bounded HPO (max_trials hard, max_time_seconds between-trial) with candidate filtering by resolved task class",
+    "Per-task evaluation metrics derived from model class; classifier-on-continuous yields {} + caveat, never fabricated regression metrics",
+    "SHAP explainability routing (tree/linear/permutation/kernel) with deterministic sampling",
+    "New engine-light data modules: io (17 fns), validation (14 fns), etl (18 fns), eda (9 fns)",
+    "New ML modules: target_detection/analysis (2), feature_engineering/construction (7), evaluation/report (2), explainability/summary (2)",
+    "Resource estimation (6 fns) + engine recommendation/capabilities matrix (3 fns)",
+    "Model recommendation report + cost estimation (build_recommendation_report)",
+    "Artifact storage helpers: save/load/list_artifact + build_artifact_manifest (5 fns)",
+    "Report I/O helpers: write_report, report_to_dict, render_metrics_table (3 fns)",
+    "Clustering (KMeans/DBSCAN/Agglomerative) and anomaly detection (isolation_forest/LOF)",
+    "Pre-flight sampling (9 SamplingModes) + resource estimation",
+    "Markdown/HTML report generation; run_id/status populated in report header",
+    "Curve metrics: ROC + precision-recall curves, roc_auc, average_precision for binary classifiers via best-effort predict_proba (JSON-able)",
+    "Report I/O: build_json_report (JSON-able full report) + build_run_report (<run_dir>/<run_id>.md with dataset/target/model/metrics/SHAP/warnings/runtime)",
+    "Determinism contract verified by test: identical metrics/best model/report across repeated runs; sole permitted difference is the unique run identifier",
+    "SDK (simple 12-fn + async, OOP Phronesis, run_pipeline), Typer CLI",
+    "best_pipeline exposes both params and best_params; legacy params-only readers still work",
+    "Packaging: hatchling wheel + extras (cli/spark/mlflow/excel/dev/all), py.typed"
+  ],
+  "failed_checks": [],
+  "last_verification": {
+    "timestamp": "2026-08-05T00:00:00Z",
+    "tool": "pytest + ruff + mypy + build + wheel install + CLI/SDK smoke + mkdocs",
+    "command": "python -m pytest -q; python -m ruff check .; python -m ruff format --check .; python -m mypy phronesisml; python -m build; pip install dist/*.whl; phronesisml run <smoke.csv>; python -m mkdocs build --strict",
+    "result": "274 passed, 0 failed; ruff check clean; ruff format clean (121 files); mypy: 50 errors in 26 files, all documented third-party-stub category; wheel/sdist built and installed cleanly (sdist excludes project_docs/); CLI run + SDK imports verified end-to-end; mkdocs build --strict passes after docstring-drift fixes in sdk.py"
+  },
+  "test_counts": {
+    "total": 274,
+    "passed": 274,
+    "failed": 0,
+    "regression": 13,
+    "files": [
+      "tests/test_preflight.py (45)",
+      "tests/test_explainability.py (41)",
+      "tests/test_data_etl.py (25)",
+      "tests/test_data_validation.py (24)",
+      "tests/test_data_io.py (22)",
+      "tests/test_feature_construction.py (15)",
+      "tests/test_resources_engines.py (14)",
+      "tests/test_data_eda.py (13)",
+      "tests/test_regressions.py (13)",
+      "tests/test_artifact_storage.py (10)",
+      "tests/test_target_analysis.py (9)",
+      "tests/test_report_io.py (9)",
+      "tests/test_evaluation_report.py (8)",
+      "tests/test_explanation_summary.py (7)",
+      "tests/test_interfaces.py (5)",
+      "tests/test_run_report.py (5)",
+      "tests/test_curve_metrics.py (4)",
+      "tests/test_model_recommendation.py (4)",
+      "tests/test_determinism.py (1)"
+    ]
+  },
+  "documentation_sync": {
+    "status": "in_sync",
+    "notes": "Tranche 1 delivered charter-mandated docs: project_docs/Architecture.md, Coding_Standards.md, Known_Issues.md, Testing.md, Workflow.md, Release_Process.md, Decision_Log.md (DECISION-001..015 + standing rejections), API_Contracts.md, Roadmap.md, Project_Knowledge_Base.md + process scaffolding (docs/root_cause/README.md, docs/runs/README.md, project_docs/templates/). AI_QUALITY_GATE.md remains the constitution; INSTRUCTIONS.md absent from the tree and superseded. On 2026-08-05 the repo-root audit/state docs (AUDIT_REPORT, ARCHITECTURE_AUDIT, CODEBASE_INTEGRITY_REPORT, DUPLICATION_REPORT, IMPLEMENTATION_ROADMAP, PROJECT_KNOWLEDGE_BASE, PUBLIC_API_AUDIT, TASK_SUMMARY) were consolidated into project_docs/ and project_docs/README.md added as the session entry point; mkdocs build --strict passes. Curve metrics + JSON/run report + determinism contract documented in known-issue evidence and verified_features."
+  },
+  "notes": "This session executed the v0.3.0 REST-API decommission: removed phronesisml/interfaces/api/ (app/routes/models/jobs), the [api] extra (fastapi/uvicorn/python-multipart), Docker artifacts (Dockerfile, docker-compose.yml, .dockerignore, CI docker jobs), REST tests, and all REST/uvicorn/8000/Docker documentation (docs/, project_docs/, repo-root *.md annotated 'obsolete since v0.3.0'). Shared logic (simple.py async fns, _stages, workflow graph, __version__) preserved; SDK-first/CLI-first verified end-to-end. Full gate green post-removal: 274 passed / 0 failed, ruff check clean, ruff format clean (121 files), mypy 50 documented stub-category errors (down from 51), wheel+sdist built and installed, CLI 'phronesisml run' and SDK imports verified. Later the same day the repo-root audit/state docs were consolidated into project_docs/ (single session-entry folder; project_docs/README.md added), sdist excludes project_docs/, and mkdocs build --strict passes after fixing 3 docstring/signature drift sites in sdk.py. All v0.2.2 phase-1 work plus the decommission plus the consolidation remains uncommitted in the working tree (121 entries). project_docs/, docs/, and repo-root state docs uncommitted."
+}

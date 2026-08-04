@@ -19,16 +19,13 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from phronesisml.configs.settings import PhronesisConfig
+from phronesisml.configs.settings import PANDAS_MAX_BYTES, PhronesisConfig
 from phronesisml.engines.base_engine import BaseEngine, EngineType
 from phronesisml.engines.pandas_engine import PandasEngine
 from phronesisml.engines.polars_engine import PolarsEngine
 from phronesisml.exceptions import EngineSelectionError
 
 logger = logging.getLogger(__name__)
-
-# Thresholds in bytes
-_PANDAS_MAX = 2 * 1024 * 1024  # 2 MB
 
 
 _DATA_EXTENSIONS = frozenset(
@@ -105,7 +102,7 @@ def select_engine(
         memory_bytes = 0
 
     # 3. Route by size
-    if memory_bytes < _PANDAS_MAX:
+    if memory_bytes < PANDAS_MAX_BYTES:
         engine_type = EngineType.PANDAS
     elif memory_bytes <= config.data.max_memory_bytes:
         engine_type = EngineType.POLARS

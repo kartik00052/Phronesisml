@@ -24,6 +24,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
+from uuid import uuid4
 
 if TYPE_CHECKING:
     import pandas as pd  # noqa: F401 — used only in type annotations
@@ -151,6 +152,8 @@ class ExplanationReport:
     explainer_type: str
     sampled: bool
     n_samples_used: int
+    n_features_used: int = 0
+    max_samples: int = 0
 
 
 @dataclass(frozen=True)
@@ -210,10 +213,13 @@ def _make_engine(
 def _make_agents(
     engine: Any,
     config: Any | None = None,
+    agent_overrides: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Compose all agents with the given engine and config.
 
     Delegates to the canonical ``compose_agents()`` function.
+    *agent_overrides* are forwarded as constructor-kwarg overrides
+    (e.g. ``{"model_selection": {"cv": 5}}``).
     """
     from phronesisml.agents.compose import compose_agents
     from phronesisml.configs.settings import PhronesisConfig
@@ -221,7 +227,11 @@ def _make_agents(
     if config is None:
         config = PhronesisConfig()
 
-    return compose_agents(engine=engine, config=config)
+    return compose_agents(
+        engine=engine,
+        config=config,
+        agent_overrides=agent_overrides,
+    )
 
 
 # ── Pipeline stage definitions ───────────────────────────────────
@@ -300,12 +310,14 @@ class Phronesis:
         self,
         data_path: str,
         config: Any | None = None,
+        agent_overrides: dict[str, dict[str, Any]] | None = None,
     ) -> None:
         from phronesisml.configs.settings import PhronesisConfig
         from phronesisml.workflow.state import WorkflowState
 
         self._data_path = data_path
         self._config = config or PhronesisConfig()
+        self._agent_overrides = agent_overrides
         self._state = WorkflowState(data_path=data_path)
         self._engine: Any = None
         self._agents: dict[str, Any] = {}
@@ -324,7 +336,11 @@ class Phronesis:
     def _get_agents(self) -> dict[str, Any]:
         """Lazy-initialise agents (only once)."""
         if not self._agents:
-            self._agents = _make_agents(self._eng, self._config)
+            self._agents = _make_agents(
+                self._eng,
+                self._config,
+                agent_overrides=self._agent_overrides,
+            )
         return self._agents
 
     async def _run_stages(self, stages: list[str]) -> None:
@@ -350,6 +366,13 @@ class Phronesis:
         if self._start_time is None:
             self._start_time = time.monotonic()
 
+        # ── Populate run metadata (BUG-05 fix) ────────────────────────
+        # run_id/status are owned by no agent; the SDK stamps them here so
+        # reports and storage always carry a real identifier/status.
+        if self._state.run_id is None:
+            self._state.run_id = f"run_{uuid4().hex}"
+        self._state.status = "running"
+
         logger.info(
             "Phronesis: running %d stages: %s",
             len(needed),
@@ -362,8 +385,10 @@ class Phronesis:
 
             final_state = await graph.ainvoke(self._state)
         except WorkflowError:
+            self._state.status = "failed"
             raise
         except Exception as exc:
+            self._state.status = "failed"
             from phronesisml.exceptions import WorkflowError
 
             raise WorkflowError(f"Pipeline execution failed: {exc}") from exc
@@ -384,6 +409,18 @@ class Phronesis:
             for key, value in final_state.items():
                 if value is not None:
                     setattr(self._state, key, value)
+
+        # Mark the run complete AFTER merging, so the initial state's
+        # "running" stamp isn't copied back over it (BUG-05 fix).
+        self._state.status = "completed"
+
+        # Re-render the final report so its header reflects the terminal
+        # status — the reporting node rendered it while status was still
+        # "running" (BUG-05 fix).
+        if "reporting" in needed and self._state.final_report is not None:
+            from phronesisml.ml.reports.builder import build_report
+
+            self._state.final_report = build_report(self._state)
 
         self._executed_stages.update(stages)
 
@@ -485,8 +522,6 @@ class Phronesis:
         Args:
             null_strategy: ``"drop"``, ``"fill"``, or ``"flag"``.
                 Overrides the constructor default if provided.
-            fill_value: Value for ``null_strategy="fill"``.
-            encode: Whether to label-encode categorical columns.
 
         Returns:
             ``self`` for method chaining.
@@ -561,10 +596,6 @@ class Phronesis:
         self,
     ) -> TargetInfo:
         """Automatically detect the prediction target and task type.
-
-        Args:
-            target_hint: Optional column name hint.  If provided,
-                boosts the confidence for that column.
 
         Returns:
             A ``TargetInfo`` with the detected column, task type,
@@ -642,7 +673,8 @@ class Phronesis:
             model_type=bp.get("model_type", "unknown"),
             score=bp.get("score", 0.0),
             candidates=self._state.candidate_models or [],
-            best_params=bp.get("best_params", {}),
+            # Prefer "best_params"; fall back to legacy "params" (BUG-04 fix).
+            best_params=bp.get("best_params") or bp.get("params", {}),
             truncated=bp.get("truncated", False),
             trials_used=bp.get("trials_used", 0),
             time_elapsed=bp.get("time_elapsed", 0.0),
@@ -709,6 +741,8 @@ class Phronesis:
             explainer_type=report.get("explainer_type", "none"),
             sampled=report.get("sampled", False),
             n_samples_used=report.get("n_samples_used", 0),
+            n_features_used=report.get("n_features_used", 0),
+            max_samples=report.get("max_samples", 0),
         )
 
     def detect_task(
@@ -824,10 +858,6 @@ class Phronesis:
         """Generate a full Markdown report of the pipeline run.
 
         Runs all stages up to reporting if not already done.
-
-        Args:
-            narrative: Optional narrative text to include in the
-                report's "Narrative Summary" section.
 
         Returns:
             A Markdown string containing the complete pipeline report.

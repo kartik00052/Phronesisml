@@ -42,6 +42,7 @@ from phronesisml.ml.automl.auto_selector import (
     candidate_to_dict,
     estimate_training_cost,
     recommend_models,
+    resolve_task_class,
 )
 from phronesisml.ml.automl.trainer import (
     DEFAULT_MAX_TIME_SECONDS,
@@ -119,13 +120,27 @@ class ModelSelectionAgent:
                 state, collected, feature_names, task_type, n_rows, n_features
             )
 
+        # ── Resolve ambiguous tasks from the actual target values ────
+        # A numeric target with many unique values is regression, never
+        # classification — pick the candidate pool accordingly (BUG-02 fix).
+        # The recorded state.task_type is left untouched; only the pool and
+        # scoring metric are derived from the resolved class.
+        task_class = task_type
+        if task_type == "ambiguous":
+            task_class = resolve_task_class(collected[target_column], task_type)
+            logger.info(
+                "Resolved ambiguous task to '%s' from target '%s' values.",
+                task_class,
+                target_column,
+            )
+
         # ── Supervised tasks ─────────────────────────────────────────
         dtypes = self._engine.dtypes(state.features if state.features is not None else collected)
         n_numeric = sum(1 for f in feature_names if dtypes.get(f, "") in NUMERIC_DTYPES)
         n_categorical = n_features - n_numeric
 
         candidates = recommend_models(
-            task_type=task_type,
+            task_type=task_class,
             n_rows=n_rows,
             n_features=n_features,
             n_numeric_features=n_numeric,
@@ -136,7 +151,7 @@ class ModelSelectionAgent:
         if self._model_type is not None:
             candidates = [c for c in candidates if c.name == self._model_type]
             if not candidates:
-                avail = recommend_models(task_type, n_rows, n_features, n_numeric, n_categorical)
+                avail = recommend_models(task_class, n_rows, n_features, n_numeric, n_categorical)
                 return AgentResult(
                     success=False,
                     error=(
@@ -158,7 +173,7 @@ class ModelSelectionAgent:
                 engine=self._engine,
                 candidates=candidates,
                 target_column=target_column,
-                task_type=task_type,
+                task_type=task_class,
                 max_trials=self._max_trials,
                 max_time_seconds=self._max_time_seconds,
                 cv=self._cv,
@@ -180,6 +195,10 @@ class ModelSelectionAgent:
         best_pipeline = {
             "model_type": train_result["best_model"].__class__.__name__,
             "params": train_result["best_params"],
+            # Deprecation window: readers are migrating from "params" to
+            # "best_params" (BUG-04 fix).  Both keys are emitted so older
+            # and newer readers agree; remove "params" in a future release.
+            "best_params": train_result["best_params"],
             "score": train_result["best_score"],
             "trials_used": train_result["trials_used"],
             "time_elapsed": train_result["time_elapsed"],
@@ -206,6 +225,7 @@ class ModelSelectionAgent:
                 "trials_used": train_result["trials_used"],
                 "truncated": train_result["truncated"],
                 "feature_names": feature_names,
+                "task_class": train_result["task_class"],
             },
         )
 

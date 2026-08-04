@@ -630,6 +630,89 @@ class TestModelUnwrapping(unittest.TestCase):
         self.assertIs(unwrapped, model)
 
 
+class TestExplainabilityAgent(unittest.TestCase):
+    """Agent-level guard: designated target must never appear in features."""
+
+    def test_agent_excludes_designated_target_from_feature_names(self) -> None:
+        import asyncio
+        from types import SimpleNamespace
+
+        import pandas as pd
+        from sklearn.linear_model import LinearRegression
+
+        from phronesisml.agents.explainability.agent import ExplainabilityAgent
+        from phronesisml.engines.pandas_engine import PandasEngine
+
+        rng = np.random.RandomState(0)
+        X = rng.randn(30, 2)
+        y = X[:, 0] * 2.0 + 1.0
+        model = LinearRegression().fit(X, y)
+
+        df = pd.DataFrame(X, columns=["x1", "x2"])
+        df["target"] = y
+
+        agent = ExplainabilityAgent(engine=PandasEngine())
+        state = SimpleNamespace(
+            trained_model=model,
+            features=df,
+            validated_data=None,
+            processed_data=None,
+            target_column="target",
+            feature_names=["x1", "x2", "target"],  # leak from upstream stage
+        )
+        result = asyncio.run(agent.run(state))
+        self.assertTrue(result.success)
+        report = result.data["explanation_report"]
+        self.assertNotIn("target", report["feature_importance"])
+        self.assertEqual(set(report["feature_importance"]), {"x1", "x2"})
+        self.assertEqual(report["n_features_used"], 2)
+
+    def test_agent_skips_stale_feature_names_absent_from_frame(self) -> None:
+        import asyncio
+        from types import SimpleNamespace
+
+        import pandas as pd
+        from sklearn.linear_model import LinearRegression
+
+        from phronesisml.agents.explainability.agent import ExplainabilityAgent
+        from phronesisml.engines.pandas_engine import PandasEngine
+
+        rng = np.random.RandomState(1)
+        X = rng.randn(20, 2)
+        y = X[:, 0] - X[:, 1]
+        model = LinearRegression().fit(X, y)
+
+        df = pd.DataFrame(X, columns=["x1", "x2"])
+        agent = ExplainabilityAgent(engine=PandasEngine())
+        state = SimpleNamespace(
+            trained_model=model,
+            features=df,
+            validated_data=None,
+            processed_data=None,
+            target_column=None,
+            feature_names=["x1", "x2", "ghost"],  # stale name not in frame
+        )
+        result = asyncio.run(agent.run(state))
+        self.assertTrue(result.success)
+        report = result.data["explanation_report"]
+        self.assertEqual(set(report["feature_importance"]), {"x1", "x2"})
+        self.assertEqual(report["n_features_used"], 2)
+
+    def test_explanation_report_carries_resource_fields(self) -> None:
+        from phronesisml.sdk import ExplanationReport
+
+        report = ExplanationReport(
+            feature_importance={"a": 1.0},
+            explainer_type="TreeExplainer",
+            sampled=False,
+            n_samples_used=50,
+            n_features_used=1,
+            max_samples=100,
+        )
+        self.assertEqual(report.n_features_used, 1)
+        self.assertEqual(report.max_samples, 100)
+
+
 # ── Runner ────────────────────────────────────────────────────────
 
 if __name__ == "__main__":

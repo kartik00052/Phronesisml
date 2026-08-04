@@ -1,0 +1,150 @@
+"""PhronesisML data layer.
+
+Public, engine-light, offline functions for data ingestion, ETL,
+validation, and profiling.  The subpackages own the engine-coupled
+logic; this package re-exports the convenience toolkit:
+
+- ``io``: file loaders and dataset utilities (``load_csv``, …)
+- ``etl``: immutable DataFrame transformations (``drop_columns``,
+  ``normalize_columns``, ``split_train_test``, …)
+- ``eda``: analytical summaries (``correlation_matrix``,
+  ``data_quality_report``, …)
+- ``validation``: schema, constraint, and quality checks
+  (``validate_dataset``, ``generate_validation_report``, …)
+- ``validators``: engine-coupled validation (``validate_dataframe``)
+- ``profilers``: profiling (``profile_dataset``)
+"""
+
+from __future__ import annotations
+
+from phronesisml.data.eda import (
+    column_distribution,
+    correlation_matrix,
+    data_quality_report,
+    missing_value_matrix,
+    outlier_analysis,
+    skewness_analysis,
+    summary_statistics,
+    target_distribution,
+    type_report,
+)
+from phronesisml.data.etl import (
+    add_id_column,
+    convert_datetime,
+    drop_columns,
+    drop_duplicates,
+    fill_missing_values,
+    filter_rows,
+    normalize_columns,
+    one_hot_encode,
+    remove_outliers,
+    rename_columns,
+    reset_index,
+    sample_data,
+    select_columns,
+    set_index,
+    sort_data,
+    split_train_test,
+    standardize_columns,
+    stratify_split,
+)
+from phronesisml.data.io import (
+    concatenate_datasets,
+    dataset_summary,
+    detect_encoding,
+    estimate_dataset_size,
+    infer_file_type,
+    load_csv,
+    load_directory,
+    load_excel,
+    load_json,
+    load_jsonl,
+    load_multiple_files,
+    load_parquet,
+    load_tsv,
+    load_zip,
+    merge_datasets,
+    preview_dataset,
+    stream_large_dataset,
+)
+from phronesisml.data.profilers.stats import profile_dataset
+from phronesisml.data.validation import (
+    generate_validation_report,
+    infer_schema,
+    validate_categorical_columns,
+    validate_column_types,
+    validate_constraints,
+    validate_dataset,
+    validate_datetime_columns,
+    validate_duplicate_rows,
+    validate_feature_columns,
+    validate_missing_values,
+    validate_numeric_columns,
+    validate_schema,
+    validate_target_column,
+    validate_unique_constraints,
+)
+from phronesisml.data.validators.checks import validate_dataframe
+
+__all__ = [
+    "add_id_column",
+    "column_distribution",
+    "concatenate_datasets",
+    "convert_datetime",
+    "correlation_matrix",
+    "data_quality_report",
+    "dataset_summary",
+    "detect_encoding",
+    "drop_columns",
+    "drop_duplicates",
+    "estimate_dataset_size",
+    "fill_missing_values",
+    "filter_rows",
+    "generate_validation_report",
+    "infer_file_type",
+    "infer_schema",
+    "load_csv",
+    "load_directory",
+    "load_excel",
+    "load_json",
+    "load_jsonl",
+    "load_multiple_files",
+    "load_parquet",
+    "load_tsv",
+    "load_zip",
+    "merge_datasets",
+    "missing_value_matrix",
+    "normalize_columns",
+    "one_hot_encode",
+    "outlier_analysis",
+    "preview_dataset",
+    "profile_dataset",
+    "remove_outliers",
+    "rename_columns",
+    "reset_index",
+    "sample_data",
+    "select_columns",
+    "set_index",
+    "skewness_analysis",
+    "sort_data",
+    "split_train_test",
+    "standardize_columns",
+    "stratify_split",
+    "stream_large_dataset",
+    "summary_statistics",
+    "target_distribution",
+    "type_report",
+    "validate_categorical_columns",
+    "validate_column_types",
+    "validate_constraints",
+    "validate_dataframe",
+    "validate_dataset",
+    "validate_datetime_columns",
+    "validate_duplicate_rows",
+    "validate_feature_columns",
+    "validate_missing_values",
+    "validate_numeric_columns",
+    "validate_schema",
+    "validate_target_column",
+    "validate_unique_constraints",
+]
