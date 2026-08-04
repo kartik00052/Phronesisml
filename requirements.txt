@@ -3,7 +3,7 @@
 #   pip install -e ".[dev,cli,excel]" && pip freeze > requirements.txt
 #
 # Core
-pydantic==2.13.3
+pydantic==2.13.4
 langgraph==0.6.11
 pandas==2.3.1
 polars==1.42.1
