@@ -11,6 +11,9 @@ the release-verification pass, so every test runs unconditionally:
 - NEW-12 (FIXED): CLI exposes an ``evaluate`` command.
 - NEW-13 (FIXED): numeric target columns with 2–5 unique values are
   treated consistently by the target detector.
+- NEW-15 (FIXED): ``compare()`` with an unknown model type propagates a
+  ``WorkflowError`` instead of silently dropping the model from the
+  ranking.
 
 NEW-14 (doc drift) is a documentation-only issue tracked in the audit.
 """
@@ -129,3 +132,26 @@ def test_new13_numeric_2_to_5_unique_consistent() -> None:
     assert signals_by_count[2] == signals_by_count[3], (
         "2 unique and 3–5 unique must share one signal"
     )
+
+
+# ── NEW-15: compare swallows invalid model names ────────────────────────
+# NEW-15 (FIXED): ``compare()`` with an unknown model type no longer
+# silently drops the request.  The ``WorkflowError`` from the
+# model_selection agent propagates to the caller instead.
+
+
+def test_new15_compare_invalid_model_raises(string_category_csv: str) -> None:
+    from phronesisml import compare
+    from phronesisml.exceptions import WorkflowError
+
+    with pytest.raises(WorkflowError) as excinfo:
+        compare(string_category_csv, ["definitely_not_a_model"])
+    assert "not found" in str(excinfo.value)
+
+
+def test_new15_compare_invalid_model_cli_nonzero(string_category_csv: str) -> None:
+    result = CLI_RUNNER.invoke(
+        cli_app, ["compare", string_category_csv, "-m", "definitely_not_a_model"]
+    )
+    assert result.exit_code != 0, result.output
+    assert "not found" in result.output

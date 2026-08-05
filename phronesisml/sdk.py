@@ -1329,18 +1329,18 @@ class Phronesis:
         )
 
     async def _compare_one_core(self, model_type: str) -> dict[str, Any]:
-        """Train a single named model on the same data and return its metrics."""
-        from phronesisml.exceptions import WorkflowError
+        """Train a single named model on the same data and return its metrics.
 
+        Failures (invalid model name, training errors) propagate as
+        ``WorkflowError`` — they are never silently dropped from the
+        comparison.
+        """
         other = Phronesis(
             data_path=self._data_path,
             config=self._config,
             agent_overrides={"model_selection": {"model_type": model_type}},
         )
-        try:
-            await other._run_stages(_EVALUATION)
-        except WorkflowError as exc:
-            return {"model": model_type, "metrics": {}, "error": str(exc)}
+        await other._run_stages(_EVALUATION)
         report = other.state.evaluation_report or {}
         return {"model": model_type, "metrics": report.get("metrics", {})}
 

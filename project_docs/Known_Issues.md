@@ -21,6 +21,7 @@
 | NEW-12 | Medium | Fixed | CLI had no `evaluate` command. Fix: added `phronesisml evaluate` (data_path/engine/nulls/cv/verbose) via `phronesisml.simple.evaluate`. |
 | NEW-13 | Medium | Fixed | Target detector's `numeric_binary_ambiguous` branch shadowed binary-numeric detection and used a non-ASCII endash. Fix: unified single `numeric_low_cardinality_ambiguous` branch (`2 <= unique <= 5`) with ASCII-safe reason. |
 | NEW-14 | Medium | Fixed | Doc drift vs public surface (phantom `evaluation_report.json`, 12-fn/2-command undercounts, phantom params/attributes). Fix: doc sync — KB/roadmap/audit claim `evaluation.json`; CLI guide lists all 13 commands incl. `evaluate`; simple-api guide drops phantom params/attributes. |
+| NEW-15 | Medium | Fixed | `compare()` with an unknown model type silently dropped the model instead of raising. Fix: `_compare_one_core()` no longer swallows `WorkflowError`; invalid model names propagate to `simple.compare`, `Phronesis.compare`, and the CLI (exit non-zero). Regression tests in `tests/test_regressions_v030.py`. |
 
 ## 2. Residual / known limitations
 

@@ -112,6 +112,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   referenced a non-ASCII endash. It is unified into a single
   `numeric_low_cardinality_ambiguous` branch (`2 <= unique <= 5`) with an
   ASCII-safe reason string. Regression test `NEW-13`.
+- **`compare()` silently dropped invalid model names** — an unknown model type
+  produced a metrics-less entry that was filtered out of the ranking; only a log
+  line recorded the failure. `_compare_one_core()` no longer swallows
+  `WorkflowError`, so `simple.compare`, `Phronesis.compare`, and the CLI
+  (`phronesisml compare -m <name>`) surface a clear
+  `Model type '...' not found. Available: [...]` error. Regression tests `NEW-15`.
 
 ### Added (Project docs)
 
