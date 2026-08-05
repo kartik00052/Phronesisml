@@ -1471,6 +1471,7 @@ class Phronesis:
                 "run",
                 "info",
                 "train",
+                "evaluate",
                 "analyze",
                 "validate",
                 "profile",
