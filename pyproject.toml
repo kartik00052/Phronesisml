@@ -94,6 +94,9 @@ exclude = [
     "requirements.txt",
     "assets/",
     "Phronesis_artifacts/",
+    "qa_artifacts/",
+    "uv.lock",
+    ".python-version",
 ]
 
 [tool.hatch.build.targets.wheel]

@@ -87,6 +87,16 @@ class FeatureEngineeringAgent:
             min(3, n_rows // 2),
         )
 
+        etl_encoding_maps: dict[str, dict[Any, int]] = {}
+        for entry in getattr(state, "transform_log", None) or []:
+            if not isinstance(entry, dict) or entry.get("action") != "encode_categoricals":
+                continue
+            maps = entry.get("encoding_maps")
+            if isinstance(maps, dict):
+                for col, mapping in maps.items():
+                    if isinstance(mapping, dict):
+                        etl_encoding_maps.setdefault(col, dict(mapping))
+
         try:
             features, log_entry = engineer_features(
                 data,
@@ -100,6 +110,12 @@ class FeatureEngineeringAgent:
 
             feature_names = [c for c in self._engine.columns(features) if c != target_column]
 
+            recipe = build_transform_recipe(
+                log_entry,
+                target_column,
+                etl_encoding_maps=etl_encoding_maps,
+            )
+
             logger.info(
                 "Feature engineering complete: %d rows, %d features.",
                 self._engine.shape(features)[0],
@@ -110,7 +126,7 @@ class FeatureEngineeringAgent:
                 data={
                     "features": features,
                     "feature_names": feature_names,
-                    "feature_transform": build_transform_recipe(log_entry, target_column),
+                    "feature_transform": recipe,
                 },
                 metadata={
                     "rows": self._engine.shape(features)[0],

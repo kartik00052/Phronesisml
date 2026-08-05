@@ -200,8 +200,8 @@ profile = analyze("data.csv", engine="polars")
 # Drop rows with nulls (default)
 ml.clean(null_strategy="drop")
 
-# Fill nulls with 0
-ml.clean(null_strategy="fill", fill_value=0)
+# Fill nulls
+ml.clean(null_strategy="fill")
 
 # Flag nulls as separate columns
 ml.clean(null_strategy="flag")

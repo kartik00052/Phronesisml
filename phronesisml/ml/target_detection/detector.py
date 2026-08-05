@@ -301,8 +301,10 @@ def _score_column(
         # Constant column — not a useful target
         confidence = 0.0
         signals.append("constant_column")
-    elif is_numeric and n_unique in range(3, 6):
-        # Numeric with 2–5 unique values: ambiguous
+    elif is_numeric and n_unique in range(2, 6):
+        # Numeric with 2–5 unique values: ambiguous (NEW-13 fix — the
+        # 2-unique binary case used a separate branch and signal before,
+        # producing inconsistent results for 2 vs 3–5 unique values).
         confidence += 0.3
         task_type = "ambiguous"
         ambiguity_reason = (
@@ -331,17 +333,6 @@ def _score_column(
         confidence -= 0.2
         task_type = "classification"
         signals.append("categorical_high_cardinality_penalty")
-    elif is_numeric and n_unique == 2:
-        # Exactly 2 unique numeric values: likely binary classification
-        # but the numeric type makes it ambiguous
-        confidence += 0.3
-        task_type = "ambiguous"
-        ambiguity_reason = (
-            f"Column '{col}' is numeric with exactly 2 unique values. "
-            f"This could be binary classification (0/1 encoded) or "
-            f"regression with only two observed outcomes."
-        )
-        signals.append("numeric_binary_ambiguous")
 
     # Clamp confidence to [0, 1]
     confidence = max(0.0, min(1.0, confidence))

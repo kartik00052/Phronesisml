@@ -88,10 +88,13 @@ are instantiated. Verified:
 
 ## 6. Public API Surface
 
-Simple API (13 sync + async pairs): `analyze`, `clean`, `validate`, `detect_target`,
-`detect_task`, `cluster`, `detect_anomalies`, `engineer`, `select_model`, `evaluate`,
-`explain`, `report`, `train`. All exported from `phronesisml.__all__` and lazily loaded.
-`evaluate` / `evaluate_async` were previously orphaned (see `PUBLIC_API_AUDIT.md`).
+Simple API (23 sync + async pairs): `analyze`, `clean`, `validate`, `detect_target`,
+`detect_task`, `cluster`, `detect_anomalies`, `engineer`, `select_model`, `recommend`,
+`evaluate`, `explain`, `report`, `train`, `profile`, `predict`, `compare`, `save`,
+`restore`, `load`, `version`, `capabilities`, `health`. All exported from
+`phronesisml.__all__` and lazily loaded.
+`evaluate` / `evaluate_async` were previously orphaned (see `PUBLIC_API_AUDIT.md`);
+`recommend` / `load` are aliases of `select_model` / `restore` respectively.
 
 OOP: `Phronesis` (method-chained pipeline). Advanced: `run_pipeline`, config/result types.
 

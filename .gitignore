@@ -55,3 +55,9 @@ Phronesis_artifacts/
 
 # MkDocs
 site/
+
+# QA scratch (datasets + run artifacts)
+qa_artifacts/
+BankChurners.csv
+diabetes_prediction_dataset.csv
+heart.csv

@@ -60,6 +60,7 @@
 8. **F8 — mypy `python_version` mismatch.** `3.13` hard-coded vs `requires-python >=3.11`. Align to `3.11` (floor) or drop the pin.
 9. **F9 — Makefile POSIX-only `clean` + no uv targets.** Make `clean` cross-platform and add `sync/install/build-uv` targets documenting the dual workflow.
 10. **F10 — sdist excludes `docs/`, `project_docs/`, `.github/`, `mkdocs.yml`, `requirements.txt`.** Intentional (SDK distribution only); document the intent in `pyproject.toml` via comment.
+11. **F11 — CLI unicode output crashes on legacy Windows consoles** *(found during final verification)*. rich's `LegacyWindowsTerm` raises `UnicodeEncodeError` on `→` when `stdout` is a cp1252-coded pipe (PowerShell redirects, `2>&1`). Not packaging per se, but it breaks the post-install CLI smoke test on Windows — i.e. an *installation stabilization* defect. Fixed in `phronesisml/interfaces/cli/app.py` by reconfiguring `stdout`/`stderr` to UTF-8 with `backslashreplace` at import; regression tests added.
 
 ## 6. Remediation plan (maps to checklist steps 2–12)
 
@@ -73,3 +74,4 @@
 | 6 | CI: dual pip+uv matrix, `twine check`, build smoke | 7–8 |
 | 7 | README/docs: document both `pip install` and `uv` workflows | 9–10 |
 | 8 | Deliverables: `UV_MIGRATION_REPORT.md`, `DEPENDENCY_MATRIX.md`, `INSTALLATION_VALIDATION.md`, `BUILD_VALIDATION.md`, `CI_VALIDATION.md`, updated `project_state.json` + `CHANGELOG.md` | 10–12 |
+| 9 | F11: CLI UTF-8 stdio reconfigure + regression tests; wire `test_phronesis.py` per CI leg | 6, 12 |

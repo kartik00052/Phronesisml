@@ -27,12 +27,23 @@ _RECIPE_VERSION = 1
 def build_transform_recipe(
     log_entry: dict[str, Any],
     target_column: str | None = None,
+    etl_encoding_maps: dict[str, dict[Any, int]] | None = None,
 ) -> dict[str, Any]:
     """Build a serializable transform recipe from a feature-engineering log.
+
+    The ETL agent label-encodes string columns *before* target detection
+    and records its label maps in the workflow ``transform_log``.  Those
+    maps are not part of the feature-engineering log entry, so they must
+    be merged here — otherwise ``predict()`` would try to cast raw string
+    rows to float (NEW-09).  *etl_encoding_maps* supplies that context;
+    feature-engineering maps take precedence on collision.
 
     Args:
         log_entry: The log entry returned by ``engineer_features``.
         target_column: The excluded target column (if any).
+        etl_encoding_maps: Column → {label: code} maps produced by the
+            ETL ``encode_categoricals`` step.  The target column is
+            excluded from the merged recipe.
 
     Returns:
         A JSON-serializable recipe dict with keys ``version``,
@@ -45,12 +56,23 @@ def build_transform_recipe(
     scale = steps.get("scale_numeric", {})
     fill = steps.get("fill_nulls", {})
 
+    encoding_maps: dict[str, dict[Any, int]] = dict(encode.get("encoding_maps", {}))
+    for col, mapping in (etl_encoding_maps or {}).items():
+        if col == target_column or not isinstance(mapping, dict):
+            continue
+        encoding_maps.setdefault(col, dict(mapping))
+
+    categorical_columns = list(encode.get("columns_encoded", []))
+    for col in encoding_maps:
+        if col not in categorical_columns:
+            categorical_columns.append(col)
+
     return {
         "version": _RECIPE_VERSION,
         "null_strategy": fill.get("strategy", "fill"),
         "fill_value": 0,
-        "categorical_columns": list(encode.get("columns_encoded", [])),
-        "encoding_maps": dict(encode.get("encoding_maps", {})),
+        "categorical_columns": categorical_columns,
+        "encoding_maps": encoding_maps,
         "numeric_columns": list(scale.get("columns_scaled", [])),
         "scaling_params": dict(scale.get("scaling_params", {})),
         "feature_columns": list(log_entry.get("feature_columns", [])),

@@ -87,7 +87,7 @@ The inventory proved the REST layer delegated entirely to shared modules. All of
 | Wheel | content scan | contains only `phronesisml/interfaces/cli/` under `interfaces/`; no api/fastapi/uvicorn/starlette/8000 in package files |
 | sdist | content scan | no Dockerfile/docker-compose/.dockerignore/rest-api artifacts |
 | Install | `pip install --force-reinstall --no-deps dist/*.whl` | OK |
-| E2E CLI | `phronesisml run <smoke.csv>` | full 17-stage pipeline completed; 3 artifacts stored |
+| E2E CLI | `phronesisml run <smoke.csv>` | full 11-stage pipeline completed; 17-file artifact suite stored |
 | E2E SDK | `from phronesisml import Phronesis, run_pipeline, __version__` | OK |
 
 ## 7. Residual references (intentional)

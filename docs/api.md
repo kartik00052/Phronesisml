@@ -42,17 +42,31 @@ The main entry point. Wraps the full LangGraph pipeline behind method-chained ca
 
 ## Simple API
 
-Zero-friction one-liner functions. Each runs the relevant pipeline stages and returns a frozen dataclass.
+Zero-friction one-liner functions. Each runs the relevant pipeline stages and returns a frozen dataclass. Every function has a `*_async` twin with the same signature.
 
 ::: phronesisml.simple.analyze
 ::: phronesisml.simple.clean
 ::: phronesisml.simple.validate
 ::: phronesisml.simple.detect_target
+::: phronesisml.simple.detect_task
 ::: phronesisml.simple.engineer
 ::: phronesisml.simple.select_model
+::: phronesisml.simple.recommend
+::: phronesisml.simple.evaluate
 ::: phronesisml.simple.explain
 ::: phronesisml.simple.report
 ::: phronesisml.simple.train
+::: phronesisml.simple.profile
+::: phronesisml.simple.predict
+::: phronesisml.simple.compare
+::: phronesisml.simple.cluster
+::: phronesisml.simple.detect_anomalies
+::: phronesisml.simple.save
+::: phronesisml.simple.restore
+::: phronesisml.simple.load
+::: phronesisml.simple.version
+::: phronesisml.simple.capabilities
+::: phronesisml.simple.health
 
 ### Simple API Result Types
 
@@ -60,10 +74,13 @@ Zero-friction one-liner functions. Each runs the relevant pipeline stages and re
 ::: phronesisml.simple.CleanResult
 ::: phronesisml.simple.ValidationResult
 ::: phronesisml.simple.TargetResult
+::: phronesisml.simple.TaskDetectionResult
 ::: phronesisml.simple.FeatureResult
 ::: phronesisml.simple.ModelResult
 ::: phronesisml.simple.ExplainResult
 ::: phronesisml.simple.TrainResult
+::: phronesisml.simple.ClusteringResult
+::: phronesisml.simple.AnomalyResult
 
 ---
 

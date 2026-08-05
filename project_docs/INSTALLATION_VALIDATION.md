@@ -10,27 +10,31 @@
 | Item | Value |
 |---|---|
 | OS | Windows (win32) |
-| Python | 3.12.13 (`.python-version`) |
+| Python | 3.12.13 (`.python-version`, uv leg); **3.11.9 (fresh pip-leg venv)** |
 | uv | 0.11.21 |
-| pip | bundled with venv |
+| pip | 24.0 (fresh venv) / bundled with uv venv |
 | Project version | 0.3.0 (dynamic, from `phronesisml/__init__.py`) |
 
 ## 2. Pip path
 
 | Command | Result |
 |---|---|
-| `pip install -e ".[dev,cli,excel,docs]"` | Installed; `phronesisml==0.3.0` importable |
+| `pip install -e ".[dev,cli,excel,docs]"` (fresh py3.11 venv) | Installed; `phronesisml==0.3.0` importable |
 | `python -c "import phronesisml; print(phronesisml.__version__)"` | `0.3.0` |
 | `python -c "import importlib.metadata; print(importlib.metadata.version('phronesisml'))"` | `0.3.0` |
 | `phronesisml --help` | Renders (entry point `phronesisml = phronesisml.interfaces.cli.app:app`) |
+| `phronesisml train data/iris.csv` | `Trained: LogisticRegression (score=1.0000)` — identical to the uv leg |
+| `pip install --dry-run "…whl[spark]"` | `Would install py4j-0.10.9.9 pyspark-3.5.9` |
+| `pip install --dry-run "…whl[all]"` | Resolves mlflow 2.22.5 + pyspark 3.5.9 + full graphs, **no conflicts** |
 
 ## 3. uv path
 
 | Command | Result |
 |---|---|
-| `uv lock` | Resolved 178 packages; `phronesisml -> (dynamic) 0.3.0` |
-| `uv lock --check` | Resolved 178 packages in 1ms — lock consistent |
-| `uv pip install -e .` | Built + installed `phronesisml==0.3.0` |
+| `uv lock` | Resolved 175 packages; `phronesisml -> (dynamic) 0.3.0` |
+| `uv lock --check` | Resolved 175 packages in 75ms — lock consistent |
+| `uv sync --extra dev --extra cli --extra excel --extra docs` | Checked 122 packages — in sync |
+| `uv sync --all-extras` | Installed `pyspark 3.5.9`, `mlflow 2.22.5` from lock; `uv sync --all-extras --check` → "Would make no changes" |
 | `uv pip install -e ".[dev,cli]"` | Installed dev tools incl. `pytest-xdist 3.8.0`, `coverage 7.15.3`, `build 1.5.0`, `twine 6.2.0`; restored `rich 13.9.4` per lock |
 | `uv run python -c "import phronesisml; print(phronesisml.__version__)"` | `0.3.0` |
 
@@ -46,7 +50,8 @@
 | `excel` | `openpyxl 3.1.5` |
 | `docs` | `mkdocs 1.6.1`, `mkdocs-material 9.7.7`, `mkdocstrings 0.30.1` |
 | `dev` | `pytest 8.4.2`, `pytest-asyncio 0.26.0`, `pytest-cov 5.0.0`, `pytest-xdist 3.8.0`, `coverage 7.15.3`, `ruff 0.16.1`, `mypy 1.20.2`, `pre-commit 4.6.1`, `build 1.5.0`, `twine 6.2.0` |
-| `spark` / `mlflow` | Declared + locked; not installed locally by default (optional heavy deps) |
+| `spark` | `pyspark 3.5.9` (installed via `uv sync --all-extras`) |
+| `mlflow` | `mlflow 2.22.5` (installed via `uv sync --all-extras`) |
 
 ## 6. Known constraint
 

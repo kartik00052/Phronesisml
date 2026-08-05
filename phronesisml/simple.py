@@ -541,6 +541,82 @@ async def evaluate_async(
     )
 
 
+def recommend(
+    path: str,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+) -> ModelResult:
+    """Recommend the best model for a dataset (alias of :func:`select_model`).
+
+    Runs model selection and evaluation, returning the recommended model
+    with its score and metrics.  Equivalent to ``select_model`` with the
+    same arguments and to ``Phronesis.recommend``.
+
+    Args:
+        path: Path to a data file.
+        engine: Force a specific engine. ``None`` for auto-selection.
+        null_strategy: Null handling strategy. Default ``"drop"``.
+        variance_threshold: Drop features with variance below this.
+        correlation_threshold: Drop features with target correlation below this.
+        min_features: Minimum number of features to retain.
+        cv: Number of cross-validation folds.  If ``None`` (default),
+            uses a single train/test split.  Pass an integer ≥ 2 to
+            enable k-fold cross-validation.
+
+    Returns:
+        A ``ModelResult`` with model type, score, and metrics.
+
+    Example::
+
+        from phronesisml import recommend
+
+        result = recommend("data.csv")
+        print(f"Recommended: {result.best_model_type} ({result.best_score:.4f})")
+    """
+    return _run_sync(
+        recommend_async(
+            path,
+            engine=engine,
+            null_strategy=null_strategy,
+            variance_threshold=variance_threshold,
+            correlation_threshold=correlation_threshold,
+            min_features=min_features,
+            cv=cv,
+        )
+    )
+
+
+async def recommend_async(
+    path: str,
+    *,
+    engine: str | None = None,
+    null_strategy: str = "drop",
+    variance_threshold: float = 0.01,
+    correlation_threshold: float = 0.05,
+    min_features: int = 1,
+    cv: int | None = None,
+) -> ModelResult:
+    """Async variant of :func:`recommend` -- recommends and evaluates models.
+
+    Delegates to :func:`select_model_async` (identical stage set:
+    model selection plus evaluation).
+    """
+    return await select_model_async(
+        path,
+        engine=engine,
+        null_strategy=null_strategy,
+        variance_threshold=variance_threshold,
+        correlation_threshold=correlation_threshold,
+        min_features=min_features,
+        cv=cv,
+    )
+
+
 def explain(
     path: str,
     *,
@@ -1270,6 +1346,33 @@ def restore(directory: str) -> SavedRun:
 
 async def restore_async(directory: str) -> SavedRun:
     """Async variant of :func:`restore`."""
+    from phronesisml.sdk import Phronesis
+
+    return Phronesis.restore(directory)
+
+
+def load(directory: str) -> SavedRun:
+    """Load a saved run for offline prediction (alias of :func:`restore`).
+
+    Args:
+        directory: The artifact directory produced by :func:`save` or
+            ``Phronesis.save``.
+
+    Returns:
+        A ``SavedRun`` with a ``predict()`` method and run metadata.
+
+    Example::
+
+        from phronesisml import load
+
+        run = load("saved_runs/run_abc")
+        predictions = run.predict(new_rows)
+    """
+    return _run_sync(load_async(directory))
+
+
+async def load_async(directory: str) -> SavedRun:
+    """Async variant of :func:`load` -- restores a saved run."""
     from phronesisml.sdk import Phronesis
 
     return Phronesis.restore(directory)

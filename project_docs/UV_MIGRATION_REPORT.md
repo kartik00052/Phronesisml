@@ -29,6 +29,7 @@ Both produce the same `phronesisml==0.3.0` artifacts and are validated by CI.
 | F8 mypy version mismatch | `python_version = "3.11"` (floor of supported range) |
 | F9 Makefile POSIX-only | Added uv targets (`sync`, `install-uv`, `build-uv`), cross-platform Python-based `clean`, `test-fast` (`-n auto`) |
 | F10 sdist exclusions undocumented | Commented intent in `pyproject.toml` |
+| F11 Windows CLI unicode crash | UTF-8 stdio reconfigure (`backslashreplace`) at CLI import; regression tests in `tests/test_interfaces.py` |
 
 ## 3. File changes
 
@@ -40,28 +41,32 @@ Both produce the same `phronesisml==0.3.0` artifacts and are validated by CI.
 | `Makefile` | uv targets + cross-platform clean |
 | `.github/workflows/ci.yml` | Dual pip+uv matrix, lock check, build/twine/import-smoke job, publish gated on build |
 | `.github/workflows/docs.yml` | `[docs]` extra, pip+uv matrix |
+| `phronesisml/interfaces/cli/app.py` | UTF-8 stdio reconfigure (Windows cp1252-pipe fix, F11) |
+| `.github/workflows/ci.yml` | Regression script wired per-leg (`uv run` vs `python`) |
 | `project_docs/PACKAGING_AUDIT.md` | New — audit record |
 | `project_docs/DEPENDENCY_MATRIX.md` | New — dependency mapping |
 | `project_docs/INSTALLATION_VALIDATION.md` | New — install evidence |
 | `project_docs/BUILD_VALIDATION.md` | New — build evidence |
 | `project_docs/CI_VALIDATION.md` | New — CI evidence |
 | `project_docs/project_state.json` | Updated to v0.3.0 |
-| `CHANGELOG.md` | v0.3.0 packaging entries |
+| `CHANGELOG.md` | v0.3.0 packaging entries + CLI fix |
 
 ## 4. Validation evidence (summary)
 
 | Check | Command | Result |
 |---|---|---|
-| Lock consistency | `uv lock --check` | PASSED |
-| uv install | `uv sync` / `uv pip install -e .` | PASSED (0.3.0) |
-| pip install | `pip install -e ".[dev,cli,excel,docs]"` | PASSED (0.3.0) |
+| Lock consistency | `uv lock --check` | PASSED (175 pkgs, win32/darwin-arm64/linux) |
+| uv install | `uv sync --all-extras` | PASSED (pyspark 3.5.9, mlflow 2.22.5 installed from lock) |
+| pip install | `pip install -e ".[dev,cli,excel,docs]"` (fresh py3.11 venv) | PASSED (0.3.0) |
 | pip build | `python -m build` | PASSED (wheel + sdist) |
 | uv build | `uv build` | PASSED (wheel + sdist) |
 | Artifact check | `twine check dist/*` | PASSED |
-| Import smoke | wheel reinstall + `import phronesisml` | PASSED |
+| Metadata parity | wheel METADATA vs sdist PKG-INFO | PASSED (35 Requires-Dist each, identical) |
+| Import smoke | wheel + sdist reinstall + `import phronesisml` | PASSED (both resolve from site-packages) |
 | Lint | `ruff check` / `ruff format --check` | PASSED |
-| Type check | `mypy phronesisml/ --ignore-missing-imports` | PASSED — **clean, 0 errors in 101 files** (fixed the 9-error gate blocker: unused type-ignore comments, dict shape noise, `str\|None` arg-type) |
-| Tests | `pytest tests/` | PASSED |
+| Type check | `mypy phronesisml/ --ignore-missing-imports` | PASSED — **clean, 0 errors in 101 files** |
+| Tests | `pytest tests/` | PASSED (305 + 2 CLI regression tests) |
+| CLI parity | `phronesisml analyze/train/explain/report` via pip vs uv | PASSED — identical output (`Trained: LogisticRegression (score=1.0000)`) |
 | Docs | `mkdocs build --strict` | PASSED |
 | Quality gate | `make check` | PASSED |
 

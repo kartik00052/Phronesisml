@@ -141,8 +141,9 @@
 
 | Capability | Function(s) | Status | Evidence |
 |---|---|---|---|
-| OOP `Phronesis` pipeline (load→report) | 20 public methods incl. `run`, `generate_report`, `explain`, `evaluate` | VERIFIED | `sdk.py` |
-| Simple 12-function API (sync + async) | `analyze`, `clean`, `validate`, `detect_target`, `engineer`, `select_model`, `evaluate`, `explain`, `report`, `train`, `cluster`, `detect_anomalies`, `detect_task` (+ `*_async` twins) | VERIFIED | `simple.py` |
+| OOP `Phronesis` pipeline (load→report) | 20 public methods incl. `run`, `generate_report`, `explain`, `evaluate`; full §16 surface (`train`, `analyze`, `predict`, `evaluate`, `profile`, `clean`, `validate`, `recommend`, `compare`, `report`, `explain`, `save`, `load`, `restore`, `version`, `capabilities`, `health`) | VERIFIED | `sdk.py` |
+| Simple API (sync + async) | `analyze`, `clean`, `validate`, `detect_target`, `detect_task`, `engineer`, `select_model`, `recommend`, `evaluate`, `explain`, `report`, `train`, `profile`, `predict`, `compare`, `cluster`, `detect_anomalies`, `save`, `restore`, `load`, `version`, `capabilities`, `health` (+ `*_async` twins) | VERIFIED | `simple.py`; `tests/test_sdk_extended.py` |
+| Public exports | 79-name `__all__` backed by `_LAZY_IMPORTS`; `import phronesisml`, `from phronesisml import *`, `from phronesisml.sdk import *`, `from phronesisml.simple import *` all import cleanly | VERIFIED | `__init__.py`; `tests/test_sdk_extended.py::test_public_api_surface_is_exported` |
 
 ## 17. CLI
 

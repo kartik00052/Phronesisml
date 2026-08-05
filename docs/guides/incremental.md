@@ -18,7 +18,7 @@ print(f"{summary.rows} rows, {summary.columns} columns")
 print(f"Memory: {summary.memory_mb:.1f} MB")
 
 # 2. Clean
-ml.clean(null_strategy="fill", fill_value=0)
+ml.clean(null_strategy="fill")
 cleaned = ml.get_cleaned_data()
 print(f"After cleaning: {cleaned.shape}")
 
@@ -61,7 +61,7 @@ print(ml.report())
 |---|--------|-------------|---------|
 | 1 | `load()` | Load data from file | `self` |
 | 2 | `summary()` | Get shape, memory, columns | `DatasetSummary` |
-| 3 | `clean(null_strategy, fill_value)` | ETL: nulls, types, encoding | `self` |
+| 3 | `clean(null_strategy)` | ETL: nulls, types, encoding | `self` |
 | 4 | `validate()` | Check data quality | `ValidationReport` |
 | 5 | `eda()` | Statistical profiling | `EDAReport` |
 | 6 | `detect_target()` | Find prediction target | `TargetInfo` |
@@ -123,20 +123,24 @@ model = ml.train(cv=5)  # 5-fold cross-validation
 
 ## Method Chaining
 
-All stage methods return `self`, so you can chain calls:
+`load()` and `clean()` return `self`, so those stages can be chained:
 
 ```python
-result = (Phronesis("data.csv")
+ml = (Phronesis("data.csv")
     .load()
-    .clean()
-    .validate()
-    .eda()
-    .detect_target()
-    .engineer_features())
+    .clean())
+validation = ml.validate()
+eda = ml.eda()
+target = ml.detect_target()
+features = ml.engineer_features()
 ```
 
 !!! note
-    When chaining, the pipeline runs each stage on every method call. If you've already called `run()`, subsequent stage calls are deduplicated and won't re-run completed stages.
+    `validate()`, `eda()`, `detect_target()`, and `engineer_features()` return typed
+    result objects rather than `self`; chain only the `self`-returning stages
+    (`load`, `clean`). When chaining, the pipeline runs each stage on every method
+    call. If you've already called `run()`, subsequent stage calls are deduplicated
+    and won't re-run completed stages.
 
 ---
 
@@ -163,7 +167,7 @@ ml.detect_target()
 # Get the target info
 target = ml._state.target_column
 task = ml._state.task_type
-confidence = ml._state.target_confidence
+confidence = ml._state.target_detection_confidence
 print(f"Target: {target} ({task}, confidence={confidence:.2f})")
 
 ml.engineer_features()

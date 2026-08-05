@@ -10,6 +10,7 @@ Entry point: ``phronesisml`` (defined in ``pyproject.toml`` ``[project.scripts]`
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import sys
 from pathlib import Path
@@ -23,6 +24,26 @@ except ImportError as exc:
     raise ImportError(
         "CLI requires extra dependencies. Install with:\n  pip install phronesisml[cli]"
     ) from exc
+
+
+def _reconfigure_utf8(stream: Any) -> None:
+    """Reconfigure a text stream to UTF-8 with a lossless error fallback.
+
+    Windows pipes/redirects default to the ANSI code page (e.g. cp1252),
+    which cannot encode non-ASCII glyphs such as ``→`` used in stage graphs.
+    Legacy consoles are already UTF-8 via PEP 528; this covers piped output
+    and exotic redirections.  Non-reconfigurable streams are left untouched.
+    """
+    with contextlib.suppress(AttributeError, ValueError):
+        stream.reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
+def _force_utf8_stdio() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        _reconfigure_utf8(stream)
+
+
+_force_utf8_stdio()
 
 app = typer.Typer(
     name="phronesisml",
@@ -308,6 +329,42 @@ def train(
 
 
 @app.command()
+def evaluate(
+    data_path: str = typer.Argument(..., help="Path to the input dataset."),
+    engine: str | None = typer.Option(None, "--engine", "-e", help="Force an engine."),
+    null_strategy: str = typer.Option(
+        "drop", "--nulls", "-n", help="Null strategy: drop, fill, flag."
+    ),
+    cv: int | None = typer.Option(None, "--cv", help="Cross-validation folds (>=2)."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="Enable debug logging."),
+) -> None:
+    """Run model selection and evaluation on a dataset."""
+    _setup_logging(verbose)
+    _require_file(data_path)
+    try:
+        from phronesisml import evaluate as api_evaluate
+
+        result = api_evaluate(
+            data_path,
+            engine=engine,
+            null_strategy=null_strategy,
+            cv=cv,
+        )
+        console.print(
+            f"[bold]Evaluated:[/bold] {result.best_model_type} (score={result.best_score:.4f})"
+        )
+        if result.task_type:
+            console.print(f"  Task: {result.task_type}")
+        if result.evaluation_metrics:
+            for metric, value in result.evaluation_metrics.items():
+                console.print(f"  {metric}: {value}")
+        if result.ambiguity_caveat:
+            console.print(f"  [yellow]Note:[/yellow] {result.ambiguity_caveat}")
+    except Exception as exc:
+        _fail(exc)
+
+
+@app.command()
 def explain(
     data_path: str = typer.Argument(..., help="Path to the input dataset."),
     engine: str | None = typer.Option(None, "--engine", "-e", help="Force an engine."),
@@ -361,7 +418,7 @@ def report(
 @app.command()
 def compare(
     data_path: str = typer.Argument(..., help="Path to the input dataset."),
-    model: list[str] = typer.Option(  # noqa: B008 — repeatable option
+    model: list[str] | None = typer.Option(  # noqa: B008 — repeatable option
         None, "--model", "-m", help="Model(s) to compare (repeatable)."
     ),
     engine: str | None = typer.Option(None, "--engine", "-e", help="Force an engine."),
@@ -379,7 +436,7 @@ def compare(
 
         result = api_compare(
             data_path,
-            list(model) or None,
+            list(model) if model else None,
             engine=engine,
             null_strategy=null_strategy,
             cv=cv,

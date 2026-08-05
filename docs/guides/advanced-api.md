@@ -148,7 +148,7 @@ The internal state object passed between agents. Exposes all intermediate result
 | `data_profile` | `dict \| None` | EDA profile (statistics, distributions) |
 | `target_column` | `str \| None` | Detected target column name |
 | `task_type` | `str \| None` | `"classification"`, `"regression"`, or `"ambiguous"` |
-| `target_confidence` | `float \| None` | Confidence score (0.0–1.0) |
+| `target_detection_confidence` | `float \| None` | Confidence score (0.0–1.0) |
 | `features` | `DataFrame \| None` | Engineered feature DataFrame |
 | `feature_names` | `list[str] \| None` | Feature column names |
 | `trained_model` | `Any \| None` | The fitted scikit-learn model |
@@ -175,24 +175,24 @@ print(f"Model: {type(state.trained_model).__name__}")
 
 ## OOP API — Method Chaining
 
-All stage methods return `self`, so you can chain calls:
+`load()` and `clean()` return `self`, so those stages can be chained:
 
 ```python
 from phronesisml import Phronesis
 
-# Chain everything
-result = (Phronesis("data.csv")
+# Chain the self-returning stages
+ml = (Phronesis("data.csv")
     .load()
-    .clean(null_strategy="fill")
-    .validate()
-    .eda()
-    .detect_target()
-    .engineer_features()
-    .train(model_type="random_forest")
-    .evaluate()
-    .report())
+    .clean(null_strategy="fill"))
+validation = ml.validate()
+eda = ml.eda()
+target = ml.detect_target()
+features = ml.engineer_features()
+model = ml.train(model_type="random_forest")
+metrics = ml.evaluate()
+report = ml.report()
 
-print(result)
+print(report)
 ```
 
 ### Individual Stage Methods
@@ -201,7 +201,7 @@ print(result)
 |--------|---------|-------------|
 | `load()` | `self` | Load data from file |
 | `summary()` | `DatasetSummary` | Shape, memory, column info |
-| `clean(null_strategy, fill_value)` | `self` | ETL: null handling, type casting |
+| `clean(null_strategy)` | `self` | ETL: null handling, type casting |
 | `validate()` | `ValidationReport` | Data quality checks |
 | `eda()` | `EDAReport` | Statistical profiling |
 | `detect_target()` | `TargetInfo` | Target column and task type |

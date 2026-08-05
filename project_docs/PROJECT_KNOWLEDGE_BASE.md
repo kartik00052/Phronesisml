@@ -361,7 +361,7 @@ All agents follow the same pattern: `BaseAgent` Protocol + `schemas.py` (pydanti
 
 ### 8.11 Storage Agent (`agents/storage/`)
 - `services/storage.py::save_artifacts` writes to `./Phronesis_artifacts/{run_id}/`.
-- Writes `evaluation_report.json`, the final Markdown report, and related artifacts; returns the artifact directory path.
+- Writes `evaluation.json`, the final Markdown report, and related artifacts; returns the artifact directory path.
 
 ---
 
@@ -446,9 +446,9 @@ See §15.
 ## 11. Public API Surfaces
 
 ### 11.1 Simple API (`phronesisml.simple`)
-12 functions, each with an `_async` twin:
+23 functions, each with an `_async` twin:
 
-`analyze`, `clean`, `validate`, `detect_target`, `detect_task`, `engineer`, `select_model`, `evaluate`, `explain`, `report`, `train`, `cluster`, `detect_anomalies` (+ `_async`).
+`analyze`, `clean`, `validate`, `detect_target`, `detect_task`, `engineer`, `select_model`, `evaluate`, `explain`, `report`, `train`, `cluster`, `detect_anomalies`, `profile`, `predict`, `compare`, `save`, `restore`, `load`, `recommend`, `version`, `capabilities`, `health` (+ `_async`).
 
 Return typed result objects: `DatasetProfile`, `CleanResult`, `ValidationResult`, `TargetResult`, `TaskDetectionResult`, `FeatureResult`, `ModelResult`, `TrainResult`, `ExplainResult`, `AnomalyResult`, `ClusteringResult`.
 
@@ -471,8 +471,14 @@ result = await phronesisml.run_pipeline(data_path="data.csv")
 - Errors: `WorkflowError` (execution), `ConfigurationError` → wrapped as `WorkflowError`.
 
 ### 11.4 CLI (`interfaces/cli/app.py`)
+13 commands: `run`, `info`, `version`, `capabilities`, `doctor`, `analyze`,
+`validate`, `profile`, `train`, `evaluate`, `explain`, `report`, `compare`.
+
 ```
 phronesisml run data.csv [--engine/-e pandas|polars|spark] [--nulls/-n drop|fill|flag] [--verbose/-v]
+phronesisml info
+phronesisml evaluate data.csv [--cv N] [--nulls/-n ...] [--engine/-e ...] [--verbose/-v]
+phronesisml compare data.csv [-m model ...] [--cv N] [--nulls/-n ...] [--engine/-e ...]
 ```
 Typer app with a RichHandler log handler.
 
@@ -513,7 +519,7 @@ Typer app with a RichHandler log handler.
 
 ### `services/storage.py`
 - `save_artifacts(…, run_id)` → default `./Phronesis_artifacts/{run_id}/`.
-- Writes `evaluation_report.json`, the final Markdown report, and supporting artifacts; returns the directory path.
+- Writes `evaluation.json`, the final Markdown report, and supporting artifacts; returns the directory path.
 - **Backends**: local filesystem only (S3/GCS/Azure are planned).
 
 ### `data/loaders/file_loader.py`

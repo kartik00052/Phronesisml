@@ -41,7 +41,7 @@ The REST layer was the least production-ready surface at audit time (BUG-03 + in
 1. **Host baseline (Python 3.11.9, repo checkout):** ruff, mypy (CI flag), pytest, import check.
 2. **Clean-room wheel (Python 3.13.3 venv at `C:\Users\karti\AppData\Local\Temp\opencode\phr313`):** wheel built from the repo, installed with `[cli,api,excel]` (the `[api]` extra was removed in v0.3.0), exercised via CLI (`run`, `info`, `--help`), SDK (`sdk_audit.py`: OOP chain, simple sync + async), REST API (`/health`, `/capabilities`, `/version`, `/analyze`, `/train`) — REST portions obsolete since v0.3.0 — and edge-case CSVs (`edge_audit.py`).
 
-**Key artifacts produced during the audit (temp):** `sample_500.csv`, `sample_60.csv`, `edge/*.csv`, `Phronesis_artifacts/default_run/evaluation_report.json`, `api_out.log`/`api_err.log`, `train_job.txt`, `sdk_audit.py`, `edge_audit.py`.
+**Key artifacts produced during the audit (temp):** `sample_500.csv`, `sample_60.csv`, `edge/*.csv`, `Phronesis_artifacts/default_run/evaluation.json`, `api_out.log`/`api_err.log`, `train_job.txt`, `sdk_audit.py`, `edge_audit.py`.
 
 **Reproduction datasets.** Synthetic customer-churn CSV with columns `age` (continuous), `income`, `score`, `region`, `churned` (clean binary). `sample_500.csv` (500 rows) and `sample_60.csv` (60 rows). All verified runs below used the **pandas** engine (files < 2 MB → pandas auto-select).
 
@@ -138,7 +138,7 @@ The REST layer was the least production-ready surface at audit time (BUG-03 + in
 
 ## 8. BUG-04 (VERIFIED) — `best_pipeline` key mismatch silently drops HPO params
 
-**Reproduction.** The REST `/train` job result returned `best_params: {}` at the top level, while the on-disk `evaluation_report.json` (written by the same run) contains the real params: `best_params: {"C": 0.01, "max_iter": 200}`.
+**Reproduction.** The REST `/train` job result returned `best_params: {}` at the top level, while the on-disk `evaluation.json` (written by the same run) contains the real params: `best_params: {"C": 0.01, "max_iter": 200}`.
 
 **Root cause.** `agents/model_selection/agent.py:182` stores HPO params under the key **`params`**:
 ```python

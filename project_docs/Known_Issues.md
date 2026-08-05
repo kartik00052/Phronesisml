@@ -1,6 +1,6 @@
 # PhronesisML — Known Issues
 
-> **Version:** 0.2.2 · **Date:** 2026-08-04
+> **Version:** 0.3.0 · **Date:** 2026-08-05
 > **Status:** Machine-readable source of truth for issues is `project_state.json` (`known_issues`). This file is the human-readable companion. Audit detail: `AUDIT_REPORT.md`.
 
 ## 1. Phase-1 defects (fixed in working tree, uncommitted)
@@ -15,6 +15,12 @@
 | ISSUE-06 | Low | Fixed | README drift vs `pyproject.toml` extras / pipeline order. |
 | ISSUE-07 | Low | Fixed | HPO `max_time_seconds` was a soft ceiling. Fix: budget enforced between trials. |
 | ISSUE-08 | Low | Fixed | *(Obsolete — Docker image removed in v0.3.0.)* Docker installed `[api]` only; `.xlsx` failed in container. Fix: `[excel]` added. |
+| NEW-09 | High | Fixed | `train()`/`predict()` (and save → restore → predict) crashed on raw string categoricals. Fix: `build_transform_recipe(..., etl_encoding_maps=...)` consumes the ETL label-encoding maps (target column excluded); regression tests in `tests/test_regressions_v030.py`. |
+| NEW-10 | Medium | Fixed | `phronesisml compare <data>` without `-m` raised `TypeError` (`list(model) or None` always evaluated the first arg). Fix: `list(model) if model else None`. |
+| NEW-11 | Medium | Fixed | `resource_estimation.json` shipped as a placeholder because pre-flight estimation wasn't wired into the graph. Fix: sampling node passes `SamplingConfig` + engine into `build_graph`. |
+| NEW-12 | Medium | Fixed | CLI had no `evaluate` command. Fix: added `phronesisml evaluate` (data_path/engine/nulls/cv/verbose) via `phronesisml.simple.evaluate`. |
+| NEW-13 | Medium | Fixed | Target detector's `numeric_binary_ambiguous` branch shadowed binary-numeric detection and used a non-ASCII endash. Fix: unified single `numeric_low_cardinality_ambiguous` branch (`2 <= unique <= 5`) with ASCII-safe reason. |
+| NEW-14 | Medium | Fixed | Doc drift vs public surface (phantom `evaluation_report.json`, 12-fn/2-command undercounts, phantom params/attributes). Fix: doc sync — KB/roadmap/audit claim `evaluation.json`; CLI guide lists all 13 commands incl. `evaluate`; simple-api guide drops phantom params/attributes. |
 
 ## 2. Residual / known limitations
 

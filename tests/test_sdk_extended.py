@@ -300,6 +300,53 @@ def test_simple_save_restore_roundtrip(classification_csv: str, raw_df, tmp_path
     assert len(saved.predict(raw_df.head(2))) == 2
 
 
+def test_simple_recommend_matches_select_model(classification_csv: str) -> None:
+    from phronesisml import recommend, select_model
+
+    rec = recommend(classification_csv, engine="pandas")
+    sel = select_model(classification_csv, engine="pandas")
+    assert rec.best_model_type == sel.best_model_type
+    assert rec.best_score == sel.best_score
+    assert rec.evaluation_metrics == sel.evaluation_metrics
+
+
+def test_simple_load_roundtrip(classification_csv: str, raw_df, tmp_path) -> None:
+    from phronesisml import load, save
+
+    info = save(classification_csv, str(tmp_path / "runs"), engine="pandas")
+    saved = load(info["artifact_uri"])
+    assert saved.model is not None
+    assert len(saved.predict(raw_df.head(2))) == 2
+
+
+def test_public_api_surface_is_exported() -> None:
+    import phronesisml
+
+    required = {
+        "train",
+        "analyze",
+        "predict",
+        "evaluate",
+        "profile",
+        "clean",
+        "validate",
+        "recommend",
+        "compare",
+        "report",
+        "explain",
+        "save",
+        "load",
+        "version",
+        "capabilities",
+        "health",
+    }
+    assert required.issubset(set(phronesisml.__all__))
+    for name in required:
+        assert callable(getattr(phronesisml, name)), name
+    for name in sorted(required):
+        assert callable(getattr(phronesisml, name + "_async")), name + "_async"
+
+
 def test_simple_introspection() -> None:
     from phronesisml import capabilities, health, version
 
@@ -344,6 +391,24 @@ async def test_async_save_restore(classification_csv: str, raw_df, tmp_path) -> 
 
     info = await save_async(classification_csv, str(tmp_path / "runs"), engine="pandas")
     saved = await restore_async(info["artifact_uri"])
+    assert saved.model is not None
+    assert len(saved.predict(raw_df.head(2))) == 2
+
+
+async def test_async_recommend(classification_csv: str) -> None:
+    from phronesisml import recommend_async, select_model_async
+
+    rec = await recommend_async(classification_csv, engine="pandas")
+    sel = await select_model_async(classification_csv, engine="pandas")
+    assert rec.best_model_type == sel.best_model_type
+    assert rec.best_score == sel.best_score
+
+
+async def test_async_load(classification_csv: str, raw_df, tmp_path) -> None:
+    from phronesisml import load_async, save_async
+
+    info = await save_async(classification_csv, str(tmp_path / "runs"), engine="pandas")
+    saved = await load_async(info["artifact_uri"])
     assert saved.model is not None
     assert len(saved.predict(raw_df.head(2))) == 2
 

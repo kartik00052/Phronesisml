@@ -12,11 +12,25 @@ Zero-friction one-liner functions. Each runs the relevant pipeline stages and re
 | `clean(path)` | Upload → ETL | `CleanResult` | Data cleaning only |
 | `validate(path)` | Upload → ETL → Validation | `ValidationResult` | Quality checks |
 | `detect_target(path)` | Upload → ... → Target Detection | `TargetResult` | Find prediction target |
+| `detect_task(path)` | Upload → ... → Task Detection | `TaskDetectionResult` | Detect task type |
 | `engineer(path)` | Upload → ... → Feature Engineering | `FeatureResult` | Feature pipeline |
 | `select_model(path)` | Upload → ... → Model Selection + Evaluation | `ModelResult` | Model comparison |
+| `recommend(path)` | Upload → ... → Model Selection + Evaluation | `ModelResult` | Model recommendation (alias of `select_model`) |
+| `evaluate(path)` | Upload → ... → Model Selection + Evaluation | `ModelResult` | Evaluation (alias of `select_model`) |
 | `explain(path)` | Upload → ... → Explainability | `ExplainResult` | Feature importance |
 | `report(path)` | Upload → ... → Reporting | `str` (Markdown) | Full report |
 | `train(path)` | All 11 stages | `TrainResult` | Complete pipeline |
+| `profile(path)` | Upload → ETL → Validation → EDA | `DatasetProfile` | Alias of `analyze` |
+| `predict(path, data)` | Train, then predict | `list` | Train + predict on new rows |
+| `compare(path, models)` | Train several models | `ModelComparison` | Rank model families |
+| `cluster(path)` | Unsupervised clustering | `ClusteringResult` | Cluster analysis |
+| `detect_anomalies(path)` | Unsupervised anomaly detection | `AnomalyResult` | Outlier detection |
+| `save(path, dir)` | All stages + persist | `dict` | Persist artifacts + model |
+| `restore(dir)` | Load saved run | `SavedRun` | Offline prediction |
+| `load(dir)` | Load saved run | `SavedRun` | Alias of `restore` |
+| `version()` | — | `str` | Installed version |
+| `capabilities()` | — | `dict` | SDK capability report |
+| `health()` | — | `dict` | Offline self-check |
 
 ---
 
@@ -30,8 +44,8 @@ from phronesisml import analyze
 profile = analyze("data.csv")
 print(f"Shape: {profile.shape}")
 print(f"Memory: {profile.memory_usage_bytes / 1024:.1f} KB")
-print(f"Numeric columns: {profile.numeric_columns}")
-print(f"Categorical columns: {profile.categorical_columns}")
+print(f"Columns: {profile.column_names}")
+print(f"Numeric summary: {profile.numeric_summary}")
 ```
 
 ### Train a Model
@@ -51,7 +65,7 @@ print(result.report[:500])  # First 500 chars of the report
 from phronesisml import clean
 
 result = clean("messy_data.csv", null_strategy="fill")
-print(f"Shape after cleaning: {result.shape}")
+print(f"Rows after cleaning: {result.n_rows}")
 ```
 
 ---
@@ -89,8 +103,8 @@ Control how nulls are handled during the ETL stage:
 # Drop rows with nulls (default)
 result = clean("data.csv", null_strategy="drop")
 
-# Fill nulls with a specific value
-result = clean("data.csv", null_strategy="fill", fill_value=0)
+# Fill nulls (strategy-level; value handling is config-driven)
+result = clean("data.csv", null_strategy="fill")
 
 # Flag nulls as separate columns
 result = clean("data.csv", null_strategy="flag")
@@ -117,9 +131,9 @@ profile = analyze("data.csv")
 
 profile.shape              # (rows, columns)
 profile.memory_usage_bytes # int
-profile.numeric_columns    # list[str]
-profile.categorical_columns # list[str]
-profile.preview            # str (first 5 rows as text)
+profile.column_names       # list[str]
+profile.missing_counts     # dict[str, int]
+profile.validation_passed  # bool
 ```
 
 ### TrainResult (from `train`)
@@ -192,7 +206,7 @@ print(f"Dataset: {profile.shape[0]} rows, {profile.shape[1]} columns")
 
 # Step 2: Clean
 result = clean("customers.csv", null_strategy="fill")
-print(f"Cleaned: {result.shape[0]} rows")
+print(f"Cleaned: {result.n_rows} rows")
 
 # Step 3: Detect target
 target = detect_target("customers.csv")

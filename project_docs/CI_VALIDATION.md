@@ -50,7 +50,8 @@
 
 ## 4. Notes
 
-- `test_phronesis.py` (regression suite) runs with `|| true` in CI — it is a diagnostic script, not a gating suite; the gating suite is `pytest tests/`.
+- `test_phronesis.py` (regression suite) runs with `|| true` in CI — it is a diagnostic script, not a gating suite; the gating suite is `pytest tests/`. It is wired per-leg (`uv run python test_phronesis.py` on the uv legs, `python test_phronesis.py` on the pip legs) so it actually executes against the installed package in both workflows.
 - Auto-format and publish use the pip leg intentionally to keep trusted-publishing (PyPI) minimal and dependency-light.
 - The `docs` workflow matrix adds a uv build check without doubling the gh-deploy (deploy runs on the pip leg only).
 - Darwin is limited to `arm64` (Apple Silicon): shap 0.51.0 (the py<3.12 shap) pins `numba<0.63` on darwin-x86_64, which requires `numpy<2.4` and conflicts with our `numpy>=1.24,<2.5` — so a universal lock including Intel Macs is unsatisfiable.
+- The `build` job leaves `dist/` from `python -m build` in place, then `uv build` re-writes identical `phronesisml-0.3.0` artifacts over them; both builders produce the same names, so `twine check dist/*` and the wheel-import smoke test always exercise the freshest build.

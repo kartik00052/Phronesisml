@@ -511,7 +511,12 @@ class Phronesis:
         # Build graph with only the needed stages — previously executed
         # stages are skipped; their outputs already live in self._state.
         agents = self._get_agents()
-        graph = build_graph(agents, stages=needed)
+        graph = build_graph(
+            agents,
+            stages=needed,
+            sampling_config=self._config.sampling,
+            engine=self._eng,
+        )
 
         if self._start_time is None:
             self._start_time = time.monotonic()

@@ -90,7 +90,11 @@ jobs:
       - name: Run unit tests (pip)
         if: matrix.install == 'pip'
         run: pytest tests/ -v --tb=short -x
-      - name: Run regression tests
+      - name: Run regression tests (uv)
+        if: matrix.install == 'uv'
+        run: uv run python test_phronesis.py 2>&1 || true
+      - name: Run regression tests (pip)
+        if: matrix.install == 'pip'
         run: python test_phronesis.py 2>&1 || true
 
   typecheck:

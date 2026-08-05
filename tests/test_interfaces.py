@@ -8,11 +8,14 @@ re-testing SDK internals.
 
 from __future__ import annotations
 
+import io
+
 import numpy as np
 import pandas as pd
 import pytest
 from typer.testing import CliRunner
 
+from phronesisml.interfaces.cli.app import _reconfigure_utf8
 from phronesisml.interfaces.cli.app import app as cli_app
 
 CLI_RUNNER = CliRunner()
@@ -144,3 +147,25 @@ def test_cli_command_missing_file_exits_nonzero(tmp_path_factory) -> None:
     missing = tmp_path_factory.mktemp("cli_missing2") / "nope.csv"
     result = CLI_RUNNER.invoke(cli_app, ["analyze", str(missing)])
     assert result.exit_code == 1
+
+
+def test_cli_reconfigure_utf8_handles_non_ascii_glyphs() -> None:
+    """Regression: a cp1252 Windows pipe must not break on CLI glyphs (e.g. ``→``).
+
+    Rich's legacy Windows renderer raises UnicodeEncodeError when writing
+    non-ASCII glyphs to a cp1252-coded pipe. The CLI forces UTF-8 on stdout
+    and stderr at import; this exercises the same reconfigure against a
+    simulated legacy stream.
+    """
+    stream = io.TextIOWrapper(io.BytesIO(), encoding="cp1252", errors="strict")
+    _reconfigure_utf8(stream)
+    stream.write("upload → etl → validation")
+    stream.flush()
+    assert stream.buffer.getvalue().decode("utf-8") == "upload → etl → validation"
+
+
+def test_cli_reconfigure_utf8_ignores_unreconfigurable_stream() -> None:
+    stream = io.StringIO()
+    _reconfigure_utf8(stream)
+    stream.write("upload → etl")
+    assert stream.getvalue() == "upload → etl"

@@ -30,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`evaluate` CLI command** — `phronesisml evaluate <data>` runs cross-validated
+  model evaluation offline via `phronesisml.simple.evaluate` and prints the best
+  model type, score, task type, evaluation metrics, and any ambiguity caveat.
+  Supports `--nulls`, `--engine`, `--cv`, and `--verbose`. Regression test in
+  `tests/test_regressions_v030.py`.
 - **Unsupervised ML flows wired end-to-end** — `cluster()` / `cluster_async()` and
   `detect_anomalies()` / `detect_anomalies_async()` now force the clustering /
   anomaly-detection task so the pipeline takes the unsupervised branch (target
@@ -39,6 +44,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `version`, `capabilities`, `health` (plus async variants), and `ModelComparison` /
   `SavedRun` result types, exposed through the simple API and the OOP `Phronesis`
   class.
+- **SDK §16 API aliases complete** — `recommend` / `recommend_async` (alias of
+  `select_model`, matching `Phronesis.recommend`) and `load` / `load_async` (alias
+  of `restore`, loading a saved run for offline prediction) added to the simple
+  API and exported from `phronesisml.__all__`. The full §16 surface
+  (`train`, `analyze`, `predict`, `evaluate`, `profile`, `clean`, `validate`,
+  `recommend`, `compare`, `report`, `explain`, `save`, `load`, `version`,
+  `capabilities`, `health`) is now present on the `Phronesis` class, the simple
+  API, and their async twins. Regression tests in `tests/test_sdk_extended.py`.
 - **`[docs]` extra** — `mkdocs`, `mkdocs-material`, `mkdocstrings[python]`; `all`
   now includes `docs`.
 - **Expanded `[dev]` extra** — adds `pytest-xdist`, `coverage`, `build`, `twine`.
@@ -63,6 +76,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   3.13, and the tree is **mypy-clean** — `mypy phronesisml/ --ignore-missing-imports`
   reports 0 errors in 101 files (9 errors in 7 files fixed, closing out the
   historical stub-error baseline).
+
+### Fixed
+
+- **CLI crashes on non-ASCII output under a legacy Windows console** — rich's
+  `LegacyWindowsTerm` raised `UnicodeEncodeError` ("charmap" codec can't encode
+  `→`) when stage-graph glyphs were rendered to a cp1252-coded pipe. The CLI now
+  reconfigures `stdout`/`stderr` to UTF-8 (with a `backslashreplace` fallback) at
+  import time, so `phronesisml analyze|train|explain|report|capabilities` render
+  cleanly on Windows consoles, pipes, and redirects. Regression tests added in
+  `tests/test_interfaces.py`.
+- **CI regression script ran under the wrong interpreter on the uv leg** —
+  `python test_phronesis.py` used the system interpreter (no package installed)
+  after `uv sync`. It is now wired per-leg (`uv run python test_phronesis.py` /
+  `python test_phronesis.py`) so the diagnostic actually runs in both workflows.
+- **Predictions crashed on raw string categoricals** — `Phronesis.train()` /
+  `predict()` (and save → restore → predict) raised when the dataset contained
+  plain-string categorical columns. The feature-engineering recipe
+  (`build_transform_recipe`) now consumes the ETL label-encoding maps (mined from
+  the ETL stage log) so string categories are encoded deterministically at
+  predict time; the ETL maps are excluded when the string column is the detected
+  target. Regression tests in `tests/test_regressions_v030.py` (`NEW-09`).
+- **`phronesisml compare <data>` crashed without `-m`** — `list(model) or None`
+  always evaluated the first argument, so a missing `--model` raised
+  `TypeError` instead of comparing the default model set. Now `list(model) if
+  model else None` (the argument is typed `list[str] | None`). Regression test
+  `NEW-10`.
+- **`resource_estimation.json` shipped as a placeholder** — the pre-flight
+  estimator never ran because the resource-estimation stage was not wired into
+  the graph. The sampling node now passes `SamplingConfig` and the engine into
+  `build_graph`, so saved runs contain real resource estimates. Regression test
+  `NEW-11`.
+- **Target detector used a literal boundary for 2-unique numeric columns** — the
+  old `numeric_binary_ambiguous` branch shadowed binary-numeric detection and
+  referenced a non-ASCII endash. It is unified into a single
+  `numeric_low_cardinality_ambiguous` branch (`2 <= unique <= 5`) with an
+  ASCII-safe reason string. Regression test `NEW-13`.
 
 ### Added (Project docs)
 

@@ -37,7 +37,20 @@ pip install --force-reinstall --no-deps dist/phronesisml-0.3.0-py3-none-any.whl
 python -c "import phronesisml; print(phronesisml.__version__)"   # -> 0.3.0
 ```
 
-Same smoke test is wired into CI (`build` job) against the wheel built from the tag.
+Verified from outside the repo (so the source tree cannot shadow site-packages):
+the wheel resolves to `site-packages\phronesisml\__init__.py` and the console
+script `phronesisml version` prints `0.3.0`. The sdist (`*.tar.gz`) installs and
+imports identically. Same smoke test is wired into CI (`build` job) against the
+wheel built from the tag.
+
+## 4a. Metadata parity
+
+The wheel's `METADATA` and the sdist's `PKG-INFO` carry identical metadata
+field-for-field — `Version: 0.3.0`, `Requires-Python: >=3.11,<3.14`, the same 35
+`Requires-Dist` entries (core + all extras), classifiers, and URLs — with the
+only structural difference being the long-description block (embedded in the
+wheel, sourced from the included README in the sdist). `twine check` passes on
+both artifacts.
 
 ## 5. Version single-sourcing
 

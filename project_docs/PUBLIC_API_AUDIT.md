@@ -1,9 +1,9 @@
-# PUBLIC_API_AUDIT.md — PhronesisML (v0.2.2)
+# PUBLIC_API_AUDIT.md — PhronesisML (v0.3.0)
 
-> **Audit:** public API surface · **Version:** `0.2.2` · **Date:** 2026-08-04
+> **Audit:** public API surface · **Version:** `0.3.0` · **Date:** 2026-08-05
 > **Method:** read-only audit of `phronesisml/__init__.py` (`__all__`, `_LAZY_IMPORTS`),
 > `simple.py`, `sdk.py`, `results.py`, CLI `interfaces/cli/app.py`.
-> **Baseline:** 270 tests passed.
+> **Baseline:** 312 tests passed.
 
 ---
 
@@ -22,12 +22,22 @@
 | `detect_anomalies` | `detect_anomalies_async` | `AnomalyResult` | upload…reporting (no explainability) |
 | `engineer` | `engineer_async` | `FeatureResult` | upload…feature_engineering |
 | `select_model` | `select_model_async` | `ModelResult` | upload…evaluation |
-| `evaluate` | `evaluate_async` | `ModelResult` | upload…evaluation |
+| `recommend` | `recommend_async` | `ModelResult` | upload…evaluation (alias of `select_model`) |
+| `evaluate` | `evaluate_async` | `ModelResult` | upload…evaluation (alias of `select_model`) |
 | `explain` | `explain_async` | `ExplainResult` | upload…explainability |
-| `report` | `report_async` | `ExplainResult` (report dict) | upload…reporting |
+| `report` | `report_async` | `str` (Markdown report) | upload…reporting |
 | `train` | `train_async` | `TrainResult` | full 11 stages |
+| `profile` | `profile_async` | `DatasetProfile` | upload…eda (alias of `analyze`) |
+| `predict` | `predict_async` | `list` | train + recipe-based predict |
+| `compare` | `compare_async` | `ModelComparison` | train several model families |
+| `save` | `save_async` | `dict` | full pipeline + persist artifacts |
+| `restore` | `restore_async` | `SavedRun` | load saved run for offline prediction |
+| `load` | `load_async` | `SavedRun` | alias of `restore` |
+| `version` | `version_async` | `str` | installed version |
+| `capabilities` | `capabilities_async` | `dict` | SDK capability report |
+| `health` | `health_async` | `dict` | offline self-check |
 
-All 13 sync functions + their `_async` twins are present in `__all__` and
+All 23 sync functions + their `_async` twins are present in `__all__` and
 `_LAZY_IMPORTS`, lazily loaded via `__getattr__` (verified: `import phronesisml`
 does not eagerly import `langgraph`).
 
@@ -37,6 +47,9 @@ does not eagerly import `langgraph`).
   `load / validate / analyze / engineer / select_model / evaluate / explain / report / train`
   returning the typed report dataclasses (`DatasetSummary`, `ValidationReport`,
   `EDAReport`, `FeatureReport`, `ModelInfo`, `ExplanationReport`, …).
+- Full §16 surface on the class: `train`, `analyze`, `predict`, `evaluate`,
+  `profile`, `clean`, `validate`, `recommend`, `compare`, `report`, `explain`,
+  `save`, `load`, `restore` (classmethod), `version`, `capabilities`, `health`.
 
 ### 1.3 Advanced API
 
@@ -46,10 +59,13 @@ does not eagerly import `langgraph`).
 
 ### 1.4 CLI (`phronesisml[cli]`)
 
-`run`, `info`, `version`, help — verified wired to the same pipeline.
+`run`, `info`, `version`, `capabilities`, `doctor`, `analyze`, `validate`, `profile`,
+`train`, `evaluate`, `explain`, `report`, `compare` — 13 commands, verified wired to
+the same pipeline.
 
 ### 1.5 REST (`phronesisml[api]`)
 
+*(Obsolete since v0.3.0 — the REST layer was removed; the package is SDK-first.)*
 `/health`, `/capabilities`, `/version`, `/analyze`, `/train` (async job), plus docs.
 
 ---
@@ -82,5 +98,8 @@ does not eagerly import `langgraph`).
 1. *(REST gap — obsolete since v0.3.0: `interfaces/api/routes.py` was removed.)*
 2. No test asserts the full `__all__` / `_LAZY_IMPORTS` symmetry; add an API-contract
    test that every `__all__` name resolves via `getattr(phronesisml, name)`.
+   *(Partial: `tests/test_sdk_extended.py::test_public_api_surface_is_exported`
+   asserts the §16 surface is exported and callable; full `__all__` ↔
+   `_LAZY_IMPORTS` symmetry remains unasserted.)*
 3. `WorkflowState.run_id`/`status` remain unpopulated end-to-end (historical BUG-05);
    worth wiring at graph start for fully populated reports.

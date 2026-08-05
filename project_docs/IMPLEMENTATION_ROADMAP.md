@@ -46,7 +46,7 @@ phronesisml/
 ├── workflow/       state (pydantic + field-ownership map), graph (build + cache), router, nodes, sampling_node
 ├── interfaces/     cli/app
 ├── sdk.py          OOP Phronesis + run_pipeline
-├── simple.py       simple 12-function API (sync + async)
+├── simple.py       simple 23-function API (sync + async)
 └── _result_builders.py, _stages.py
 ```
 
@@ -79,7 +79,7 @@ phronesisml/
 | Clustering (KMeans/DBSCAN/Agglomerative, silhouette selection, max_k) + anomaly (isolation_forest/LOF, 10,000-row LOF cap) | `VERIFIED` | `ml/clustering/`, `ml/anomaly/` |
 | Markdown + HTML report generation | `VERIFIED` (with BUG-05) | `ml/reports/builder.py` |
 | Local artifact storage (`<base>/<run_id>/`) | `VERIFIED` | `services/storage.py` |
-| Public surfaces: OOP SDK, 12-fn simple API (sync+async), `run_pipeline`, CLI (`run`/`info`/`--engine/-e`/`--nulls/-n`/`--verbose/-v`) | `VERIFIED` | `sdk.py`, `simple.py`, `interfaces/` |
+| Public surfaces: OOP SDK, 23-fn simple API (sync+async), `run_pipeline`, CLI (13 commands incl. `run`/`info`/`analyze`/`validate`/`train`/`evaluate`/`compare`/`explain`) | `VERIFIED` | `sdk.py`, `simple.py`, `interfaces/` |
 | Packaging: wheel + extras (`cli/spark/mlflow/excel/dev/all`), `py.typed`; CI on 3.13 (format/lint/mypy/pytest) | `VERIFIED` | `pyproject.toml`, `.github/workflows/ci.yml` |
 | Spark engine, MLflow active tracking | `NOT VERIFIED` | require pyspark+JVM / mlflow install, out of audit scope |
 
@@ -103,7 +103,7 @@ The graph runs **11 stages** in order (`workflow/graph.py`, `_FULL_PIPELINE_STAG
 
 **Routing:** conditional routers (`proceed` / `__end__`, `workflow/router.py`); storage has no router; pre-flight/sampling node can be inserted (`workflow/sampling_node.py`); fail-fast on `AgentError`, partial results preserved on `AgentNotImplementedError` (`workflow/nodes.py`).
 
-**CLI surface** (`phronesisml run <file>`, `phronesisml info`): exits 0 on success and clean `WorkflowError`; invalid-arg exit code 2 not re-verified.
+**CLI surface** (`phronesisml run <file>`, `phronesisml info`, plus `analyze`/`validate`/`profile`/`train`/`evaluate`/`explain`/`report`/`compare`/`version`/`capabilities`/`doctor`): exits 0 on success and clean `WorkflowError`; invalid-arg exit code 2 not re-verified.
 
 ---
 
@@ -133,7 +133,7 @@ The graph runs **11 stages** in order (`workflow/graph.py`, `_FULL_PIPELINE_STAG
 | **Model recommendation with a WHY** | Selection is rule-based; users get a model name but no plain-language rationale | `auto_selector.py` (rule tables only) |
 | **User-configurable HPO search space** | `max_trials`/`max_time_seconds` exist; no per-model param grids | `trainer.py` |
 | **Custom feature transformers / pipeline serialization** | FE is a fixed chain; no way to persist a trained pipeline for serving | `ml/feature_engineering/` |
-| **Model registry / artifact versioning** | Only the latest `evaluation_report.json` + model dict in state; no versioned registry | `services/storage.py` |
+| **Model registry / artifact versioning** | Only the latest `evaluation.json` + model dict in state; no versioned registry | `services/storage.py` |
 | **Export formats** (ONNX, PMML) and saved model weights | Report + JSON only; no serialized estimator artifacts for deployment | `ml/reports/`, `services/storage.py` |
 | **Local experiment tracking** | MLflow optional; no lightweight built-in run comparison | `ml/evaluation/metrics.py` (MLflow optional) |
 | **Serving story** | Nothing beyond CLI/SDK local execution; no `serve` subcommand yet | — |
@@ -315,10 +315,10 @@ The current `BaseAgent` protocol + composition root + conditional routing is alr
 
 ## 16. SDK Suggestions
 
-- Fix `best_params` propagation (BUG-04) and add a unit test asserting round-trip equality with the on-disk `evaluation_report.json`.
+- Fix `best_params` propagation (BUG-04) and add a unit test asserting round-trip equality with the on-disk `evaluation.json`.
 - Surface `run_id`, `status`, and `rationale` in result models (BUG-05 + §14).
 - Add `Phronesis.run(..., run_id=..., tags=...)` and a `phronesisml.compare.compare_runs()` companion.
-- Keep the **simple API 12 functions** stable; add `validate_schema`/`check_drift` in the same style (sync + async twins).
+- Keep the **simple API 23 functions** stable; add `validate_schema`/`check_drift` in the same style (sync + async twins).
 - Add typing improvements: strict-mypy-friendly annotations with targeted `type: ignore[import-untyped]` for pandas/sklearn/psutil stubs.
 - Document the engine-choice knobs (`engine.preferred`, engine-selector thresholds) in SDK docstrings.
 
@@ -392,7 +392,7 @@ Milestone: **no known correctness bugs in the SDK core; SDK/CLI surfaces fully r
 1. **BUG-02 — ambiguous-task contract.** Resolve ambiguity upstream (route >20-unique numeric targets to regression before selection) *and* make evaluation derive metrics from the selected model class; add integration test: continuous target → regressor → regression metrics, never classifier-with-regression-metrics.
 2. **BUG-01 — defensive copy.** Engine-neutral copy in `engineer_features()`; decide `outlier_flag` = metadata (excluded from `feature_cols`); add an in-place-mutation assertion test; document the feature-count behavior change.
 3. **BUG-03 — off the event loop.** *(Completed, then superseded: the REST layer was removed in v0.3.0.)*
-4. **BUG-04 — params round-trip.** Normalize `best_pipeline` key; add round-trip test vs `evaluation_report.json`.
+4. **BUG-04 — params round-trip.** Normalize `best_pipeline` key; add round-trip test vs `evaluation.json`.
 5. **BUG-05 — run metadata.** Run-metadata agent sets `run_id`/`status`; report header test.
 6. **ISSUE-07 — hard time ceiling.** Per-trial deadline in `trainer.py`; adjust docstring to the actual contract.
 7. **ISSUE-06 — README drift.** Extras tables, `openpyxl` claim, "How It Works" order.

@@ -9,6 +9,26 @@ PhronesisML provides a Typer-based CLI that wraps the SDK. Run the full ML pipel
 
 ## Commands
 
+`phronesisml` ships 13 commands, all thin wrappers over the SDK:
+
+| Command | Description |
+|---|---|
+| `run` | Run the full Phronesis pipeline on a dataset |
+| `info` | Show Phronesis version and installed components |
+| `version` | Print the installed phronesisml version |
+| `capabilities` | Report SDK capabilities: tasks, engines, stages, APIs |
+| `doctor` | Run offline dependency and self checks |
+| `analyze` | Load, clean, validate, and profile a dataset |
+| `validate` | Load, clean, and validate a dataset |
+| `profile` | Profile a dataset (alias of `analyze`) |
+| `train` | Run the full ML pipeline and report the trained model |
+| `evaluate` | Run model selection and evaluation on a dataset |
+| `explain` | Explain model predictions using SHAP |
+| `report` | Generate a Markdown report of the full pipeline |
+| `compare` | Train several models on a dataset and rank them |
+
+The authoritative list is `phronesisml --help`.
+
 ### `phronesisml run`
 
 Run the full ML pipeline on a dataset:
@@ -68,6 +88,45 @@ Python 3.12.13 (main, Jun 11 2026, 04:05:29) [MSC v.1944 64 bit (AMD64)]
   Pandas: 2.3.3
   LangGraph: installed
 ```
+
+### `phronesisml evaluate`
+
+Run cross-validated model selection and evaluation offline:
+
+```bash
+phronesisml evaluate data.csv
+```
+
+**Options:**
+
+| Flag | Short | Description | Default |
+|---|---|---|---|
+| `--engine` | `-e` | Force engine: `pandas`, `polars`, `spark` | auto |
+| `--nulls` | `-n` | Null strategy: `drop`, `fill`, `flag` | `drop` |
+| `--cv` | | Cross-validation folds (>= 2) | SDK default |
+| `--verbose` | `-v` | Enable debug logging | off |
+
+**Output:** best model type and score, resolved task type, evaluation metrics,
+and any ambiguity caveat.
+
+### `phronesisml compare`
+
+Train several models on a dataset and rank them:
+
+```bash
+phronesisml compare data.csv            # default model set
+phronesisml compare data.csv -m random_forest -m gradient_boosting
+```
+
+**Options:**
+
+| Flag | Short | Description | Default |
+|---|---|---|---|
+| `--model` | `-m` | Model(s) to compare (repeatable) | all candidates |
+| `--engine` | `-e` | Force engine | auto |
+| `--nulls` | `-n` | Null strategy | `drop` |
+| `--cv` | | Cross-validation folds (>= 2) | SDK default |
+| `--verbose` | `-v` | Enable debug logging | off |
 
 ---
 
@@ -169,9 +228,12 @@ phronesisml run data.csv -v
 pip install phronesisml[cli]
 ```
 
-### `Click requires a unicode text terminal`
+### Legacy console / redirected output
 
-This happens in non-interactive environments (CI). Use the Python SDK instead:
+The CLI reconfigures `stdout`/`stderr` to UTF-8 (with a `backslashreplace`
+fallback) at import time, so stage-graph glyphs render cleanly on Windows
+consoles, pipes, and redirects. If a wrapper still chokes on non-ASCII output,
+use the Python SDK instead:
 
 ```python
 from phronesisml import Phronesis

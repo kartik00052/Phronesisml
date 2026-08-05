@@ -153,7 +153,7 @@ pip install phronesisml[all]       # everything
     config.feature_selection.variance_threshold = 0.05
 
     ml = Phronesis("data.csv", config)
-    ml.clean(null_strategy="fill", fill_value=0)
+    ml.clean(null_strategy="fill")
     ml.train(model_type="random_forest", cv=5)
     print(ml.report())
     ```

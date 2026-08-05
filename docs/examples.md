@@ -39,8 +39,8 @@ from phronesisml import analyze, train
 
 # Profile first
 profile = analyze("iris.csv")
-print(f"Classes: {profile.shape[1]} columns")
-print(f"Numeric: {len(profile.numeric_columns)} columns")
+print(f"Columns: {profile.shape[1]} columns")
+print(f"Columns list: {profile.column_names}")
 
 # Train
 result = train("iris.csv")
@@ -65,8 +65,8 @@ print(f"Task type: {ml._state.task_type}")
 
 # Evaluate with regression metrics
 metrics = ml.evaluate()
-print(f"RMSE: {metrics.get('rmse', 'N/A')}")
-print(f"R²: {metrics.get('r2', 'N/A')}")
+print(f"RMSE: {metrics.rmse}")
+print(f"R²: {metrics.r2}")
 ```
 
 ### With Feature Selection Tuning
@@ -97,8 +97,7 @@ profile = analyze("data.csv")
 
 print(f"Shape: {profile.shape}")
 print(f"Memory: {profile.memory_usage_bytes / 1024:.1f} KB")
-print(f"Numeric columns: {profile.numeric_columns}")
-print(f"Categorical columns: {profile.categorical_columns}")
+print(f"Columns: {profile.column_names}")
 ```
 
 ### Profile with Specific Engine
@@ -124,15 +123,15 @@ from phronesisml import clean
 
 # Drop rows with nulls
 result = clean("messy_data.csv", null_strategy="drop")
-print(f"Rows after cleaning: {result.shape[0]}")
+print(f"Rows after cleaning: {result.n_rows}")
 
-# Fill nulls with column median
-result = clean("messy_data.csv", null_strategy="fill", fill_value=0)
-print(f"Rows preserved: {result.shape[0]}")
+# Fill nulls
+result = clean("messy_data.csv", null_strategy="fill")
+print(f"Rows preserved: {result.n_rows}")
 
 # Flag nulls as separate columns
 result = clean("messy_data.csv", null_strategy="flag")
-print(f"Columns added for null flags: {result.shape[1]}")
+print(f"Columns added for null flags: {result.n_columns}")
 ```
 
 ---
@@ -153,7 +152,7 @@ print(f"Loaded: {summary.rows} rows, {summary.columns} columns")
 print(f"Memory: {summary.memory_mb:.1f} MB")
 
 # 2. Clean
-ml.clean(null_strategy="fill", fill_value=0)
+ml.clean(null_strategy="fill")
 cleaned = ml.get_cleaned_data()
 print(f"After cleaning: {cleaned.shape}")
 
@@ -333,7 +332,7 @@ with open("report.md", "w") as f:
 # Export metrics
 metrics = ml.evaluate()
 with open("metrics.json", "w") as f:
-    json.dump(metrics, f, indent=2)
+    json.dump(metrics.raw, f, indent=2)
 
 # Export model
 import joblib

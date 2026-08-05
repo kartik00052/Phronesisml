@@ -11,7 +11,7 @@ from phronesisml import analyze, train  # simple API (sync)
 from phronesisml import analyze_async, train_async  # async twins
 from phronesisml import Phronesis, PhronesisConfig, run_pipeline, WorkflowState
 from phronesisml.sdk import Phronesis
-from phronesisml.simple import *        # 12 functions + result dataclasses
+from phronesisml.simple import *        # 23 functions + result dataclasses
 from phronesisml.exceptions import (
     PhronesisError, DataLoadError, DataTransformError, DataValidationError,
     EngineError, EngineSelectionError, WorkflowError, AgentError, ConfigurationError,
@@ -20,15 +20,15 @@ from phronesisml.exceptions import (
 
 ## 2. Simple API (sync + `*_async`)
 
-`analyze, clean, validate, detect_target, detect_task, engineer, select_model, evaluate, explain, report, train, cluster, detect_anomalies`
+`analyze, clean, validate, detect_target, detect_task, engineer, select_model, evaluate, explain, report, train, cluster, detect_anomalies, profile, predict, compare, save, restore, load, recommend, version, capabilities, health`
 
-Returns frozen dataclasses: `DatasetProfile, CleanResult, ValidationResult, TargetResult, FeatureResult, ModelResult, ExplainResult, TrainResult`.
+Returns frozen dataclasses: `DatasetProfile, CleanResult, ValidationResult, TargetResult, FeatureResult, ModelResult, ExplainResult, TrainResult, ClusteringResult, AnomalyResult, TaskDetectionResult`.
 
-Key params: `engine=` (pandas/polars/spark/auto), `null_strategy=` (`drop`/`fill`/`flag`), `fill_value=`, `stages=`. Sync functions use `asyncio.run()` internally — do not call from a running event loop; use `*_async`.
+Key params: `engine=` (pandas/polars/spark/auto), `null_strategy=` (`drop`/`fill`/`flag`), `cv=`, `model_type=`. Sync functions use `asyncio.run()` internally — do not call from a running event loop; use `*_async`. (`predict` takes new rows; `save`/`restore`/`load` persist and reload a run; `compare` ranks models; `recommend` is an alias of `select_model`.)
 
 ## 3. OOP API (`Phronesis`)
 
-Stage methods (all return `self` unless noted): `load`, `summary` (→`DatasetSummary`), `clean`, `validate` (→`ValidationReport`), `eda` (→`EDAReport`), `detect_target` (→`TargetInfo`), `engineer_features` (→`FeatureReport`), `recommend_model` (→`ModelInfo`), `train` (→`ModelInfo`), `evaluate` (→`EvaluationMetrics`), `explain` (→`ExplanationReport`), `report` (→`str`), `generate_report(format)` (markdown/html), `run`, `get_data`, `get_cleaned_data`, `get_features`, `get_model`.
+Stage methods: `load` (→`self`), `summary` (→`DatasetSummary`), `clean` (→`self`), `validate` (→`ValidationReport`), `eda` (→`EDAReport`), `detect_target` (→`TargetInfo`), `engineer_features` (→`FeatureReport`), `recommend_model` (→`ModelInfo`), `train` (→`ModelInfo`), `evaluate` (→`EvaluationMetrics`), `explain` (→`ExplanationReport`), `report` (→`str`), `generate_report(format)` (markdown/html), `run`, `get_data`, `get_cleaned_data`, `get_features`, `get_model`. Only `load` and `clean` return `self` (chainable); the rest return typed result objects.
 
 ## 4. Advanced API
 
@@ -44,10 +44,13 @@ run_pipeline(data_path, engine_preference=None, null_strategy="drop",
 ## 5. CLI
 
 ```
+phronesisml run|info|version|capabilities|doctor|analyze|validate|profile|
+            train|evaluate|explain|report|compare <args>
 phronesisml run <dataset> [--engine/-e pandas|polars|spark] [--nulls/-n drop|fill|flag] [--verbose/-v]
 phronesisml info
 ```
-Exit codes: 0 success, 1 pipeline failed, 2 invalid arguments.
+Exit codes: 0 success, 1 pipeline failed, 2 invalid arguments. The authoritative
+command list is `phronesisml --help` (13 commands as of v0.3.0).
 
 ## 6. Engine-light data/ML modules (added 2026-08-04)
 
