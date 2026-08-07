@@ -110,6 +110,13 @@ def build_html_report(state: Any, narrative: str | None = None) -> str:
         """Minimal Markdown → HTML for report sections."""
         import re
 
+        # Escape all content up front so user-controlled data (column names,
+        # target values, caveats, etc.) can never inject raw HTML into the
+        # generated report. The markdown markers used below (`*`, backtick,
+        # `_`, `#`, digits, `-`) are left intact by html.escape; blockquotes
+        # are matched on their escaped `&gt; ` form.
+        text = html_mod.escape(text)
+
         # Horizontal rules
         text = re.sub(r"^---+$", "<hr>", text, flags=re.MULTILINE)
         # Bold: **text**
@@ -122,8 +129,8 @@ def build_html_report(state: Any, narrative: str | None = None) -> str:
         text = re.sub(r"^### (.+)$", r"<h4>\1</h4>", text, flags=re.MULTILINE)
         text = re.sub(r"^## (.+)$", r"<h3>\1</h3>", text, flags=re.MULTILINE)
         text = re.sub(r"^# (.+)$", r"<h2>\1</h2>", text, flags=re.MULTILINE)
-        # Blockquote: > text
-        text = re.sub(r"^> (.+)$", r"<blockquote>\1</blockquote>", text, flags=re.MULTILINE)
+        # Blockquote: > text (escaped to `&gt; `)
+        text = re.sub(r"^&gt; (.+)$", r"<blockquote>\1</blockquote>", text, flags=re.MULTILINE)
         # Numbered list: 1. text
         text = re.sub(r"^\d+\. (.+)$", r"<li>\1</li>", text, flags=re.MULTILINE)
         # Unordered list: - text
@@ -136,7 +143,7 @@ def build_html_report(state: Any, narrative: str | None = None) -> str:
         for line in lines:
             stripped = line.strip()
             if stripped and not stripped.startswith("<"):
-                result.append(f"<p>{html_mod.escape(stripped)}</p>")
+                result.append(f"<p>{stripped}</p>")
             else:
                 result.append(line)
         return "\n".join(result)

@@ -14,6 +14,10 @@ the release-verification pass, so every test runs unconditionally:
 - NEW-15 (FIXED): ``compare()`` with an unknown model type propagates a
   ``WorkflowError`` instead of silently dropping the model from the
   ranking.
+- NEW-16 (FIXED): HTML reports HTML-escape user-controlled data (column
+  names, target values, caveats) so a malicious feature name cannot
+  inject a raw ``<script>`` / ``<img onerror>`` payload into
+  ``generate_report(format='html')`` or the saved ``report.html``.
 
 NEW-14 (doc drift) is a documentation-only issue tracked in the audit.
 """
@@ -155,3 +159,48 @@ def test_new15_compare_invalid_model_cli_nonzero(string_category_csv: str) -> No
     )
     assert result.exit_code != 0, result.output
     assert "not found" in result.output
+
+
+# ── NEW-16: HTML report XSS via feature names ───────────────────────────
+
+
+@pytest.fixture()
+def xss_dataset(tmp_path: Path) -> str:
+    rng = np.random.default_rng(42)
+    df = pd.DataFrame(
+        {
+            "<script>alert(9)</script>": rng.normal(50, 15, 150).round(2),
+            "<img src=x onerror=alert(7)>": rng.choice(["a", "b", "c"], 150),
+            "y": rng.integers(0, 2, 150),
+        }
+    )
+    path = tmp_path / "xss_data.csv"
+    df.to_csv(path, index=False)
+    return str(path)
+
+
+def test_new16_html_report_escapes_malicious_feature_names(
+    xss_dataset: str, tmp_path: Path
+) -> None:
+    from phronesisml import Phronesis
+
+    ml = Phronesis(xss_dataset)
+    info = ml.run(mode="balanced").save(tmp_path)
+    html = ml.generate_report(format="html")
+    saved = Path(info["artifact_uri"]) / "report.html"
+
+    assert "<script>alert(9)</script>" not in html
+    assert "<img src=x onerror=alert(7)>" not in html
+    assert "&lt;script&gt;alert(9)&lt;/script&gt;" in html
+    assert "&lt;img src=x onerror=alert(7)&gt;" in html
+    assert saved.exists(), "report.html artifact must still be written"
+    assert "<script>alert(9)</script>" not in saved.read_text(encoding="utf-8")
+
+
+def test_new16_markdown_report_keeps_markdown_shape(xss_dataset: str) -> None:
+    from phronesisml import Phronesis
+
+    ml = Phronesis(xss_dataset)
+    ml.run(mode="balanced")
+    md = ml.generate_report(format="markdown")
+    assert "- **" in md, "markdown report keeps its markdown structure"

@@ -53,7 +53,7 @@ from phronesisml.workflow.state import WorkflowState
 
 logger = logging.getLogger(__name__)
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 __all__ = [
     # ── Simple API ──────────────────────────────────────

@@ -10,6 +10,35 @@ All notable changes to PhronesisML will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-08-06
+
+### Fixed
+
+- **`compare()` silently dropped invalid model names** — an unknown model type
+  produced a metrics-less entry that was filtered out of the ranking; only a log
+  line recorded the failure. `_compare_one_core()` no longer swallows
+  `WorkflowError`, so `simple.compare`, `Phronesis.compare`, and the CLI
+  (`phronesisml compare -m <name>`) surface a clear
+  `Model type '...' not found. Available: [...]` error. Regression tests
+  `test_new15_compare_invalid_model_raises` + `test_new15_compare_invalid_model_cli_nonzero`
+  in `tests/test_regressions_v030.py`.
+- **HTML reports no longer inject raw user data (XSS)** — `_md_to_html` in
+  `phronesisml/ml/reports/builder.py` converted markdown to HTML without escaping
+  captured content, so a feature name like `<script>alert(9)</script>` flowed raw
+  into `generate_report(format="html")` and the stored `report.html` artifact.
+  Section bodies are now `html.escape`d up front before the markdown regexes;
+  blockquotes match the escaped `&gt; ` form, so `**bold**` and `> Note:` render
+  exactly as before. Regression tests
+  `test_new16_html_report_escapes_malicious_feature_names` +
+  `test_new16_markdown_report_keeps_markdown_shape` in `tests/test_regressions_v030.py`.
+
+### Verification
+
+- Full release-verification pass (20-item checklist) green on this exact tree:
+  322 pytest tests passed, ruff/mypy clean, `mkdocs build --strict` clean,
+  wheel + sdist build with `twine check` PASSED, fresh clean-venv installs
+  (wheel, editable, uv, sdist) verified.
+
 ## [0.3.0] - 2026-08-05
 
 ### Removed (Breaking)
@@ -112,12 +141,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   referenced a non-ASCII endash. It is unified into a single
   `numeric_low_cardinality_ambiguous` branch (`2 <= unique <= 5`) with an
   ASCII-safe reason string. Regression test `NEW-13`.
-- **`compare()` silently dropped invalid model names** — an unknown model type
-  produced a metrics-less entry that was filtered out of the ranking; only a log
-  line recorded the failure. `_compare_one_core()` no longer swallows
-  `WorkflowError`, so `simple.compare`, `Phronesis.compare`, and the CLI
-  (`phronesisml compare -m <name>`) surface a clear
-  `Model type '...' not found. Available: [...]` error. Regression tests `NEW-15`.
 
 ### Added (Project docs)
 
