@@ -27,7 +27,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
 revision: str = "0003_rls_policies"
@@ -67,9 +66,7 @@ def upgrade() -> None:
         "WITH CHECK ((user_id = (auth.uid())::text));"
     )
     op.execute(
-        "CREATE POLICY datasets_shared_select ON datasets "
-        "FOR SELECT "
-        "USING ((user_id IS NULL));"
+        "CREATE POLICY datasets_shared_select ON datasets FOR SELECT USING ((user_id IS NULL));"
     )
     op.execute(
         "CREATE POLICY runs_owner_all ON runs "

@@ -40,7 +40,13 @@ root `.env` file. Relevant variables (all documented in `.env.example`):
 | `CORS_ORIGINS`      | *(empty)*             | Allowed origins; empty = same-origin only  |
 | `MAX_UPLOAD_SIZE_MB`| `2048`                | Matches Nginx `client_max_body_size`       |
 | `SEED_SAMPLE_DATASETS` | `1`                 | Seed bundled sample datasets at startup    |
-| `DATABASE_URL`      | `sqlite:////app/data/phronesisml.db` | SQLite path on the data volume |
+| `DATABASE_URL`      | `sqlite:////app/data/phronesisml.db` | SQLite path on the data volume (set to a `postgresql://` URL for Supabase) |
+| `AUTH_MODE`         | `disabled`           | `disabled` = single-tenant dev; `supabase` = JWT-authenticated |
+| `SUPABASE_URL`      | *(empty)*             | Backend Supabase project URL (needed for JWT issuer/JWKS) |
+| `SUPABASE_JWT_SECRET` | *(empty)*           | Server-only HS256 secret (or set `SUPABASE_JWKS_URL` for RSA) |
+| `SUPABASE_JWKS_URL` | *(empty)*             | Server-only JWKS endpoint when not using the shared secret |
+| `VITE_SUPABASE_URL` | *(empty)*             | Frontend Supabase URL (build-time, public) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | *(empty)* | Frontend publishable key (build-time, public) |
 | `VITE_API_BASE_URL` | `/api/v1`             | Frontend API base (build-time)             |
 | `VITE_WS_BASE_URL`  | `/api/v1`             | Frontend WebSocket base (build-time)       |
 | `VITE_DEMO_MODE`    | `false`               | `true` uses the in-browser mock data layer |
@@ -122,6 +128,26 @@ docker compose exec backend alembic current
 Migration config: `alembic.ini` (`script_location = backend/alembic`) resolves
 `DATABASE_URL` from the backend settings at runtime.
 
+To migrate a **Supabase PostgreSQL** database instead of SQLite, point the
+backend at the database (not via the frontend image) and run Alembic from the
+repository:
+
+```bash
+DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db> \
+  docker compose run --rm backend alembic upgrade head
+```
+
+or, for a locally run backend:
+
+```bash
+DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db> \
+  .venv/bin/alembic -c backend/alembic.ini upgrade head   # repo root
+```
+
+The chain `0001_initial → 0002_user_ownership → 0003_rls_policies` is
+non-destructive (additive columns; RLS is applied only on PostgreSQL). See
+`project_docs/supabase.md` for the full Supabase setup.
+
 ## 8. Persistent storage
 
 Named volumes make application data survive rebuilds and restarts:
@@ -171,23 +197,30 @@ docker compose up -d
   the relative `/api/v1` values.
 - **Empty lists / missing data** — `SEED_SAMPLE_DATASETS=0` was set, or the
   storage/db volumes were recreated (`down -v`).
-- **401 / auth errors** — there is currently **no authentication layer**; the
-  API does not produce auth errors, so this symptom means another layer
-  (e.g. SSO gateway) was added.
+- **401 / auth errors** — depends on `AUTH_MODE`. With `disabled` (default)
+  the API needs no token, so a 401 means an extra layer (e.g. SSO gateway) was
+  added. With `AUTH_MODE=supabase`, every `/api/v1/**` and run WebSocket
+  requires a valid Supabase access token; a 401 means the browser has no
+  session (login is required) or the token is expired/invalid. Check that
+  `VITE_SUPABASE_URL`/`VITE_SUPABASE_PUBLISHABLE_KEY` were baked into the
+  frontend image and that `SUPABASE_URL` (plus a JWT secret or JWKS URL) are
+  set on the backend.
 
 ## 12. Production limitations
 
 Documented behaviour of the *current* application — Docker does not remove
 these:
 
-- **No authentication/authorization.** The FastAPI surface
-  (`/api/v1/**`, WebSocket, `storage/` via API) is fully open. Do **not**
-  expose the published port to the public internet without adding an
-  auth gateway. The container does not expose the backend port to the host,
-  which reduces the local exposure surface but is not a security boundary.
+- **Authentication depends on `AUTH_MODE`.** With the default
+  `AUTH_MODE=disabled` the FastAPI surface is single-tenant and open (suitable
+  for local/dev); do **not** expose that published port to the public internet
+  without an auth gateway. For a public deployment set `AUTH_MODE=supabase`
+  (Supabase Auth + PostgreSQL) so every endpoint and WebSocket validates a JWT
+  and enforces per-user ownership (see `project_docs/supabase.md`).
 - **SQLite / single node.** One process, one SQLite file, in-process write
   serialisation. Not horizontally scalable; the application enforces a single
-  uvicorn worker for correctness.
+  uvicorn worker for correctness. (Supabase deployments use their hosted
+  PostgreSQL instead of the local SQLite file.)
 - **No TLS.** Nginx listens on plain HTTP `:80`. Terminate TLS at an edge
   proxy/reverse-proxy with these settings *above* Nginx, or add a TLS
   termination layer first.

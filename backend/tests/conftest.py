@@ -26,6 +26,19 @@ from fastapi.testclient import TestClient  # noqa: E402
 from backend.app.main import app  # noqa: E402
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _init_schema() -> None:
+    """Create the temp-DB schema before any test runs.
+
+    Repository-level tests (ownership/auth) call ``repositories`` directly and
+    never spin up the app lifespan, so the tables must exist up front —
+    otherwise they depend on a ``client``-fixture test running first.
+    """
+    from backend.app.db.database import init_db
+
+    init_db()
+
+
 @pytest.fixture(scope="session")
 def client() -> TestClient:
     """TestClient with the app lifespan (init_db + event hub) running."""

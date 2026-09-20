@@ -503,6 +503,12 @@ docker compose up -d
 # UI: http://localhost:8080   API: http://localhost:8080/api/v1/health
 ```
 
+The default stack runs `AUTH_MODE=disabled` (single-tenant dev, SQLite). For a
+public deployment you can switch to **Supabase Auth + PostgreSQL**
+(`AUTH_MODE=supabase`, Supabase JWTs, per-user ownership, Alembic migration
+chain including RLS) — see [`project_docs/supabase.md`](project_docs/supabase.md)
+and [`project_docs/deployment.md`](project_docs/deployment.md).
+
 Full instructions — environment, migrations, volumes, troubleshooting, and
 production limitations — are in
 [`project_docs/deployment.md`](project_docs/deployment.md).
@@ -519,6 +525,7 @@ PhronesisML's core pipeline — validation, profiling, ETL, EDA, feature enginee
 
 - **No data leaves your machine** unless you explicitly configure a remote storage or tracking backend.
 - **No hidden network calls** in the core pipeline — installation extras that do require network access (e.g. `mlflow`) are opt-in.
+- **Authenticated deployments are user-scoped.** When `AUTH_MODE=supabase` is enabled, every API endpoint and run WebSocket requires a verified Supabase JWT; datasets/runs/artifacts/reports/prediction are isolated per user (foreign resources are hidden with 404). Local/dev mode (`AUTH_MODE=disabled`) is intentionally single-tenant and must not be exposed publicly without an auth gateway.
 - **Dependency-pinned releases** to reduce supply-chain surface area.
 - Found a security issue? Please open a private security advisory on GitHub rather than a public issue.
 

@@ -2,10 +2,11 @@
  * Supabase client (browser, anon role) + auth-availability helpers.
  *
  * The Supabase feature is opt-in: it activates only when BOTH
- * `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are configured. Only the
- * public **anon** key is ever shipped to the browser — never the service-role
- * key. When configured, the backend must run with `AUTH_MODE=supabase` using
- * the same project, otherwise the UI and API will disagree about identity.
+ * `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are configured.
+ * Only the public **publishable** key is ever shipped to the browser — never
+ * a service role/secret key. When configured, the backend must run with
+ * `AUTH_MODE=supabase` using the same project, otherwise the UI and API will
+ * disagree about identity.
  *
  * When not configured, the app runs in the single-tenant "local" mode and the
  * backend's `AUTH_MODE=disabled` accepts every request without a token.
@@ -13,10 +14,11 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env
+  .VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
 export function supabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+  return Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
 }
 
 let _client: SupabaseClient | null = null;
@@ -25,7 +27,7 @@ let _client: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient | null {
   if (!supabaseConfigured()) return null;
   if (!_client) {
-    _client = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
+    _client = createClient(SUPABASE_URL!, SUPABASE_PUBLISHABLE_KEY!, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
