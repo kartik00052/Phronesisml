@@ -38,6 +38,10 @@ class Dataset(Base):
     __tablename__ = "datasets"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    # Owner key: Supabase Auth user UUID (AUTH_MODE=supabase). NULL marks a
+    # shared/system row (bundled sample datasets); in dev mode (AUTH_MODE
+    # disabled) NULL rows are treated as this environment's own data.
+    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     path: Mapped[str] = mapped_column(String, nullable=False)
     format: Mapped[str] = mapped_column(String, nullable=False, default="csv")
@@ -71,6 +75,9 @@ class Run(Base):
     STATUS_CANCELLED = "cancelled"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    # Owner key: Supabase Auth user UUID — enforced server-side. NULL rows are
+    # legacy/dev data; in dev mode they belong to this environment's identity.
+    user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     dataset_id: Mapped[str | None] = mapped_column(
         ForeignKey("datasets.id", ondelete="SET NULL"), nullable=True
     )

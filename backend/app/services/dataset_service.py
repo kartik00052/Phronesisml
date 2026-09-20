@@ -48,6 +48,7 @@ def upload_dataset(
     size_bytes: int,
     content: Any,
     settings: Settings | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     """Persist and inspect an uploaded dataset, returning the full DTO."""
     settings = settings or get_settings()
@@ -84,6 +85,7 @@ def upload_dataset(
         repositories.create_dataset(
             {
                 "id": dataset_id,
+                "user_id": user_id,
                 "name": f"{name}{ext}",
                 "path": str(dest),
                 "format": ext.lstrip("."),
@@ -128,6 +130,10 @@ def seed_sample_datasets(settings: Settings | None = None) -> list[dict[str, Any
     ``Sample datasets`` for inspection and explicit run creation.
     """
     settings = settings or get_settings()
+    # In multitenant (supabase) mode bundled samples are shared system rows
+    # (user_id NULL, visible to every authenticated user). In dev mode they
+    # belong to this environment's local-dev identity.
+    sample_user: str | None = None if settings.auth_enabled else "local-dev"
     registered: list[dict[str, Any]] = []
     for file_name, rel in BUNDLED_SAMPLES:
         source = settings.root_dir / rel
@@ -155,6 +161,7 @@ def seed_sample_datasets(settings: Settings | None = None) -> list[dict[str, Any
         repositories.create_dataset(
             {
                 "id": dataset_id,
+                "user_id": sample_user,
                 "name": file_name,
                 "path": str(dest),
                 "format": file_name.rsplit(".", 1)[-1].lower(),
@@ -376,13 +383,20 @@ def dataset_eda(dataset_id: str) -> dict[str, Any] | None:
     return dataset_to_dict(dataset)["profile"]
 
 
-def delete_dataset(dataset_id: str) -> dict[str, Any]:
-    from backend.app.db import repositories as _repos
-    from backend.app.db.models import Dataset as _Dataset
-    from backend.app.db.repositories import session_scope
+def delete_dataset(dataset_id: str, user_id: str | None = None) -> dict[str, Any]:
+    from sqlalchemy import select
 
-    dataset = _repos.get_dataset(dataset_id)
+    from backend.app.db.models import Dataset as _Dataset
+    from backend.app.db.repositories import _ownership_clause, session_scope
+
+    with session_scope() as session:
+        stmt = select(_Dataset).where(_Dataset.id == dataset_id)
+        owner = _ownership_clause(_Dataset.user_id, user_id)
+        if owner is not None:
+            stmt = stmt.where(owner)
+        dataset = session.scalar(stmt)
     if dataset is None:
+        # Missing, or not owned by the caller → intentionally hidden.
         return {"deleted": False, "id": None}
     import shutil
 

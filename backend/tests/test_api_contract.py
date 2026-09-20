@@ -56,4 +56,4 @@ def test_404_unknown_route(client):
 def test_predict_requires_run(client):
     resp = client.post("/api/v1/runs/missing-run/predict", json={"samples": [{}]})
     assert resp.status_code == 404
-    assert resp.json()["error"]["code"] == "RunNotFound"
+    assert resp.json()["error"]["code"] == "NotFound"

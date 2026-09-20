@@ -24,7 +24,7 @@ class RunError(Exception):
         self.code = code
 
 
-def create_run(request: dict[str, Any]) -> dict[str, Any]:
+def create_run(request: dict[str, Any], user_id: str | None = None) -> dict[str, Any]:
     dataset_id = request.get("datasetId")
     dataset = repositories.get_dataset(dataset_id) if dataset_id else None
     if dataset is None:
@@ -38,6 +38,7 @@ def create_run(request: dict[str, Any]) -> dict[str, Any]:
     repositories.create_run(
         {
             "id": run_id,
+            "user_id": user_id,
             "dataset_id": dataset.id,
             "dataset_name": dataset.name,
             "dataset_path": dataset.path,
@@ -268,6 +269,7 @@ def list_runs(
     task_type: str | None = None,
     sort: str | None = None,
     order: str | None = None,
+    user_id: str | None = None,
 ) -> dict[str, Any]:
     runs, total = repositories.list_runs(
         page=page,
@@ -278,6 +280,7 @@ def list_runs(
         task_type=task_type,
         sort=sort,
         order=order,
+        user_id=user_id,
     )
     return {
         "items": [run_summary(r) for r in runs],
@@ -288,7 +291,7 @@ def list_runs(
     }
 
 
-def recent_activity(limit: int = 8) -> list[dict[str, Any]]:
+def recent_activity(limit: int = 8, user_id: str | None = None) -> list[dict[str, Any]]:
     return [
         {
             "id": run.id,
@@ -300,7 +303,7 @@ def recent_activity(limit: int = 8) -> list[dict[str, Any]]:
             "createdAt": iso(run.created_at) or "",
             "durationMs": run.total_duration_ms,
         }
-        for run in repositories.list_recent_runs(limit)
+        for run in repositories.list_recent_runs(limit, user_id=user_id)
     ]
 
 

@@ -6,6 +6,8 @@
  * exponential backoff and emits a heartbeat (`ping`) to keep the socket open.
  */
 
+import { getAccessToken } from "@/lib/supabase";
+
 export interface RunEventMessage {
   run_id?: string;
   seq?: number;
@@ -51,42 +53,51 @@ export function connectRunEvents(runId: string, options: RunEventsOptions = {}):
   const connect = () => {
     if (closed) return;
     onStatus?.("connecting");
-    const url = `${getWsBaseUrl()}/ws/runs/${encodeURIComponent(runId)}?last_seq=${lastSeq}`;
-    socket = new WebSocket(url);
+    // Resolve the session token (if any) before opening the socket so the
+    // `access_token` query param is present for the backend auth check.
+    void getAccessToken().then((token) => {
+      if (closed) return;
+      const base = getWsBaseUrl();
+      const sep = base.includes("?") ? "&" : "?";
+      const url =
+        `${base}/ws/runs/${encodeURIComponent(runId)}?last_seq=${lastSeq}` +
+        (token ? `${sep}access_token=${encodeURIComponent(token)}` : "");
+      socket = new WebSocket(url);
 
-    socket.onopen = () => {
-      retry = 0;
-      onStatus?.("open");
-      const interval = window.setInterval(heartbeat, 30_000);
-      const stopHeartbeat = () => window.clearInterval(interval);
-      socket!.onclose = () => {
-        stopHeartbeat();
-        onStatus?.("closed");
-        scheduleReconnect();
+      socket.onopen = () => {
+        retry = 0;
+        onStatus?.("open");
+        const interval = window.setInterval(heartbeat, 30_000);
+        const stopHeartbeat = () => window.clearInterval(interval);
+        socket!.onclose = () => {
+          stopHeartbeat();
+          onStatus?.("closed");
+          scheduleReconnect();
+        };
+        socket!.onerror = () => stopHeartbeat();
       };
-      socket!.onerror = () => stopHeartbeat();
-    };
 
-    socket.onmessage = (evt) => {
-      try {
-        const parsed = JSON.parse(String(evt.data)) as RunEventMessage;
-        if (parsed.type === "ping") return;
-        if (typeof parsed.seq === "number" && parsed.seq > lastSeq) {
-          lastSeq = parsed.seq;
+      socket.onmessage = (evt) => {
+        try {
+          const parsed = JSON.parse(String(evt.data)) as RunEventMessage;
+          if (parsed.type === "ping") return;
+          if (typeof parsed.seq === "number" && parsed.seq > lastSeq) {
+            lastSeq = parsed.seq;
+          }
+          onEvent?.(parsed);
+        } catch {
+          // ignore malformed frames
         }
-        onEvent?.(parsed);
-      } catch {
-        // ignore malformed frames
-      }
-    };
+      };
 
-    socket.onerror = () => {
-      try {
-        socket?.close();
-      } catch {
-        // noop
-      }
-    };
+      socket.onerror = () => {
+        try {
+          socket?.close();
+        } catch {
+          // noop
+        }
+      };
+    });
   };
 
   const scheduleReconnect = () => {

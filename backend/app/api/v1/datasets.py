@@ -2,15 +2,20 @@
 
 Uploads are streamed to disk (never buffered fully in memory), then
 inspected with the real SDK loaders/profiler/validators.
+
+Every endpoint is user-scoped: rows are always filtered by the authenticated
+Supabase user, and accessing a dataset you do not own returns 404 (hidden).
 """
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 
 from backend.app.api.deps import not_found
+from backend.app.auth.deps import get_current_user, require_owned_dataset
+from backend.app.auth.verifier import AuthUser
 from backend.app.config import get_settings
 from backend.app.db import repositories
 from backend.app.schemas.common import PageResult
@@ -30,13 +35,14 @@ router = APIRouter()
 
 @router.get("", response_model=PageResult[DatasetSummary])
 def list_datasets(
+    user: Annotated[AuthUser, Depends(get_current_user)],
     page: int = Query(1, ge=1),
     pageSize: int = Query(50, ge=1, le=200),
     search: str | None = Query(None),
     format: str | None = Query(None),
 ) -> dict[str, Any]:
     items, total = repositories.list_datasets(
-        page=page, page_size=pageSize, search=search, format=format
+        page=page, page_size=pageSize, search=search, format=format, user_id=user.user_id
     )
     return {
         "items": [dataset_service.dataset_summary(ds) for ds in items],
@@ -48,8 +54,12 @@ def list_datasets(
 
 
 @router.get("/{dataset_id}", response_model=Dataset)
-def get_dataset(dataset_id: str) -> dict[str, Any]:
-    dataset = repositories.get_dataset(dataset_id)
+def get_dataset(
+    dataset_id: str,
+    user: Annotated[AuthUser, Depends(get_current_user)],
+) -> dict[str, Any]:
+    require_owned_dataset(dataset_id, user.user_id)
+    dataset = repositories.get_dataset(dataset_id, user_id=user.user_id)
     if dataset is None:
         raise not_found("Dataset", dataset_id)
     return dataset_service.dataset_to_dict(dataset)
@@ -58,9 +68,11 @@ def get_dataset(dataset_id: str) -> dict[str, Any]:
 @router.get("/{dataset_id}/preview", response_model=DatasetPreviewPage)
 def dataset_preview(
     dataset_id: str,
+    user: Annotated[AuthUser, Depends(get_current_user)],
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
+    require_owned_dataset(dataset_id, user.user_id)
     preview = dataset_service.dataset_preview(dataset_id, page=page, page_size=pageSize)
     if preview is None:
         raise not_found("Dataset", dataset_id)
@@ -68,7 +80,11 @@ def dataset_preview(
 
 
 @router.get("/{dataset_id}/schema", response_model=DatasetSchemaView)
-def dataset_schema(dataset_id: str) -> dict[str, Any]:
+def dataset_schema(
+    dataset_id: str,
+    user: Annotated[AuthUser, Depends(get_current_user)],
+) -> dict[str, Any]:
+    require_owned_dataset(dataset_id, user.user_id)
     schema = dataset_service.dataset_schema(dataset_id)
     if schema is None:
         raise not_found("Dataset", dataset_id)
@@ -76,7 +92,11 @@ def dataset_schema(dataset_id: str) -> dict[str, Any]:
 
 
 @router.get("/{dataset_id}/eda")
-def dataset_eda(dataset_id: str) -> dict[str, Any]:
+def dataset_eda(
+    dataset_id: str,
+    user: Annotated[AuthUser, Depends(get_current_user)],
+) -> dict[str, Any]:
+    require_owned_dataset(dataset_id, user.user_id)
     profile = dataset_service.dataset_eda(dataset_id)
     if profile is None:
         raise not_found("Dataset", dataset_id)
@@ -85,6 +105,7 @@ def dataset_eda(dataset_id: str) -> dict[str, Any]:
 
 @router.post("", response_model=DatasetUploadResult, status_code=201)
 async def upload_dataset(
+    user: Annotated[AuthUser, Depends(get_current_user)],
     file: UploadFile = File(...),
 ) -> dict[str, Any]:
     settings = get_settings()
@@ -100,6 +121,7 @@ async def upload_dataset(
             size_bytes=size,
             content=file.file,
             settings=settings,
+            user_id=user.user_id,
         )
     except UploadRejectedError as exc:
         code = getattr(exc, "code", "UploadRejectedError")
@@ -112,14 +134,18 @@ async def upload_dataset(
     "/upload", response_model=DatasetUploadResult, status_code=201, include_in_schema=False
 )
 async def upload_dataset_alias(
+    user: Annotated[AuthUser, Depends(get_current_user)],
     file: UploadFile = File(...),
 ) -> dict[str, Any]:
-    return await upload_dataset(file)
+    return await upload_dataset(user, file)
 
 
 @router.delete("/{dataset_id}", response_model=DatasetDeleteResult)
-def delete_dataset(dataset_id: str) -> dict[str, Any]:
-    return dataset_service.delete_dataset(dataset_id)
+def delete_dataset(
+    dataset_id: str,
+    user: Annotated[AuthUser, Depends(get_current_user)],
+) -> dict[str, Any]:
+    return dataset_service.delete_dataset(dataset_id, user_id=user.user_id)
 
 
 def _stream_upload_size(file: UploadFile, max_bytes: int) -> int:

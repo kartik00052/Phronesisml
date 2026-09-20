@@ -3,11 +3,16 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import { queryClient } from "@/lib/query-client";
+import { AuthProvider } from "@/auth/auth-context";
+import { RedirectIfAuthed, RequireAuth } from "@/auth/guards";
 import { AppShell } from "@/components/layout/app-shell";
 import { ErrorBoundary } from "@/components/layout/error-boundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { PageSkeleton } from "@/components/layout/page-skeleton";
+import { AuthLayout } from "@/components/auth/auth-layout";
+import LoginPage from "@/pages/auth/login";
+import SignupPage from "@/pages/auth/signup";
 
 const DashboardPage = lazy(() => import("@/pages/dashboard"));
 const RunsListPage = lazy(() => import("@/pages/runs/index"));
@@ -36,8 +41,32 @@ function lazyPage(Component: React.LazyExoticComponent<() => React.ReactNode>) {
 
 const router = createBrowserRouter([
   {
+    path: "/login",
+    element: (
+      <RedirectIfAuthed>
+        <AuthLayout title="Welcome back" description="Sign in to continue to Phronesisml.">
+          <LoginPage />
+        </AuthLayout>
+      </RedirectIfAuthed>
+    ),
+  },
+  {
+    path: "/signup",
+    element: (
+      <RedirectIfAuthed>
+        <AuthLayout title="Create your account" description="Start training and monitoring ML models.">
+          <SignupPage />
+        </AuthLayout>
+      </RedirectIfAuthed>
+    ),
+  },
+  {
     path: "/",
-    element: <AppShell />,
+    element: (
+      <RequireAuth>
+        <AppShell />
+      </RequireAuth>
+    ),
     children: [
       {
         index: true,
@@ -112,10 +141,12 @@ export function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider delayDuration={200}>
-        <ErrorBoundary>
+      <ErrorBoundary>
+        <AuthProvider>
           <RouterProvider router={router} />
           <Toaster />
-        </ErrorBoundary>
+        </AuthProvider>
+      </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   );

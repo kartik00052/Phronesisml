@@ -13,9 +13,10 @@ from collections.abc import Iterator, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from backend.app.config import get_settings
 from backend.app.db.database import SessionLocal, get_write_lock
 from backend.app.db.models import Artifact, Dataset, ModelResult, PipelineStage, Run, RunEvent
 
@@ -33,6 +34,26 @@ def iso(dt: datetime | None) -> str | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=UTC)
     return dt.astimezone(UTC).isoformat().replace("+00:00", "Z")
+
+
+def _ownership_clause(column: Any, user_id: str | None, shared_column: Any = None) -> Any | None:
+    """Ownership predicate for user-scoped queries.
+
+    ``None`` user_id (internal/trusted callers) disables filtering.
+
+    - AUTH_MODE=disabled: rows owned by *user_id* OR unowned (NULL) rows —
+      pre-existing dev data stays visible under the local-dev identity.
+    - AUTH_MODE=supabase: strictly owned rows, plus shared system rows only
+      when the caller opts in via *shared_column* (bundled samples).
+    """
+    if user_id is None:
+        return None
+    me = column == user_id
+    if not get_settings().auth_enabled:
+        return or_(me, column.is_(None))
+    if shared_column is not None:
+        return or_(me, and_(column.is_(None), shared_column.is_(True)))
+    return me
 
 
 @contextlib.contextmanager
@@ -57,9 +78,13 @@ def create_dataset(row: dict[str, Any]) -> Dataset:
         return obj
 
 
-def get_dataset(dataset_id: str) -> Dataset | None:
+def get_dataset(dataset_id: str, user_id: str | None = None) -> Dataset | None:
     with session_scope() as session:
-        return session.get(Dataset, dataset_id)
+        stmt = select(Dataset).where(Dataset.id == dataset_id)
+        owner = _ownership_clause(Dataset.user_id, user_id, Dataset.sample)
+        if owner is not None:
+            stmt = stmt.where(owner)
+        return session.scalar(stmt)
 
 
 def list_datasets(
@@ -68,10 +93,15 @@ def list_datasets(
     page_size: int = 50,
     search: str | None = None,
     format: str | None = None,  # noqa: A002
+    user_id: str | None = None,
 ) -> tuple[list[Dataset], int]:
     with session_scope() as session:
         stmt = select(Dataset)
         count_stmt = select(func.count()).select_from(Dataset)
+        owner = _ownership_clause(Dataset.user_id, user_id, Dataset.sample)
+        if owner is not None:
+            stmt = stmt.where(owner)
+            count_stmt = count_stmt.where(owner)
         if search:
             like = f"%{search}%"
             stmt = stmt.where(Dataset.name.like(like))
@@ -112,9 +142,13 @@ def create_run(row: dict[str, Any]) -> Run:
         return obj
 
 
-def get_run(run_id: str) -> Run | None:
+def get_run(run_id: str, user_id: str | None = None) -> Run | None:
     with session_scope() as session:
-        return session.get(Run, run_id)
+        stmt = select(Run).where(Run.id == run_id)
+        owner = _ownership_clause(Run.user_id, user_id)
+        if owner is not None:
+            stmt = stmt.where(owner)
+        return session.scalar(stmt)
 
 
 def update_run(run_id: str, **fields: Any) -> None:
@@ -139,10 +173,15 @@ def list_runs(
     task_type: str | None = None,
     sort: str | None = None,
     order: str | None = None,
+    user_id: str | None = None,
 ) -> tuple[list[Run], int]:
     with session_scope() as session:
         stmt = select(Run)
         count_stmt = select(func.count()).select_from(Run)
+        owner = _ownership_clause(Run.user_id, user_id)
+        if owner is not None:
+            stmt = stmt.where(owner)
+            count_stmt = count_stmt.where(owner)
         if status:
             stmt = stmt.where(Run.status == status)
             count_stmt = count_stmt.where(Run.status == status)
@@ -187,9 +226,12 @@ def _run_order_by(sort: str | None, order: str | None):  # noqa: ANN202
     return (ordered, Run.id.desc())
 
 
-def list_recent_runs(limit: int = 8) -> list[Run]:
+def list_recent_runs(limit: int = 8, user_id: str | None = None) -> list[Run]:
     with session_scope() as session:
         stmt = select(Run).order_by(Run.created_at.desc(), Run.id.desc()).limit(limit)
+        owner = _ownership_clause(Run.user_id, user_id)
+        if owner is not None:
+            stmt = stmt.where(owner)
         return list(session.scalars(stmt).all())
 
 
@@ -378,11 +420,14 @@ def get_artifact(run_id: str, name: str) -> Artifact | None:
         return session.get(Artifact, f"{run_id}/{name}")
 
 
-def count_artifacts(run_id: str | None = None) -> int:
+def count_artifacts(run_id: str | None = None, user_id: str | None = None) -> int:
     with session_scope() as session:
-        stmt = select(func.count()).select_from(Artifact)
+        stmt = select(func.count()).select_from(Artifact).join(Run, Artifact.run_id == Run.id)
         if run_id:
             stmt = stmt.where(Artifact.run_id == run_id)
+        owner = _ownership_clause(Run.user_id, user_id)
+        if owner is not None:
+            stmt = stmt.where(owner)
         return int(session.scalar(stmt) or 0)
 
 
@@ -422,64 +467,65 @@ def list_model_results(run_id: str) -> list[ModelResult]:
         return list(session.scalars(stmt).all())
 
 
-def count_model_results() -> int:
+def count_model_results(user_id: str | None = None) -> int:
     with session_scope() as session:
-        return int(session.scalar(select(func.count()).select_from(ModelResult)) or 0)
+        stmt = select(func.count()).select_from(ModelResult).join(Run, ModelResult.run_id == Run.id)
+        owner = _ownership_clause(Run.user_id, user_id)
+        if owner is not None:
+            stmt = stmt.where(owner)
+        return int(session.scalar(stmt) or 0)
 
 
 # ─────────────────────────── Statistics ────────────────────────
 
 
-def run_stats() -> dict[str, Any]:
+def run_stats(user_id: str | None = None) -> dict[str, Any]:
     with session_scope() as session:
-        total_runs = int(session.scalar(select(func.count()).select_from(Run)) or 0)
-        active = int(
-            session.scalar(
-                select(func.count()).select_from(Run).where(Run.status == Run.STATUS_RUNNING)
-            )
-            or 0
+        owner = _ownership_clause(Run.user_id, user_id)
+        run_filter = [owner] if owner is not None else []
+
+        def count_with(*clauses: Any) -> int:
+            stmt = select(func.count()).select_from(Run)
+            for clause in run_filter:
+                stmt = stmt.where(clause)
+            for clause in clauses:
+                stmt = stmt.where(clause)
+            return int(session.scalar(stmt) or 0)
+
+        total_runs = count_with()
+        active = count_with(Run.status == Run.STATUS_RUNNING)
+        completed = count_with(Run.status == Run.STATUS_COMPLETED)
+        failed = count_with(Run.status == Run.STATUS_FAILED)
+        queued = count_with(Run.status == Run.STATUS_QUEUED)
+        cancelled = count_with(Run.status == Run.STATUS_CANCELLED)
+
+        dataset_stmt = select(func.count()).select_from(Dataset)
+        dataset_owner = _ownership_clause(Dataset.user_id, user_id, Dataset.sample)
+        if dataset_owner is not None:
+            dataset_stmt = dataset_stmt.where(dataset_owner)
+        total_datasets = int(session.scalar(dataset_stmt) or 0)
+
+        avg_stmt = select(func.avg(Run.best_score)).where(Run.best_score.isnot(None))
+        avg_dur_stmt = select(func.avg(Run.total_duration_ms)).where(
+            Run.total_duration_ms.isnot(None), Run.status == Run.STATUS_COMPLETED
         )
-        completed = int(
-            session.scalar(
-                select(func.count()).select_from(Run).where(Run.status == Run.STATUS_COMPLETED)
-            )
-            or 0
-        )
-        failed = int(
-            session.scalar(
-                select(func.count()).select_from(Run).where(Run.status == Run.STATUS_FAILED)
-            )
-            or 0
-        )
-        queued = int(
-            session.scalar(
-                select(func.count()).select_from(Run).where(Run.status == Run.STATUS_QUEUED)
-            )
-            or 0
-        )
-        cancelled = int(
-            session.scalar(
-                select(func.count()).select_from(Run).where(Run.status == Run.STATUS_CANCELLED)
-            )
-            or 0
-        )
-        total_datasets = int(session.scalar(select(func.count()).select_from(Dataset)) or 0)
-        avg_score = session.scalar(
-            select(func.avg(Run.best_score)).where(Run.best_score.isnot(None))
-        )
-        avg_duration = session.scalar(
-            select(func.avg(Run.total_duration_ms)).where(
-                Run.total_duration_ms.isnot(None), Run.status == Run.STATUS_COMPLETED
-            )
-        )
-        engine_rows = session.execute(
+        engine_stmt = (
             select(Run.engine, func.count()).where(Run.engine.isnot(None)).group_by(Run.engine)
-        ).all()
-        task_rows = session.execute(
+        )
+        task_stmt = (
             select(Run.task_type, func.count())
             .where(Run.task_type.isnot(None))
             .group_by(Run.task_type)
-        ).all()
+        )
+        for clause in run_filter:
+            avg_stmt = avg_stmt.where(clause)
+            avg_dur_stmt = avg_dur_stmt.where(clause)
+            engine_stmt = engine_stmt.where(clause)
+            task_stmt = task_stmt.where(clause)
+        avg_score = session.scalar(avg_stmt)
+        avg_duration = session.scalar(avg_dur_stmt)
+        engine_rows = session.execute(engine_stmt).all()
+        task_rows = session.execute(task_stmt).all()
         return {
             "total_runs": total_runs,
             "active_runs": active,

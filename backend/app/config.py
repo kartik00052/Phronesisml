@@ -65,6 +65,57 @@ class Settings:
     seed_sample_datasets: bool = field(
         default_factory=lambda: os.environ.get("SEED_SAMPLE_DATASETS", "1") == "1"
     )
+    # ── Authentication ──────────────────────────────────────────────────────
+    # "disabled" → no JWT is required; requests run under the fixed
+    # "local-dev" identity (single-tenant dev/test). "supabase" → every
+    # protected endpoint validates a Supabase access token and enforces
+    # per-user ownership of datasets/runs.
+    auth_mode: str = field(default_factory=lambda: os.environ.get("AUTH_MODE", "disabled"))
+    supabase_url: str = field(default_factory=lambda: os.environ.get("SUPABASE_URL", ""))
+    supabase_anon_key: str = field(
+        default_factory=lambda: os.environ.get("SUPABASE_ANON_KEY", "")
+    )
+    # Server-side only. Either the legacy HS256 shared secret (most projects)
+    # or a JWKS URL for RSA/RS256 verification. Never exposed to the client.
+    supabase_jwt_secret: str = field(
+        default_factory=lambda: os.environ.get("SUPABASE_JWT_SECRET", "")
+    )
+    supabase_jwt_issuer: str = field(
+        default_factory=lambda: os.environ.get("SUPABASE_JWT_ISSUER", "")
+    )
+    supabase_jwks_url: str = field(
+        default_factory=lambda: os.environ.get("SUPABASE_JWKS_URL", "")
+    )
+    supabase_jwt_audience: str = field(
+        default_factory=lambda: os.environ.get("SUPABASE_JWT_AUDIENCE", "authenticated")
+    )
+    # ── Database pooling (PostgreSQL) ───────────────────────────────────────
+    db_pool_size: int = field(default_factory=lambda: int(os.environ.get("DB_POOL_SIZE", "5")))
+    db_max_overflow: int = field(
+        default_factory=lambda: int(os.environ.get("DB_MAX_OVERFLOW", "10"))
+    )
+
+    @property
+    def auth_enabled(self) -> bool:
+        return self.auth_mode == "supabase"
+
+    @property
+    def resolved_supabase_jwt_issuer(self) -> str | None:
+        """Effective issuer — explicit env override, else derived from the project URL."""
+        if self.supabase_jwt_issuer:
+            return self.supabase_jwt_issuer
+        if self.supabase_url:
+            return f"{self.supabase_url.rstrip('/')}/auth/v1"
+        return None
+
+    @property
+    def resolved_supabase_jwks_url(self) -> str | None:
+        """Effective JWKS URL — explicit env override, else derived from the project URL."""
+        if self.supabase_jwks_url:
+            return self.supabase_jwks_url
+        if self.supabase_url:
+            return f"{self.supabase_url.rstrip('/')}/auth/v1/.well-known/jwks.json"
+        return None
 
     @property
     def max_upload_bytes(self) -> int:

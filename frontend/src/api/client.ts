@@ -7,8 +7,17 @@
  */
 import { ApiError, type ApiErrorPayload } from "@/types/api";
 import { isDemoMode } from "@/mocks";
+import { getAccessToken } from "@/lib/supabase";
 
 export const DEFAULT_BASE_URL = "http://localhost:8000/api/v1";
+
+/** Attach the Supabase session token (if present) in auth-enabled mode. */
+async function withAuthHeaders(headers: HeadersInit = {}): Promise<HeadersInit> {
+  const token = await getAccessToken();
+  const merged = { ...headers } as Record<string, string>;
+  if (token) merged["Authorization"] = `Bearer ${token}`;
+  return merged;
+}
 
 export function getBaseUrl(): string {
   const configured = import.meta.env.VITE_API_BASE_URL as string | undefined;
@@ -59,12 +68,13 @@ export async function apiRequest<T>(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 60_000);
   try {
+    const headers = await withAuthHeaders(init?.headers);
     const res = await fetch(buildUrl(path), {
       ...init,
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        ...init?.headers,
+        ...headers,
       },
     });
     const raw: unknown = await res.json().catch(() => null);
@@ -95,14 +105,16 @@ export async function apiRequest<T>(
 }
 
 /** Streaming upload with progress callback (real API mode only). */
-export function uploadFile<T>(
+export async function uploadFile<T>(
   path: string,
   file: File,
   onProgress?: (percent: number) => void,
 ): Promise<T> {
+  const token = await getAccessToken();
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", buildUrl(path));
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.upload.onprogress = (evt) => {
       if (evt.lengthComputable && onProgress) {
         onProgress(Math.round((evt.loaded / evt.total) * 100));

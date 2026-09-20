@@ -25,6 +25,14 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-2048}
       SEED_SAMPLE_DATASETS: ${SEED_SAMPLE_DATASETS:-1}
+      # Auth mode: `disabled` (SQLite/self-hosted) or `supabase` (JWT).
+      AUTH_MODE: ${AUTH_MODE:-disabled}
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY:-}
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-}
+      SUPABASE_JWKS_URL: ${SUPABASE_JWKS_URL:-}
+      SUPABASE_JWT_ISSUER: ${SUPABASE_JWT_ISSUER:-}
+      SUPABASE_JWT_AUDIENCE: ${SUPABASE_JWT_AUDIENCE:-}
       # Absolute inside the container so the SQLite file lives on the
       # persistent `phronesisml-data` volume.
       DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/phronesisml.db}
@@ -44,6 +52,8 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
         VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-/api/v1}
         VITE_DEMO_MODE: ${VITE_DEMO_MODE:-false}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
     image: phronesisml-frontend:local
     ports:
       - "${FRONTEND_PORT:-8080}:80"

@@ -14,8 +14,8 @@ from backend.app.db import repositories
 from backend.app.db.repositories import iso
 
 
-def dashboard() -> dict[str, Any]:
-    stats = repositories.run_stats()
+def dashboard(user_id: str | None = None) -> dict[str, Any]:
+    stats = repositories.run_stats(user_id=user_id)
     engine_breakdown = {str(k): int(v) for k, v in (stats["engine_breakdown"] or {}).items()}
     task_breakdown = {str(k): int(v) for k, v in (stats["task_breakdown"] or {}).items()}
     return {
@@ -26,10 +26,10 @@ def dashboard() -> dict[str, Any]:
         "failedRuns": int(stats["failed_runs"]),
         "cancelledRuns": int(stats["cancelled_runs"]),
         "totalDatasets": int(stats["total_datasets"]),
-        "totalModels": repositories.count_model_results(),
+        "totalModels": repositories.count_model_results(user_id=user_id),
         "avgBestScore": _round4(stats["avg_best_score"]),
         "avgDurationMs": stats["avg_duration_ms"],
-        "totalArtifacts": repositories.count_artifacts(),
+        "totalArtifacts": repositories.count_artifacts(user_id=user_id),
         "engineBreakdown": engine_breakdown,
         "taskBreakdown": task_breakdown,
         "generatedAt": iso(datetime.now(UTC)),

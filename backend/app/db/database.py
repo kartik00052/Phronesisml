@@ -34,6 +34,7 @@ def _engine_factory() -> Engine:
     settings = get_settings()
     url = settings.database_url
     connect_args: dict[str, object] = {}
+    pool_kwargs: dict[str, object] = {"pool_pre_ping": True, "future": True}
     if url.startswith("sqlite"):
         db_path = url.replace("sqlite:///", "", 1)
         if db_path.startswith("./"):
@@ -41,11 +42,20 @@ def _engine_factory() -> Engine:
         parent = Path(db_path).parent
         parent.mkdir(parents=True, exist_ok=True)
         connect_args = {"check_same_thread": False, "timeout": 30}
+    else:
+        # Supabase PostgreSQL: a bounded SQLAlchemy pool keeps connection
+        # usage predictable for a single-process web backend.
+        pool_kwargs.update(
+            {
+                "pool_size": settings.db_pool_size,
+                "max_overflow": settings.db_max_overflow,
+                "pool_recycle": 600,
+            }
+        )
     engine = create_engine(
         url,
         connect_args=connect_args or None,
-        pool_pre_ping=True,
-        future=True,
+        **pool_kwargs,
     )
     if url.startswith("sqlite"):
 
@@ -77,11 +87,15 @@ def init_db() -> None:
 
     with _write_lock:
         Base.metadata.create_all(bind=engine)
-        _ensure_column(engine, "datasets", "sample")
+        # Additive backfill for pre-existing SQLite dev databases that were
+        # created before a column existed (create_all never alters tables).
+        _ensure_column(engine, "datasets", "sample", "BOOLEAN NOT NULL DEFAULT 0")
+        _ensure_column(engine, "datasets", "user_id", "VARCHAR(64)")
+        _ensure_column(engine, "runs", "user_id", "VARCHAR(64)")
     ensure_storage_dirs()
 
 
-def _ensure_column(db_engine: Engine, table: str, column: str) -> None:
+def _ensure_column(db_engine: Engine, table: str, column: str, sql_type: str) -> None:
     """Additive, idempotent column backfill for pre-existing SQLite tables.
 
     ``create_all`` never alters existing tables, so a previously created
@@ -93,7 +107,7 @@ def _ensure_column(db_engine: Engine, table: str, column: str) -> None:
     with db_engine.connect() as conn:
         cols = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({table})")}
         if column not in cols:
-            sql = f"ALTER TABLE {table} ADD COLUMN {column} BOOLEAN NOT NULL DEFAULT 0"
+            sql = f"ALTER TABLE {table} ADD COLUMN {column} {sql_type}"
             conn.exec_driver_sql(sql)
             conn.commit()
 
