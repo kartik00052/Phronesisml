@@ -80,13 +80,65 @@ def get_write_lock() -> threading.Lock:
     return _write_lock
 
 
+def _log_db_debug() -> None:
+    """Log a redacted description of the configured database URL.
+
+    Only prints structure (scheme, host, port, user, password length, stray
+    ``@`` count, path/query) after a failed connection, never the password.
+    Must never raise, even for a heavily mangled URL.
+    """
+    import logging
+
+    logger = logging.getLogger(__name__)
+    url = os.getenv("DATABASE_URL", "")
+    try:
+        authority = url.split("://", 1)[1].split("/", 1)[0] if "://" in url else ""
+        path_and_query = (
+            url.split("://", 1)[1].split("/", 1)[1]
+            if "://" in url and "/" in url.split("://", 1)[1]
+            else ""
+        )
+        at_signs = authority.count("@")
+        parts = authority.split("@")
+        userinfo = parts[0] if at_signs else authority
+        hostport = parts[-1] if at_signs else authority.split("?")[0]
+        user = userinfo.split(":", 1)[0]
+        password = userinfo.split(":", 1)[1] if ":" in userinfo else ""
+        host = hostport.rsplit(":", 1)[0] if ":" in hostport else hostport
+        port = hostport.rsplit(":", 1)[1].split("?", 1)[0] if ":" in hostport else ""
+        scheme = url.split("://", 1)[0]
+        reserved = any(ch in password for ch in "@:/?#[]%")
+        logger.error(
+            "Database startup failed. DATABASE_URL debug: "
+            "scheme=%r host=%r port=%r user=%r password_len=%d "
+            "at_signs=%d password_has_reserved_chars=%r "
+            "path_and_query=%r",
+            scheme,
+            host,
+            port,
+            user,
+            len(password),
+            at_signs,
+            reserved,
+            path_and_query,
+        )
+    except Exception:  # pragma: no cover - defensive, must not mask the DB error
+        logger.error(
+            "Database startup failed: unable to describe DATABASE_URL (password is never printed)."
+        )
+
+
 def init_db() -> None:
     """Create tables if they do not yet exist (dev/bootstrapping)."""
     # Import models so they register on Base.metadata before create_all.
     from backend.app.db import models as _models  # noqa: F401
 
     with _write_lock:
-        Base.metadata.create_all(bind=engine)
+        try:
+            Base.metadata.create_all(bind=engine)
+        except Exception:
+            _log_db_debug()
+            raise
         # Additive backfill for pre-existing SQLite dev databases that were
         # created before a column existed (create_all never alters tables).
         _ensure_column(engine, "datasets", "sample", "BOOLEAN NOT NULL DEFAULT 0")
