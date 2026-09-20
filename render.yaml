@@ -4,9 +4,14 @@
 # $PORT. No PostgreSQL container, no Supabase self-hosting — the database is
 # the hosted Supabase PostgreSQL connection provided via DATABASE_URL.
 #
-# The persistent disk mounts on /app/storage, which is exactly where the
-# backend's dataset/run/artifact/report storage directories resolve by default
-# (backend/app/config.py: ROOT_DIR = /app inside the image).
+# Tuned for the Render FREE plan:
+#   - plan: free  (Free instances cannot attach persistent disks)
+#   - storage is EPHEMERAL — uploads/models are wiped whenever the instance
+#     spins down or redeploys. The bundled sample datasets are shipped in the
+#     image (see .dockerignore) and re-seeded on every fresh start, so the app
+#     always boots with demo data. To keep real uploads, upgrade to Starter
+#     ($7/mo) and uncomment the disks block below.
+#   - healthCheckPath keeps Render's health monitor pinned to the real route.
 #
 # Secret values (DATABASE_URL, SUPABASE_URL, SUPABASE_JWT_SECRET) are left
 # `sync: false` so Render creates the env var and lets an operator paste the
@@ -19,7 +24,7 @@ services:
     name: phronesisml-backend
     runtime: docker
     repo: https://github.com/kartik00052/Phronesisml.git
-    plan: starter
+    plan: free
     dockerfilePath: ./Dockerfile
     autoDeploy: true
     healthCheckPath: /api/v1/health
@@ -27,7 +32,7 @@ services:
       - key: AUTH_MODE
         value: supabase
       - key: SEED_SAMPLE_DATASETS
-        value: "0"
+        value: "1"
       # Comma-separated browser origins that may call this API — set to the
       # real Vercel frontend origin (e.g. https://app.vercel.app). Leave for
       # the dashboard; never guess the URL here.
@@ -45,7 +50,9 @@ services:
         sync: false
       - key: SUPABASE_JWKS_URL
         sync: false
-    disks:
-      - name: phronesisml-storage
-        mountPath: /app/storage
-        sizeGB: 10
+    # Uncomment ONLY on a paid plan that supports disks (Starter+), then the
+    # four storage subdirectories under /app/storage become durable:
+    # disks:
+    #   - name: phronesisml-storage
+    #     mountPath: /app/storage
+    #     sizeGB: 10

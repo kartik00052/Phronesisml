@@ -36,7 +36,10 @@ mlflow.db
 Phronesis_artifacts/
 qa_artifacts/
 storage/
-data/
+
+# data/ (sample datasets) is deliberately NOT excluded: uploads are
+# ephemeral on the Render free plan (no persistent disk), so the bundled
+# samples are shipped in the image and re-seeded on every fresh start.
 
 # Database files (mounted from volumes at runtime)
 *.db

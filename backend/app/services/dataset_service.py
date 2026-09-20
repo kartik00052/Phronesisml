@@ -128,6 +128,11 @@ def seed_sample_datasets(settings: Settings | None = None) -> list[dict[str, Any
     deterministic id is not already present. Samples are never auto-selected
     and never trigger a run — they exist purely so the UI can offer
     ``Sample datasets`` for inspection and explicit run creation.
+
+    Handles ephemeral storage (Render free plan, no persistent disk): when a
+    registered sample's row survives (persistent database) but its bundled
+    file no longer exists on disk, the file is re-materialised from the image
+    copy and the stored metadata refreshed.
     """
     settings = settings or get_settings()
     # In multitenant (supabase) mode bundled samples are shared system rows
@@ -140,11 +145,16 @@ def seed_sample_datasets(settings: Settings | None = None) -> list[dict[str, Any
         if not source.is_file():
             continue
         dataset_id = f"ds_sample_{hashlib.sha1(file_name.encode()).hexdigest()[:16]}"
-        if repositories.get_dataset(dataset_id) is not None:
-            continue
         dataset_dir = settings.data_storage_dir / dataset_id
-        dataset_dir.mkdir(parents=True, exist_ok=True)
         dest = dataset_dir / file_name
+        existing = repositories.get_dataset(dataset_id)
+        if existing is not None and dest.is_file():
+            continue
+        # Repair: the row survived (persistent DB) but its bundled file vanished
+        # with an ephemeral filesystem (Render free plan). Re-materialise it
+        # from the image copy and refresh the stored metadata below.
+        stale = existing is not None
+        dataset_dir.mkdir(parents=True, exist_ok=True)
         with source.open("rb") as src, dest.open("wb") as out:
             while chunk := src.read(1024 * 1024):
                 out.write(chunk)
@@ -158,28 +168,42 @@ def seed_sample_datasets(settings: Settings | None = None) -> list[dict[str, Any
             continue
         missing_cells = int(sum((validation.get("null_counts") or {}).values()))
         duplicate_rows = int(validation.get("duplicate_rows") or 0)
-        repositories.create_dataset(
-            {
-                "id": dataset_id,
-                "user_id": sample_user,
-                "name": file_name,
-                "path": str(dest),
-                "format": file_name.rsplit(".", 1)[-1].lower(),
-                "size_bytes": dest.stat().st_size,
-                "rows": profile.get("shape", {}).get("rows"),
-                "columns": profile.get("shape", {}).get("columns"),
-                "engine": _inspect_engine_name(dest),
-                "engine_reason": "Bundled sample dataset — inspect, then start a run explicitly.",
-                "validation_passed": bool(validation.get("passed")),
-                "missing_cells": missing_cells,
-                "duplicate_rows": duplicate_rows,
-                "profile_path": str(dataset_dir / "profile.json"),
-                "validation_path": str(dataset_dir / "validation.json"),
-                "preview_path": str(dataset_dir / "preview.json"),
-                "sheets": sheets,
-                "sample": True,
-            }
-        )
+        if stale:
+            repositories.update_dataset(
+                dataset_id,
+                path=str(dest),
+                size_bytes=dest.stat().st_size,
+                rows=profile.get("shape", {}).get("rows"),
+                columns=profile.get("shape", {}).get("columns"),
+                engine=_inspect_engine_name(dest),
+                validation_passed=bool(validation.get("passed")),
+                missing_cells=missing_cells,
+                duplicate_rows=duplicate_rows,
+                sheets=sheets,
+            )
+        else:
+            repositories.create_dataset(
+                {
+                    "id": dataset_id,
+                    "user_id": sample_user,
+                    "name": file_name,
+                    "path": str(dest),
+                    "format": file_name.rsplit(".", 1)[-1].lower(),
+                    "size_bytes": dest.stat().st_size,
+                    "rows": profile.get("shape", {}).get("rows"),
+                    "columns": profile.get("shape", {}).get("columns"),
+                    "engine": _inspect_engine_name(dest),
+                    "engine_reason": "Bundled sample dataset — inspect, then start a run.",
+                    "validation_passed": bool(validation.get("passed")),
+                    "missing_cells": missing_cells,
+                    "duplicate_rows": duplicate_rows,
+                    "profile_path": str(dataset_dir / "profile.json"),
+                    "validation_path": str(dataset_dir / "validation.json"),
+                    "preview_path": str(dataset_dir / "preview.json"),
+                    "sheets": sheets,
+                    "sample": True,
+                }
+            )
         (dataset_dir / "profile.json").write_text(json.dumps(profile, default=_json_default))
         (dataset_dir / "validation.json").write_text(json.dumps(validation, default=_json_default))
         (dataset_dir / "preview.json").write_text(json.dumps(preview, default=_json_default))

@@ -226,12 +226,13 @@ Browser
 
 Configuration lives in the repo:
 
-- `render.yaml` — Render Blueprint for the backend. The service binds
-  `AUTH_MODE=supabase`, `SEED_SAMPLE_DATASETS=0` (the sample `data/` files are
-  not copied into the image), and a **persistent disk** named
-  `phronesisml-storage` mounted at `/app/storage` (10 GB) which covers the four
-  filesystem storage directories (`datasets/`, `runs/`, `artifacts/`,
-  `reports/`). `healthCheckPath: /api/v1/health` matches the app's own
+- `render.yaml` — Render Blueprint for the backend (Free-plan tuned). The
+  service binds `AUTH_MODE=supabase` and `SEED_SAMPLE_DATASETS=1`: the bundled
+  sample `data/` CSVs are shipped in the image (see `.dockerignore`) and
+  re-seeded on every fresh start. Render **Free** instances cannot attach
+  persistent disks, so storage under `/app/storage/*` is ephemeral; `render.yaml`
+  carries a commented `disks:` block with the exact upgrade (Starter+) that
+  makes it durable. `healthCheckPath: /api/v1/health` matches the app's own
   no-auth, no-ML health probe (DB `SELECT 1` + storage writability + deps).
 - `frontend/vercel.json` — catch-all rewrite so deep links like `/runs/...`
   load the SPA instead of 404ing. Vercel project **Root Directory** must be
@@ -293,9 +294,14 @@ The chain is additive and idempotent for both upgrade paths: a **fresh** DB
   scale to multiple instances — a second instance would run duplicate
   workers. On restart, `reconcile_interrupted_runs` marks `queued`/`running`
   runs as `failed` (honest state, no half-written rows).
-- **Persistent disk only.** Uploaded datasets/models live on the `/app/storage`
-  disk at "*Disk*" storage class; a disk delete loses datasets and run
-  artifacts (except what is re-derivable). Back that directory up.
+- **Ephemeral storage on the Free plan.** Render Free instances cannot attach
+  a persistent disk, so the container filesystem is wiped whenever the instance
+  spins down (after ~15 min of inactivity) or redeploys — uploaded datasets,
+  trained models, and run artifacts are lost. Bundled sample datasets survive
+  because they are re-seeded from the image on each fresh start. For durable
+  uploads, upgrade to Starter ($7/mo) and uncomment the `disks:` block in
+  `render.yaml`; the four storage directories are then backed by a real disk at
+  `/app/storage`. Back that directory up either way.
 - **Secrets in dashboards.** Pointers above; never commit `.env`, `.env.*`,
   or secrets. `.env`, `.env.local` and their `frontend/` equivalents are
   gitignored.
