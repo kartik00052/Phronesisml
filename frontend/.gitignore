@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+dist-ssr/
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# Vitest
+coverage/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Editor / OS
+.DS_Store
+*.local
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Logs
+*.log
+npm-debug.log*

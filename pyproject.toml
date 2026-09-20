@@ -58,8 +58,16 @@ dev = [
     "build>=1.2,<2.0",
     "twine>=5.0,<7.0",
 ]
+web = [
+    "fastapi>=0.110,<1.0",
+    "uvicorn[standard]>=0.27,<1.0",
+    "sqlalchemy>=2.0,<3.0",
+    "alembic>=1.13,<2.0",
+    "python-multipart>=0.0.9,<1.0",
+    "websockets>=12.0,<15.0",
+]
 all = [
-    "phronesisml[cli,spark,mlflow,excel,docs]",
+    "phronesisml[cli,spark,mlflow,excel,docs,web]",
 ]
 
 [tool.hatch.version]
@@ -116,6 +124,12 @@ ignore = ["ANN401", "N812", "N803", "N806"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN001", "ANN201", "B017", "N802"]
+"backend/tests/**" = ["ANN001", "ANN201", "B017", "N802", "C408", "E501"]
+"verify_phronesisml.py" = ["ANN001", "ANN201", "ANN202", "E501", "B904"]
+# Wire-contract DTOs deliberately mirror the camelCase TypeScript types.
+"backend/app/schemas/*.py" = ["N815"]
+# FastAPI idiom: File()/Query()/Header() defaults in argument positions.
+"backend/app/api/v1/*.py" = ["B008"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -131,4 +145,11 @@ disable_error_code = ["untyped-decorator"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "backend/tests"]
+markers = [
+    "integration: slow tests that train real models (opt-in via -m integration)",
+]
+addopts = "-m 'not integration' -q"
+
+[tool.ruff.lint.isort]
+known-first-party = ["phronesisml", "backend.app"]

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="PhronesisML">
+  <rect width="32" height="32" rx="7" fill="#3b5bdb" />
+  <g fill="#ffffff">
+    <circle cx="8" cy="8" r="2.9" />
+    <circle cx="24" cy="9" r="2.9" />
+    <circle cx="16" cy="24" r="2.9" />
+  </g>
+  <g stroke="#ffffff" stroke-width="1.7" stroke-linecap="round" fill="none">
+    <path d="M8 10.9v7.2M24 11.9v7.2M8 18.1l13.5-2.7M24 11.9L10.2 6.4" />
+  </g>
+</svg>

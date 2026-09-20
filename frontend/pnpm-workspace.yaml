@@ -1,0 +1,9 @@
+# pnpm v12 settings (new home for pnpm config) — see https://pnpm.io/settings
+
+# Allow postinstall build scripts for esbuild (required for Vite).
+allowBuilds:
+  esbuild: true
+
+# Keep the workspace self-contained.
+packages:
+  - "."

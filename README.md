@@ -412,9 +412,11 @@ print(f"Anomalies: {anomalies.n_anomalies} of {anomalies.n_total}")
 from phronesisml import analyze_async, train_async
 import asyncio
 
+
 async def main():
     profile = await analyze_async("data/customers.csv")
     result = await train_async("data/customers.csv")
+
 
 asyncio.run(main())
 ```
@@ -447,9 +449,11 @@ except WorkflowError as e:
 import asyncio
 from phronesisml import run_pipeline
 
+
 async def main():
     result = await run_pipeline(data_path="data/customers.csv")
     print(result)
+
 
 asyncio.run(main())
 ```
