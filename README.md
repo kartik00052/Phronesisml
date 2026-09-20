@@ -56,14 +56,15 @@
 11. [Examples](#examples)
 12. [SDK Interfaces](#sdk-interfaces)
 13. [Project Structure](#project-structure)
-14. [Offline-First Philosophy](#offline-first-philosophy)
-15. [Security](#security)
-16. [Roadmap](#roadmap)
-17. [Contributing](#contributing)
-18. [Community](#community)
-19. [FAQ](#faq)
-20. [License](#license)
-21. [Acknowledgements](#acknowledgements)
+14. [Deployment](#deployment)
+15. [Offline-First Philosophy](#offline-first-philosophy)
+16. [Security](#security)
+17. [Roadmap](#roadmap)
+18. [Contributing](#contributing)
+19. [Community](#community)
+20. [FAQ](#faq)
+21. [License](#license)
+22. [Acknowledgements](#acknowledgements)
 
 </details>
 
@@ -488,6 +489,23 @@ phronesisml/
   rag/                   # RAG infrastructure
   workflow/             # LangGraph workflow orchestration
 ```
+
+---
+
+## Deployment
+
+Run the full web application (FastAPI backend + React frontend behind Nginx)
+in containers with persistent SQLite and filesystem storage:
+
+```bash
+docker compose build
+docker compose up -d
+# UI: http://localhost:8080   API: http://localhost:8080/api/v1/health
+```
+
+Full instructions — environment, migrations, volumes, troubleshooting, and
+production limitations — are in
+[`project_docs/deployment.md`](project_docs/deployment.md).
 
 ---
 

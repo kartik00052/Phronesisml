@@ -60,6 +60,9 @@ site/
 
 # QA scratch (datasets + run artifacts)
 qa_artifacts/
+
+# Runtime storage (mounted as a named volume in Docker Compose)
+storage/
 BankChurners.csv
 diabetes_prediction_dataset.csv
 heart.csv

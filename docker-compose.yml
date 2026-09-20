@@ -1,0 +1,59 @@
+# PhronesisML container deployment (minimum viable stack).
+#
+#   Browser ──► frontend (Nginx :80) ──► backend (FastAPI :8000)
+#                ├── static React build           ├── /app/storage   (named volume)
+#                └── /api/* proxy (HTTP + WS)     └── /app/data      (named volume)
+#
+# No external infrastructure is required: the app uses SQLite + local
+# filesystem storage. `.env` is OPTIONAL (variables substitute via
+# `${NAME:-default}`); the defaults below are valid out of the box.
+#
+# Standalone Docker builds:
+#   docker build -f Dockerfile .                 # backend image
+#   docker build -f frontend/Dockerfile .        # frontend (nginx) image
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: phronesisml-backend:local
+    init: true
+    environment:
+      # Same-origin via Nginx, so CORS can stay closed. Set to your origin
+      # (comma-separated) if the browser hits the API from elsewhere.
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-2048}
+      SEED_SAMPLE_DATASETS: ${SEED_SAMPLE_DATASETS:-1}
+      # Absolute inside the container so the SQLite file lives on the
+      # persistent `phronesisml-data` volume.
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/phronesisml.db}
+    volumes:
+      - phronesisml-storage:/app/storage
+      - phronesisml-data:/app/data
+    restart: unless-stopped
+    # Not published to the host — the browser only talks to Nginx.
+    # App's own HEALTHCHECK (image) drives `depends_on: service_healthy`.
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # Baked in at build time by Vite (import.meta.env).
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api/v1}
+        VITE_WS_BASE_URL: ${VITE_WS_BASE_URL:-/api/v1}
+        VITE_DEMO_MODE: ${VITE_DEMO_MODE:-false}
+    image: phronesisml-frontend:local
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  phronesisml-storage:
+    name: phronesisml-storage
+  phronesisml-data:
+    name: phronesisml-data

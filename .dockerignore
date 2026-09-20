@@ -1,0 +1,51 @@
+# VCS
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+frontend/node_modules/
+frontend/dist/
+frontend/test-results/
+frontend/playwright-report/
+node_modules/
+
+# jQuery / OS
+*.log
+
+# MLflow & run artifacts
+mlruns/
+mlflow.db
+Phronesis_artifacts/
+qa_artifacts/
+storage/
+data/
+
+# Database files (mounted from volumes at runtime)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
