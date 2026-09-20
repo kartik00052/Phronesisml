@@ -41,7 +41,7 @@ Issues = "https://github.com/kartik00052/PhronesisML/issues"
 Changelog = "https://github.com/kartik00052/PhronesisML/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
-cli = ["typer>=0.12,<1.0", "rich>=13.0,<14.0"]
+cli = ["typer>=0.12,<1.0", "rich>=13.0,<16.0"]
 spark = ["pyspark>=3.5,<4.0"]
 mlflow = ["mlflow>=2.10,<3.0"]
 excel = ["openpyxl>=3.1,<4.0"]
