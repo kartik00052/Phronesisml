@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from backend.app.config import get_settings  # noqa: E402
+from backend.app.config import get_settings, normalize_database_url  # noqa: E402
 from backend.app.db import models as _models  # noqa: E402,F401  (register tables)
 from backend.app.db.database import Base  # noqa: E402
 
@@ -25,7 +25,8 @@ target_metadata = Base.metadata
 config = context.config
 settings = get_settings()
 if settings.database_url:
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+    # Same driver routing as backend/app/db/database.py (psycopg, not psycopg2).
+    config.set_main_option("sqlalchemy.url", normalize_database_url(settings.database_url))
 
 
 def run_migrations_offline() -> None:

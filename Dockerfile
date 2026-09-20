@@ -55,10 +55,12 @@ USER phronesis
 EXPOSE 8000
 
 # The application's own health endpoint is the source of truth for database,
-# storage, and dependency availability.
+# storage, and dependency availability. The port follows $PORT (Render uses a
+# per-service ephemeral port) and falls back to 8000 locally / in Compose.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
-    CMD python -c "import urllib.request, json; json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=5))"
+    CMD ["sh", "-c", "python -c \"import urllib.request,json,os; json.load(urllib.request.urlopen('http://127.0.0.1:' + os.environ.get('PORT', '8000') + '/api/v1/health', timeout=5))\""]
 
 # Single process: the app serialises SQLite writes with an in-process lock
 # (see backend/app/db/database.py), so multiple workers are not used.
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Render injects $PORT (defaulting to 8000 for local/Compose runs).
+CMD ["sh", "-c", "uvicorn backend.app.main:app --host 0.0.0.0 --port \"${PORT:-8000}\""]

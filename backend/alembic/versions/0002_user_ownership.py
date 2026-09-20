@@ -14,8 +14,13 @@ How existing (unowned) rows are treated is defined by application code in
   they are shared system rows (bundled sample datasets flagged ``sample``);
   all other unowned rows are hidden from authenticated users.
 
-The migration is dialect-agnostic (plain ``ALTER TABLE ... ADD COLUMN``) and
-applies to both SQLite (dev/test) and Supabase PostgreSQL.
+Idempotency for fresh databases: ``0001_initial`` replays the *current* ORM
+metadata, which already includes ``user_id`` (and its indexes). On a brand-new
+database that means 0001 already creates the column + indexes, so every DDL in
+this migration is guarded by an existence check — otherwise ``alembic upgrade
+head`` fails on a fresh DB (``duplicate column name: user_id``). The migration
+is dialect-agnostic (plain ``ALTER TABLE ... ADD COLUMN``) and applies to both
+SQLite (dev/test) and Supabase PostgreSQL.
 """
 
 from __future__ import annotations
@@ -32,10 +37,22 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column("datasets", sa.Column("user_id", sa.String(length=64), nullable=True))
-    op.add_column("runs", sa.Column("user_id", sa.String(length=64), nullable=True))
-    op.create_index(op.f("ix_datasets_user_id"), "datasets", ["user_id"], unique=False)
-    op.create_index(op.f("ix_runs_user_id"), "runs", ["user_id"], unique=False)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+
+    dataset_cols = {col["name"] for col in inspector.get_columns("datasets")}
+    run_cols = {col["name"] for col in inspector.get_columns("runs")}
+    if "user_id" not in dataset_cols:
+        op.add_column("datasets", sa.Column("user_id", sa.String(length=64), nullable=True))
+    if "user_id" not in run_cols:
+        op.add_column("runs", sa.Column("user_id", sa.String(length=64), nullable=True))
+
+    dataset_indexes = {ix["name"] for ix in inspector.get_indexes("datasets")}
+    run_indexes = {ix["name"] for ix in inspector.get_indexes("runs")}
+    if "ix_datasets_user_id" not in dataset_indexes:
+        op.create_index(op.f("ix_datasets_user_id"), "datasets", ["user_id"], unique=False)
+    if "ix_runs_user_id" not in run_indexes:
+        op.create_index(op.f("ix_runs_user_id"), "runs", ["user_id"], unique=False)
 
 
 def downgrade() -> None:

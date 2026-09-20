@@ -1,0 +1,51 @@
+# PhronesisML — Render blueprints configuration (web service only).
+#
+# Deploys the FastAPI backend image (./Dockerfile) that already binds to
+# $PORT. No PostgreSQL container, no Supabase self-hosting — the database is
+# the hosted Supabase PostgreSQL connection provided via DATABASE_URL.
+#
+# The persistent disk mounts on /app/storage, which is exactly where the
+# backend's dataset/run/artifact/report storage directories resolve by default
+# (backend/app/config.py: ROOT_DIR = /app inside the image).
+#
+# Secret values (DATABASE_URL, SUPABASE_URL, SUPABASE_JWT_SECRET) are left
+# `sync: false` so Render creates the env var and lets an operator paste the
+# real value in the dashboard — they are never committed here.
+#
+# Companion files: frontend/vercel.json (Vercel), project_docs/deployment.md.
+
+services:
+  - type: web
+    name: phronesisml-backend
+    runtime: docker
+    repo: https://github.com/kartik00052/Phronesisml.git
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: AUTH_MODE
+        value: supabase
+      - key: SEED_SAMPLE_DATASETS
+        value: "0"
+      # Comma-separated browser origins that may call this API — set to the
+      # real Vercel frontend origin (e.g. https://app.vercel.app). Leave for
+      # the dashboard; never guess the URL here.
+      - key: CORS_ORIGINS
+        sync: false
+      # Supabase PostgreSQL connection string (postgresql:// — the backend
+      # routes it to the bundled psycopg driver automatically).
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      # Either this shared-secret HS256 value OR SUPABASE_JWKS_URL is required
+      # by the existing JWT verifier (backend/app/auth/verifier.py).
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SUPABASE_JWKS_URL
+        sync: false
+    disks:
+      - name: phronesisml-storage
+        mountPath: /app/storage
+        sizeGB: 10

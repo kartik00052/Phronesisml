@@ -206,7 +206,105 @@ docker compose up -d
   frontend image and that `SUPABASE_URL` (plus a JWT secret or JWKS URL) are
   set on the backend.
 
-## 12. Production limitations
+## 12. Hosted production deployment (Vercel + Render + Supabase)
+
+The recommended public topology runs the same application on managed
+infrastructure — no self-hosted Postgres or storage:
+
+```
+Browser
+  ├── ► https://<vercel-domain>            Vercel (static SPA)
+  │                                     React+Vite bundle, rootDir=frontend,
+  │                                     vercel.json rewrites all routes to
+  │                                     /index.html (React Router HTML5 history)
+  │
+  ├── ► https://<render-app>.onrender.com/api/v1/**   Render (Web Service)
+  ├── ► wss://<render-app>.onrender.com/api/v1/ws/**   single uvicorn on $PORT
+  │                                     Dockerfile; persistent disk -> /app/storage
+  └── ► Supabase Auth + PostgreSQL        JWT (email/password) + DATABASE_URL
+```
+
+Configuration lives in the repo:
+
+- `render.yaml` — Render Blueprint for the backend. The service binds
+  `AUTH_MODE=supabase`, `SEED_SAMPLE_DATASETS=0` (the sample `data/` files are
+  not copied into the image), and a **persistent disk** named
+  `phronesisml-storage` mounted at `/app/storage` (10 GB) which covers the four
+  filesystem storage directories (`datasets/`, `runs/`, `artifacts/`,
+  `reports/`). `healthCheckPath: /api/v1/health` matches the app's own
+  no-auth, no-ML health probe (DB `SELECT 1` + storage writability + deps).
+- `frontend/vercel.json` — catch-all rewrite so deep links like `/runs/...`
+  load the SPA instead of 404ing. Vercel project **Root Directory** must be
+  `frontend/` (the repo root has no package.json).
+
+### Environment for the hosted backend (Render environment variables)
+
+| Variable | Example / note |
+| --- | --- |
+| `AUTH_MODE` | `supabase` |
+| `DATABASE_URL` | Supabase **project database** `postgresql://<user>:<pass>@<host>:5432/<db>`. The bare `postgresql://` scheme is rewritten to the `psycopg` driver automatically (`backend/app/config.py::normalize_database_url`), so use the URL exactly as Supabase shows it — do **not** add `+psycopg` yourself. |
+| `SUPABASE_URL` | Supabase project URL (also drives issuer/JWKS) |
+| `SUPABASE_JWT_SECRET` or `SUPABASE_JWKS_URL` | Server-only token verification (keep out of any frontend env) |
+| `CORS_ORIGINS` | Comma-separated, **including the `https://` Vercel domain** (e.g. `https://phronesisml.vercel.app`). Wildcards are not used with authenticated requests; omit only if the SPA and API are same-origin. |
+| `SEED_SAMPLE_DATASETS` | `0` (set by `render.yaml`) |
+| storage dirs | Optional overrides (e.g. `DATA_STORAGE_DIR`...). Defaults resolve under the disk mount at `/app/storage/*`. |
+
+The `sync: false` entries in `render.yaml` (`DATABASE_URL`, `SUPABASE_URL`,
+`SUPABASE_JWT_SECRET`, `SUPABASE_JWKS_URL`, `CORS_ORIGINS`) are placeholders so
+secrets never live in the repo — finalize their values in the Render dashboard
+after the first deploy.
+
+### Frontend build-time variables (Vercel)
+
+Baked into the SPA bundle by Vite (all public):
+
+| Variable | Value |
+| --- | --- |
+| `VITE_API_BASE_URL` | `https://<render-app>.onrender.com/api/v1` |
+| `VITE_WS_BASE_URL` | `https://<render-app>.onrender.com/api/v1` (the client converts `http->ws`/`https->wss` automatically) |
+| `VITE_SUPABASE_URL` | Same project URL as the backend |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` |
+| `VITE_DEMO_MODE` | `false` |
+
+Server-only values (`DATABASE_URL`, `SUPABASE_JWT_SECRET`, Supabase service-role
+key) must never be added as Vercel variables.
+
+### Migration on the hosted backend
+
+Run Alembic once against the hosted database from the repo (after the backend
+image's first deploy, `init_db` creates schema only if absent — an explicit
+migration is still required to guarantee `0003_rls_policies` RLS on
+PostgreSQL):
+
+```bash
+DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db> \
+  .venv/bin/alembic -c backend/alembic.ini upgrade head
+```
+
+The chain is additive and idempotent for both upgrade paths: a **fresh** DB
+(`0001` already builds current ORM metadata including `user_id`) and a
+**legacy** DB both reach `0003_rls_policies (head)`
+(`0002` inspects the live schema and only adds what is missing).
+
+### Hosted-topology limitations
+
+- **Single instance.** The backend is one uvicorn process; run workers are
+  in-process threads. Render handles failover via health checks, but do not
+  scale to multiple instances — a second instance would run duplicate
+  workers. On restart, `reconcile_interrupted_runs` marks `queued`/`running`
+  runs as `failed` (honest state, no half-written rows).
+- **Persistent disk only.** Uploaded datasets/models live on the `/app/storage`
+  disk at "*Disk*" storage class; a disk delete loses datasets and run
+  artifacts (except what is re-derivable). Back that directory up.
+- **Secrets in dashboards.** Pointers above; never commit `.env`, `.env.*`,
+  or secrets. `.env`, `.env.local` and their `frontend/` equivalents are
+  gitignored.
+- **PostgreSQL differences.** Queries and migration are PostgreSQL-compatible;
+  tz-aware datetimes are written into `timestamp without time zone` columns and
+  read back as-is — verified to match, but confirm on a live project before
+  relying on cross-timezone semantics.
+
+## 13. Production limitations
 
 Documented behaviour of the *current* application — Docker does not remove
 these:

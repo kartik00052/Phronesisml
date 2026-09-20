@@ -22,7 +22,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from backend.app.config import get_settings
+from backend.app.config import get_settings, normalize_database_url
 
 Base = declarative_base()
 
@@ -32,7 +32,7 @@ _write_lock = threading.Lock()
 
 def _engine_factory() -> Engine:
     settings = get_settings()
-    url = settings.database_url
+    url = normalize_database_url(settings.database_url)
     connect_args: dict[str, object] = {}
     pool_kwargs: dict[str, object] = {"pool_pre_ping": True, "future": True}
     if url.startswith("sqlite"):

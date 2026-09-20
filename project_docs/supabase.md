@@ -114,3 +114,53 @@ session requires confirming the verification email; the anon/publishable key
 cannot create a confirmed session on its own. See the final-pass report for
 what was verified (configuration endpoint reachable, hermetic auth suite) and
 what was **NOT RUN** (live signup/login, live PostgreSQL/Alembic/RLS).
+
+## Hosted deployment status (Vercel + Render + Supabase)
+
+Tracked separately from feature code so "verified in CI/hermetic tests" is never
+confused with "verified against a live deployment".
+
+### IMPLEMENTED (in the repo, not yet deployed)
+
+- **psycopg driver routing** — `backend/app/config.py` gained
+  `normalize_database_url()`: a bare `postgresql://`/`postgres://` URL is
+  rewritten to `postgresql+psycopg://` everywhere an engine or Alembic is
+  created (`database.py`, `alembic/env.py`). The project pins `psycopg[binary]`
+  (psycopg 3); SQLAlchemy's default for the bare scheme is psycopg2, which is
+  **not** installed. Supabase's project database URL can now be used verbatim.
+- **Fresh-DB-safe migrations** — `0002_user_ownership` is idempotent
+  (inspects the live schema and adds `user_id`/indexes only if missing). This
+  matters because `0001` builds from *current* ORM metadata, so a brand-new
+  database already contains `user_id`. Verified locally: a fresh SQLite DB runs
+  `upgrade head` → `0003_rls_policies (head)`, and a legacy 0001-only DB also
+  reaches head.
+- **Render-ready image** — `Dockerfile` CMD now serves `uvicorn` on the
+  `PORT` environment variable (fallback `8000`) and the `HEALTHCHECK` probes
+  the same port.
+- **Deploy configs** — `render.yaml` (web service, health path
+  `/api/v1/health`, persistent disk at `/app/storage`, secrets kept
+  `sync: false` as dashboard-only values) and `frontend/vercel.json` (SPA
+  catch-all rewrite; Vercel project Root Directory = `frontend/`).
+
+### VERIFIED (hermetic / local)
+
+- Alembic upgrade chains: fresh + legacy, both end at head; exit 0.
+- Driver mapping check: `create_engine(...).dialect.driver == "psycopg"`.
+- Full suites pass: backend `pytest` (58 passed / 3 deselected), `ruff check`
+  and format on changed files, frontend `typecheck`/`lint`/tests (64)/`build`,
+  and the SDK `backend/tests/e2e_smoke.py` (ALL PASS).
+- Secret audit: no service-role key, no `DATABASE_URL`, no JWT secret in the
+  frontend sources or production bundle; server-only env names absent from
+  `frontend/`.
+
+### LIVE-VERIFIED: NOT RUN (requires a real deployed environment)
+
+- `docker build`/`docker compose up` runtime verification (no Docker daemon
+  in this environment).
+- Alembic/RLS against a live Supabase PostgreSQL database (no `DATABASE_URL`
+  available here; must be run once as part of the first deploy).
+- Real email/password signup + confirmed JWT session against the deployed app
+  (the project requires **email confirmation** — `mailer_autoconfirm: false` —
+  and signup returned HTTP 429 `over_email_send_rate_limit` during this pass).
+- Cross-timezone datetime semantics (tz-aware values into
+  `timestamp without time zone`) — expected to round-trip; confirm on live PG.

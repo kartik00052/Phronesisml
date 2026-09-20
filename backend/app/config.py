@@ -20,10 +20,24 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-__all__ = ["ROOT_DIR", "Settings", "get_settings"]
+__all__ = ["ROOT_DIR", "Settings", "normalize_database_url", "get_settings"]
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+
+
+def normalize_database_url(url: str) -> str:
+    """Route a bare ``postgresql://``/``postgres://`` URL to the psycopg driver.
+
+    SQLAlchemy's default driver for that scheme is ``psycopg2``, which is not
+    installed here — the project pins ``psycopg[binary]`` (psycopg 3). Supabase
+    exposes ``postgresql://`` connection strings, so without this rewrite the
+    engine and Alembic would fail with ``ModuleNotFoundError: psycopg2``.
+    URLs that already name a driver (``postgresql+psycopg://``) pass through.
+    """
+    if url.startswith("postgresql://") or url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url.split("://", 1)[1]
+    return url
 
 
 @dataclass(frozen=True)
@@ -72,9 +86,7 @@ class Settings:
     # per-user ownership of datasets/runs.
     auth_mode: str = field(default_factory=lambda: os.environ.get("AUTH_MODE", "disabled"))
     supabase_url: str = field(default_factory=lambda: os.environ.get("SUPABASE_URL", ""))
-    supabase_anon_key: str = field(
-        default_factory=lambda: os.environ.get("SUPABASE_ANON_KEY", "")
-    )
+    supabase_anon_key: str = field(default_factory=lambda: os.environ.get("SUPABASE_ANON_KEY", ""))
     # Server-side only. Either the legacy HS256 shared secret (most projects)
     # or a JWKS URL for RSA/RS256 verification. Never exposed to the client.
     supabase_jwt_secret: str = field(
@@ -83,9 +95,7 @@ class Settings:
     supabase_jwt_issuer: str = field(
         default_factory=lambda: os.environ.get("SUPABASE_JWT_ISSUER", "")
     )
-    supabase_jwks_url: str = field(
-        default_factory=lambda: os.environ.get("SUPABASE_JWKS_URL", "")
-    )
+    supabase_jwks_url: str = field(default_factory=lambda: os.environ.get("SUPABASE_JWKS_URL", ""))
     supabase_jwt_audience: str = field(
         default_factory=lambda: os.environ.get("SUPABASE_JWT_AUDIENCE", "authenticated")
     )
