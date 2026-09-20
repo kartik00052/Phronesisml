@@ -54,7 +54,7 @@ def _engine_factory() -> Engine:
         )
     engine = create_engine(
         url,
-        connect_args=connect_args or None,
+        connect_args=connect_args,
         **pool_kwargs,
     )
     if url.startswith("sqlite"):
