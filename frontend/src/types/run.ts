@@ -150,3 +150,20 @@ export interface RecentRunActivity {
   createdAt: string;
   durationMs: number | null;
 }
+
+export interface PredictionItem {
+  prediction: string | number;
+  probability?: string | null;
+  features?: Record<string, unknown> | string | null;
+}
+
+export interface PredictionResponse {
+  runId: string;
+  modelType: string;
+  predictions: PredictionItem[];
+}
+
+export interface PredictionRequest {
+  samples: Record<string, unknown>[];
+}
+

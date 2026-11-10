@@ -22,4 +22,4 @@ class ReportInfo(BaseModel):
     json: str | None = None
     sections: list[str] = Field(default_factory=list)
 
-    model_config = ConfigDict(populate_by_name=True, extra="allow")
+    model_config = ConfigDict(populate_by_name=True, extra="allow", protected_namespaces=())
