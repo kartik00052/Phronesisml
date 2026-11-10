@@ -283,6 +283,14 @@ PhronesisML's engine abstraction exists specifically so the pipeline can move fr
 
 ## Installation
 
+### Requirements
+
+| Requirement | Minimum | Notes |
+|---|---|---|
+| Python | 3.11+ | Required for the package and all extras |
+| pip | Latest | `python -m pip install --upgrade pip` recommended |
+| OS | Linux, macOS, Windows | Core pipeline is platform-independent |
+
 ### Standard (recommended)
 
 ```bash
