@@ -1,5 +1,5 @@
 /**
- * Supabase authentication context.
+ * Supabase authentication provider.
  *
  * Three states, exposed via `useAuth()`:
  *
@@ -19,16 +19,11 @@ import * as React from "react";
 import { getSupabase, supabaseConfigured } from "@/lib/supabase";
 import type { Session } from "@supabase/supabase-js";
 
-type AuthStatus = "disabled" | "loading" | "authed" | "anon";
-
-interface AuthContextValue {
-  status: AuthStatus;
-  session: Session | null;
-  userEmail: string | null;
-  signOut: () => Promise<void>;
-}
-
-const AuthContext = React.createContext<AuthContextValue | null>(null);
+import {
+  AuthContext,
+  type AuthContextValue,
+  type AuthStatus,
+} from "@/auth/auth-context";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = React.useState<AuthStatus>(() =>
@@ -76,10 +71,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const ctx = React.useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth() must be used inside <AuthProvider>");
-  return ctx;
 }

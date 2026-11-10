@@ -19,7 +19,7 @@ class ReportInfo(BaseModel):
     downloadUrl: str | None = Field(default=None, alias="downloadUrl")
     markdown: str | None = None
     html: str | None = None
-    json: str | None = None
+    json_report: str | None = Field(default=None, alias="json")
     sections: list[str] = Field(default_factory=list)
 
     model_config = ConfigDict(populate_by_name=True, extra="allow", protected_namespaces=())

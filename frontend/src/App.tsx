@@ -3,7 +3,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 
 import { queryClient } from "@/lib/query-client";
-import { AuthProvider } from "@/auth/auth-context";
+import { AuthProvider } from "@/auth/auth-provider";
 import { RedirectIfAuthed, RequireAuth } from "@/auth/guards";
 import { AppShell } from "@/components/layout/app-shell";
 import { ErrorBoundary } from "@/components/layout/error-boundary";
