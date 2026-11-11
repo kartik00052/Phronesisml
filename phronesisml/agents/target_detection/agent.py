@@ -115,7 +115,41 @@ class TargetDetectionAgent:
             )
 
         try:
-            result = detect_target(data, self._engine, data_profile)
+            forced_target = getattr(state, "target_column", None)
+            forced_task = getattr(state, "task_type", None)
+            if forced_task not in ("classification", "regression"):
+                forced_task = None
+
+            if forced_target is not None:
+                if forced_target not in self._engine.columns(data):
+                    return AgentResult(
+                        success=False,
+                        error=f"Requested target column '{forced_target}' was not found.",
+                        error_type="TargetColumnNotFound",
+                        error_message=(
+                            f"Target column '{forced_target}' is not present in the dataset."
+                        ),
+                    )
+                task = forced_task
+                if task is None:
+                    from phronesisml.ml.automl.auto_selector import resolve_task_class
+
+                    collected = self._engine.cached_collect(data)
+                    task = resolve_task_class(collected[forced_target], "ambiguous")
+                result = {
+                    "target_column": forced_target,
+                    "task_type": task,
+                    "confidence": 1.0,
+                    "ambiguity_reason": None,
+                    "candidates": [],
+                    "forced": True,
+                }
+            else:
+                result = detect_target(data, self._engine, data_profile)
+                if forced_task is not None:
+                    result["task_type"] = forced_task
+                    result["ambiguity_reason"] = None
+                    result["forced"] = True
 
             logger.info(
                 "Target detection complete: column=%s, task=%s, confidence=%.2f, ambiguity=%s",

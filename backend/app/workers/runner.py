@@ -230,6 +230,15 @@ class RunWorker:
         with self._lock:
             return run_id in self._threads
 
+    def join(self, run_id: str, timeout: float | None = None) -> bool:
+        """Wait for a run thread to finish; return ``True`` when it is gone."""
+        with self._lock:
+            thread = self._threads.get(run_id)
+        if thread is None or thread is threading.current_thread():
+            return True
+        thread.join(timeout)
+        return not thread.is_alive()
+
     def _thread_main(self, run_id: str) -> None:
         try:
             asyncio.run(self._execute(run_id))
@@ -296,6 +305,8 @@ class RunWorker:
             config_snapshot=config.model_dump(mode="json"),
             engine_name=engine_name,
             max_file_size_bytes=settings.max_upload_bytes,
+            target_column=request.get("targetOverride") or None,
+            task_type=request.get("taskOverride") or None,
         )
 
         repositories.update_run(
@@ -323,6 +334,8 @@ class RunWorker:
             async for chunk in graph.astream(initial, stream_mode="updates"):
                 if self.is_cancelled(run_id):
                     break
+                if repositories.get_run(run_id) is None:
+                    return
                 if not isinstance(chunk, dict):
                     continue
                 for node_name, update in chunk.items():
@@ -393,6 +406,8 @@ class RunWorker:
             emit_event(run_id, event_type="run.cancelled", status="cancelled")
             return
 
+        if repositories.get_run(run_id) is None:
+            return
         await self._finalize(run_id, settings, state, items, completed)
 
     async def _finalize(
@@ -406,6 +421,9 @@ class RunWorker:
         from phronesisml.ml.reports.builder import build_report
         from phronesisml.services.storage import save_artifacts
         from phronesisml.workflow.state import WorkflowState
+
+        if repositories.get_run(run_id) is None:
+            return
 
         try:
             final_obj = WorkflowState(**state)

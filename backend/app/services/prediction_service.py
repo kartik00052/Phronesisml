@@ -48,16 +48,8 @@ def predict(run_id: str, samples: list[dict[str, Any]]) -> dict[str, Any]:
         raise PredictionError("ModelLoadFailed", f"Could not load the saved run: {exc}") from exc
 
     model = saved.model
-    features = list(saved.feature_names or [])
     try:
-        if features:
-            rows = [
-                {str(f): _coerce(sample.get(f)) for f in features if f in sample}
-                for sample in samples
-            ]
-        else:
-            rows = samples
-        predictions = _predict_rows(model, rows)
+        predictions = _predict_rows(saved, samples)
     except Exception as exc:  # noqa: BLE001
         raise PredictionError("PredictionFailed", f"Inference failed: {exc}") from exc
 
@@ -79,31 +71,34 @@ def _run_dir(run_id: str) -> Path | None:
     return resolved if resolved.is_dir() else None
 
 
-def _predict_rows(model: Any, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _predict_rows(saved: Any, samples: list[dict[str, Any]]) -> list[dict[str, Any]]:
     import pandas as pd
 
-    frame = pd.DataFrame(rows)
+    frame = pd.DataFrame(samples)
+    transform = saved.feature_transform
+    if transform:
+        from phronesisml.ml.feature_engineering.transform import apply_transform_recipe
+
+        features = apply_transform_recipe(frame, transform)
+    else:
+        features = frame[list(saved.feature_names or frame.columns)]
+
+    raw_predictions = list(saved.model.predict(features))
+    module = getattr(saved.model, "predict_proba", None)
     predictions: list[dict[str, Any]] = []
-    module = getattr(model, "predict_proba", None)
-    for idx in range(len(frame)):
-        row = frame.iloc[[idx]]
-        pred = model.predict(row).tolist()
-        entry: dict[str, Any] = {"prediction": pred[0] if len(pred) == 1 else pred}
+    for idx, pred in enumerate(raw_predictions):
+        entry: dict[str, Any] = {"prediction": _json_scalar(pred)}
         if module is not None:
             try:
-                proba = module(row).tolist()[0]
+                proba = module(features.iloc[[idx]]).tolist()[0]
                 entry["probability"] = [round(float(p), 6) for p in proba]
             except Exception:  # noqa: BLE001
                 pass
-        entry["features"] = {str(k): _json_scalar(v) for k, v in row.iloc[0].to_dict().items()}
+        entry["features"] = {
+            str(k): _json_scalar(v) for k, v in samples[idx].items()
+        }
         predictions.append(entry)
     return predictions
-
-
-def _coerce(value: Any) -> Any:
-    if value is None or isinstance(value, (str, int, float, bool)):
-        return value
-    return str(value)
 
 
 def _json_scalar(value: Any) -> Any:

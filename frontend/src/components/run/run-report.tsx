@@ -21,9 +21,14 @@ const TAB_LABELS: Record<ReportTab, { label: string; icon: React.ReactNode }> = 
 };
 
 export function RunReportView({ runId }: { runId: string }) {
-  const { data, isLoading, isError, error } = useReport(runId);
   const [tab, setTab] = React.useState<ReportTab>("preview");
   const [copied, setCopied] = React.useState(false);
+  const markdownQuery = useReport(runId, "markdown");
+  const htmlQuery = useReport(runId, "html", tab === "html");
+  const jsonQuery = useReport(runId, "json", tab === "json");
+  const { data, isLoading, isError, error } = markdownQuery;
+  const activeQuery =
+    tab === "html" ? htmlQuery : tab === "json" ? jsonQuery : markdownQuery;
 
   if (isLoading) return <Skeleton className="h-96 w-full rounded-lg" />;
   if (isError) {
@@ -44,8 +49,9 @@ export function RunReportView({ runId }: { runId: string }) {
     );
   }
 
+  const activeData = tab === "html" ? htmlQuery.data : tab === "json" ? jsonQuery.data : data;
   const activeContent =
-    tab === "json" ? data.json : tab === "html" ? data.html : data.markdown;
+    tab === "json" ? activeData?.json : tab === "html" ? activeData?.html : activeData?.markdown;
   const activeMissing = !activeContent;
 
   const copy = async () => {
@@ -114,24 +120,33 @@ export function RunReportView({ runId }: { runId: string }) {
         </TabsList>
       </Tabs>
 
-      {tab === "html" && data.html ? (
+      {activeQuery.isLoading ? (
+        <Skeleton className="h-[70vh] w-full rounded-lg" />
+      ) : activeQuery.isError ? (
+        <ErrorState
+          title={`Could not load ${TAB_LABELS[tab].label} report`}
+          description={
+            activeQuery.error instanceof Error ? activeQuery.error.message : "Unknown error"
+          }
+        />
+      ) : tab === "html" && activeData?.html ? (
         <iframe
           title={`${data.runId} HTML report`}
-          srcDoc={data.html}
+          srcDoc={activeData.html}
           sandbox=""
           className="h-[70vh] w-full rounded-lg border border-border bg-white"
         />
       ) : tab === "html" ? (
         <EmptyState title="HTML render unavailable" description="The HTML representation was not produced for this report." />
-      ) : tab === "json" && data.json ? (
+      ) : tab === "json" && activeData?.json ? (
         <pre className="scrollbar-thin max-h-[70vh] overflow-auto rounded-lg border border-border bg-card p-4 font-mono text-xs leading-5">
-          {data.json}
+          {activeData.json}
         </pre>
       ) : tab === "json" ? (
         <EmptyState title="JSON payload unavailable" description="The structured report was not produced for this run." />
-      ) : data.markdown ? (
+      ) : activeData?.markdown ? (
         <article className="prose prose-sm prose-neutral max-w-none rounded-lg border border-border bg-card p-6 text-sm prose-headings:mt-5 prose-headings:mb-2 prose-h1:text-lg prose-h2:text-base prose-p:leading-relaxed prose-pre:bg-background prose-code:text-primary prose-table:text-xs">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{data.markdown}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{activeData.markdown}</ReactMarkdown>
         </article>
       ) : (
         <EmptyState title="Report body is empty" description="The report file contained no markdown." />

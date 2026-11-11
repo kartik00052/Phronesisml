@@ -46,7 +46,7 @@ def emit_event(
     summary: dict[str, Any] | None = None,
     payload: dict[str, Any] | None = None,
     hub: Hub | None = None,
-) -> dict[str, Any]:
+) -> dict[str, Any] | None:
     """Persist and broadcast a single event."""
     rec = repositories.create_event(
         run_id,
@@ -56,6 +56,8 @@ def emit_event(
         summary=summary,
         payload=payload,
     )
+    if rec is None:
+        return None
     evt = event_to_dict(rec)
     (hub or HUB).publish(run_id, evt)
     return evt

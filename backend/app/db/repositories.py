@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import and_, func, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.config import get_settings
@@ -263,8 +264,10 @@ def create_event(
     status: str | None = None,
     summary: dict[str, Any] | None = None,
     payload: dict[str, Any] | None = None,
-) -> RunEvent:
+) -> RunEvent | None:
     with get_write_lock(), session_scope() as session:
+        if session.get(Run, run_id) is None:
+            return None
         last_seq = session.scalar(select(func.max(RunEvent.seq)).where(RunEvent.run_id == run_id))
         seq = int(last_seq or 0) + 1
         obj = RunEvent(
@@ -277,7 +280,11 @@ def create_event(
             payload=_jsonable(payload),
         )
         session.add(obj)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            return None
         session.refresh(obj)
         return obj
 
@@ -294,9 +301,11 @@ def list_events(run_id: str, after: int | None = None, limit: int = 10000) -> li
 # ──────────────────────── Pipeline stages ──────────────────────
 
 
-def create_stage(run_id: str, stage: str, position: int) -> PipelineStage:
+def create_stage(run_id: str, stage: str, position: int) -> PipelineStage | None:
     """Upsert a pipeline stage row — idempotent across re-runs/restores."""
     with get_write_lock(), session_scope() as session:
+        if session.get(Run, run_id) is None:
+            return None
         existing = session.scalars(
             select(PipelineStage).where(
                 PipelineStage.run_id == run_id,
@@ -319,7 +328,11 @@ def create_stage(run_id: str, stage: str, position: int) -> PipelineStage:
                 run_id=run_id, stage=stage, position=position, status="queued", queued_at=_utcnow()
             )
             session.add(obj)
-        session.commit()
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            return None
         session.refresh(obj)
         return obj
 
@@ -387,6 +400,8 @@ def upsert_stage_summary(run_id: str, stage: str, summary: dict[str, Any]) -> No
 
 def index_artifacts(run_id: str, items: Sequence[dict[str, Any]]) -> int:
     with get_write_lock(), session_scope() as session:
+        if session.get(Run, run_id) is None:
+            return 0
         session.query(Artifact).filter(Artifact.run_id == run_id).delete()  # type: ignore[attr-defined]
         count = 0
         for item in items:
@@ -452,6 +467,8 @@ def invalidate_artifacts(run_id: str, reason: str) -> int:
 
 def replace_model_results(run_id: str, rows: Sequence[dict[str, Any]]) -> int:
     with get_write_lock(), session_scope() as session:
+        if session.get(Run, run_id) is None:
+            return 0
         session.query(ModelResult).filter(ModelResult.run_id == run_id).delete()  # type: ignore[attr-defined]
         for row in rows:
             session.add(ModelResult(run_id=run_id, **row))

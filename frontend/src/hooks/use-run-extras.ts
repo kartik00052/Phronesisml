@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getModelDetail, listModels } from "@/api/models";
 import { getExplainability } from "@/api/explainability";
 import { getReport } from "@/api/reports";
+import type { ReportFormat } from "@/types/report";
 import { getArtifactContent, listArtifacts } from "@/api/artifacts";
 
 export const queryKeys = {
@@ -38,11 +39,15 @@ export function useExplainability(runId: string | undefined) {
   });
 }
 
-export function useReport(runId: string | undefined) {
+export function useReport(
+  runId: string | undefined,
+  format: ReportFormat = "markdown",
+  enabled = true,
+) {
   return useQuery({
-    queryKey: queryKeys.report(runId ?? "", "markdown"),
-    queryFn: () => getReport(runId!, "markdown"),
-    enabled: !!runId,
+    queryKey: queryKeys.report(runId ?? "", format),
+    queryFn: () => getReport(runId!, format),
+    enabled: !!runId && enabled,
   });
 }
 
