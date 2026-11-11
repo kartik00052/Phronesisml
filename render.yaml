@@ -5,8 +5,9 @@
 #
 #   - AUTH_MODE=disabled: no login, no Supabase, no JWT. Every request uses
 #     the single-tenant local-dev identity. Do not expose private data.
-#   - DATABASE_URL is pinned to SQLite so a stale Supabase/Postgres URL left
-#     in the Render dashboard cannot break startup.
+#   - DATABASE_URL is pinned to SQLite, and the backend ignores any stale
+#     Supabase URL while AUTH_MODE=disabled, so an old dashboard override
+#     cannot break startup.
 #   - plan: free  (Free instances cannot attach persistent disks)
 #   - storage is EPHEMERAL - uploads/models are wiped whenever the instance
 #     spins down or redeploys. Bundled sample datasets ship in the image (see

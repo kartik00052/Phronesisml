@@ -41,7 +41,7 @@ root `.env` file. Relevant variables (all documented in `.env.example`):
 | `MAX_UPLOAD_SIZE_MB`| `2048`                | Matches Nginx `client_max_body_size`       |
 | `SEED_SAMPLE_DATASETS` | `1`                 | Seed bundled sample datasets at startup    |
 | `DATABASE_URL`      | `sqlite:////app/data/phronesisml.db` | SQLite path on the data volume (set to a `postgresql://` URL for Supabase) |
-| `AUTH_MODE`         | `disabled`           | `disabled` = single-tenant dev; `supabase` = JWT-authenticated |
+| `AUTH_MODE`         | `disabled`           | `disabled` = single-tenant dev; `supabase` = JWT-authenticated. When disabled, Supabase database URLs are ignored in favor of SQLite. |
 | `SUPABASE_URL`      | *(empty)*             | Backend Supabase project URL (needed for JWT issuer/JWKS) |
 | `SUPABASE_JWT_SECRET` | *(empty)*           | Server-only HS256 secret (or set `SUPABASE_JWKS_URL` for RSA) |
 | `SUPABASE_JWKS_URL` | *(empty)*             | Server-only JWKS endpoint when not using the shared secret |

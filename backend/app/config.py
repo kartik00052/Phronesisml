@@ -16,6 +16,7 @@ Paths & limits follow the target contract:
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,6 +25,37 @@ __all__ = ["ROOT_DIR", "Settings", "normalize_database_url", "get_settings"]
 
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
+logger = logging.getLogger(__name__)
+
+
+def _sqlite_default_url() -> str:
+    return f"sqlite:///{ROOT_DIR / 'data' / 'phronesisml.db'}"
+
+
+def _is_supabase_database_url(url: str) -> bool:
+    lowered = url.lower()
+    return "supabase.co" in lowered or "supabase.com" in lowered
+
+
+def _env_database_url() -> str:
+    """Resolve DATABASE_URL, ignoring stale Supabase URLs in no-auth mode.
+
+    The prototype deployment intentionally runs without Supabase. A
+    dashboard-level ``DATABASE_URL`` left over from an earlier Supabase setup
+    must not prevent the no-auth service from starting, so fall back to the
+    local SQLite database when auth is disabled.
+    """
+    raw = os.environ.get("DATABASE_URL", "").strip()
+    if not raw:
+        return _sqlite_default_url()
+    auth_mode = os.environ.get("AUTH_MODE", "disabled").strip().lower()
+    if auth_mode == "disabled" and _is_supabase_database_url(raw):
+        logger.warning(
+            "AUTH_MODE=disabled: ignoring Supabase DATABASE_URL and using SQLite at %s",
+            _sqlite_default_url(),
+        )
+        return _sqlite_default_url()
+    return raw
 
 
 def normalize_database_url(url: str) -> str:
@@ -45,11 +77,7 @@ class Settings:
     """Immutable runtime settings resolved from environment variables."""
 
     root_dir: Path = ROOT_DIR
-    database_url: str = field(
-        default_factory=lambda: os.environ.get(
-            "DATABASE_URL", f"sqlite:///{ROOT_DIR / 'data' / 'phronesisml.db'}"
-        )
-    )
+    database_url: str = field(default_factory=_env_database_url)
     data_storage_dir: Path = field(
         default_factory=lambda: _env_path("DATA_STORAGE_DIR", ROOT_DIR / "storage" / "datasets")
     )
