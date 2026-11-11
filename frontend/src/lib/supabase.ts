@@ -1,9 +1,11 @@
 /**
  * Supabase client (browser, anon role) + auth-availability helpers.
  *
- * The Supabase feature is opt-in: it activates only when BOTH
- * `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are configured.
- * Only the public **publishable** key is ever shipped to the browser — never
+ * The Supabase feature is explicitly opt-in: it activates only when
+ * `VITE_AUTH_MODE=supabase` AND both `VITE_SUPABASE_URL` and
+ * `VITE_SUPABASE_PUBLISHABLE_KEY` are configured. Stale Supabase credentials
+ * alone must never force the login gate on a no-auth prototype deployment.
+ * Only the public **publishable** key is ever shipped to the browser - never
  * a service role/secret key. When configured, the backend must run with
  * `AUTH_MODE=supabase` using the same project, otherwise the UI and API will
  * disagree about identity.
@@ -13,12 +15,19 @@
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env
-  .VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+const AUTH_MODE = (import.meta.env.VITE_AUTH_MODE as string | undefined)
+  ?.trim()
+  .toLowerCase();
+const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim();
+const SUPABASE_PUBLISHABLE_KEY = (
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined
+)?.trim();
 
 export function supabaseConfigured(): boolean {
-  return Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+  return (
+    AUTH_MODE === "supabase" &&
+    Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY)
+  );
 }
 
 let _client: SupabaseClient | null = null;

@@ -51,10 +51,15 @@ RLS = defense-in-depth only (the app never uses browser-side table access)
 
 | Variable                        | Meaning                       |
 | ------------------------------- | ----------------------------- |
+| `VITE_AUTH_MODE`                | Must be `supabase` to enable the login gate; default `disabled` |
 | `VITE_SUPABASE_URL`             | Same project URL              |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Public publishable key (`sb_publishable_…`) |
 
-Only these two `VITE_*` values are passed to the frontend Docker build
+The login gate is explicitly opt-in: `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_PUBLISHABLE_KEY` are ignored unless `VITE_AUTH_MODE=supabase`,
+so a no-auth deployment is not affected by stale Supabase variables.
+
+Only these `VITE_*` values are passed to the frontend Docker build
 (`docker-compose.yml` → `frontend/Dockerfile`). Server-only values
 (`DATABASE_URL`, `SUPABASE_JWT_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`) must
 never appear in the frontend build arguments.
@@ -138,9 +143,11 @@ confused with "verified against a live deployment".
   `PORT` environment variable (fallback `8000`) and the `HEALTHCHECK` probes
   the same port.
 - **Deploy configs** — `render.yaml` (web service, health path
-  `/api/v1/health`, persistent disk at `/app/storage`, secrets kept
-  `sync: false` as dashboard-only values) and `frontend/vercel.json` (SPA
-  catch-all rewrite; Vercel project Root Directory = `frontend/`).
+  `/api/v1/health`, no-auth prototype defaults, optional disk block for paid
+  plans, `CORS_ORIGINS` kept `sync: false` as a dashboard-only value) and
+  `frontend/vercel.json` (SPA catch-all rewrite; Vercel project Root Directory
+  = `frontend/`). Supabase is optional and only activates when both backend
+  `AUTH_MODE=supabase` and frontend `VITE_AUTH_MODE=supabase` are set.
 
 ### VERIFIED (hermetic / local)
 

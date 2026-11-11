@@ -3,9 +3,11 @@
  *
  * Three states, exposed via `useAuth()`:
  *
- * - `disabled`  — Supabase is not configured (`VITE_SUPABASE_URL`/anon-key
- *   missing). The app renders normally; the backend runs `AUTH_MODE=disabled`
- *   and every request is accepted as the local-dev identity.
+ * - `disabled`  — Supabase auth is not explicitly enabled
+ *   (`VITE_AUTH_MODE` is not `supabase`, or the URL/publishable key is
+ *   missing). The app renders normally; the backend runs
+ *   `AUTH_MODE=disabled` and every request is accepted as the local-dev
+ *   identity.
  * - `loading`   — Supabase is configured but the initial session restore has
  *   not finished yet. A full-screen splash is shown to avoid a flash of the
  *   login screen for already-authenticated users.

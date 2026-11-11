@@ -94,15 +94,19 @@ def restore_run(run_id: str) -> dict[str, Any]:
     run = repositories.get_run(run_id)
     if run is None:
         raise RunError("RunNotFound", "No such run.")
-    if run.status not in _TERMINAL:
-        raise RunError("RunNotActive", "Only finished runs can be restored.")
     # A cancel request only flips a flag; the original worker may still be
-    # unwinding.  Wait for it to exit before re-queueing so the relaunch is not
-    # a no-op and cannot overwrite the restored run's status.
+    # unwinding (and may briefly write ``running`` after cancel). Wait for it
+    # to exit before checking terminal state or re-queueing, so restore cannot
+    # race the old worker and fail with a spurious "not finished" error.
     if WORKER.is_active(run_id):
         WORKER.cancel(run_id)
         if not WORKER.join(run_id, timeout=30.0):
             raise RunError("RunNotActive", "Previous run is still stopping; retry restore.")
+        run = repositories.get_run(run_id)
+        if run is None:
+            raise RunError("RunNotFound", "No such run.")
+    if run.status not in _TERMINAL:
+        raise RunError("RunNotActive", "Only finished runs can be restored.")
     stages = canonical_stages(run.stages_requested or [])
     # The previous attempt's artifacts/leaderboard must never be presented as
     # the re-queued run's current output — invalidate them until the new run

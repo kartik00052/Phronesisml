@@ -1,21 +1,16 @@
-# PhronesisML — Render blueprints configuration (web service only).
+# PhronesisML - Render blueprint configuration (backend web service only).
 #
 # Deploys the FastAPI backend image (./Dockerfile) that already binds to
-# $PORT. No PostgreSQL container, no Supabase self-hosting — the database is
-# the hosted Supabase PostgreSQL connection provided via DATABASE_URL.
+# $PORT. This blueprint is tuned for the no-auth prototype demo:
 #
-# Tuned for the Render FREE plan:
+#   - AUTH_MODE=disabled: no login, no Supabase, no JWT. Every request uses
+#     the single-tenant local-dev identity. Do not expose private data.
+#   - SQLite is used by default at /app/data/phronesisml.db (no DATABASE_URL).
 #   - plan: free  (Free instances cannot attach persistent disks)
-#   - storage is EPHEMERAL — uploads/models are wiped whenever the instance
-#     spins down or redeploys. The bundled sample datasets are shipped in the
-#     image (see .dockerignore) and re-seeded on every fresh start, so the app
-#     always boots with demo data. To keep real uploads, upgrade to Starter
-#     ($7/mo) and uncomment the disks block below.
+#   - storage is EPHEMERAL - uploads/models are wiped whenever the instance
+#     spins down or redeploys. Bundled sample datasets ship in the image (see
+#     .dockerignore) and are re-seeded on every fresh start.
 #   - healthCheckPath keeps Render's health monitor pinned to the real route.
-#
-# Secret values (DATABASE_URL, SUPABASE_URL, SUPABASE_JWT_SECRET) are left
-# `sync: false` so Render creates the env var and lets an operator paste the
-# real value in the dashboard — they are never committed here.
 #
 # Companion files: frontend/vercel.json (Vercel), project_docs/deployment.md.
 
@@ -30,25 +25,13 @@ services:
     healthCheckPath: /api/v1/health
     envVars:
       - key: AUTH_MODE
-        value: supabase
+        value: disabled
       - key: SEED_SAMPLE_DATASETS
         value: "1"
-      # Comma-separated browser origins that may call this API — set to the
+      # Comma-separated browser origins that may call this API - set to the
       # real Vercel frontend origin (e.g. https://app.vercel.app). Leave for
       # the dashboard; never guess the URL here.
       - key: CORS_ORIGINS
-        sync: false
-      # Supabase PostgreSQL connection string (postgresql:// — the backend
-      # routes it to the bundled psycopg driver automatically).
-      - key: DATABASE_URL
-        sync: false
-      - key: SUPABASE_URL
-        sync: false
-      # Either this shared-secret HS256 value OR SUPABASE_JWKS_URL is required
-      # by the existing JWT verifier (backend/app/auth/verifier.py).
-      - key: SUPABASE_JWT_SECRET
-        sync: false
-      - key: SUPABASE_JWKS_URL
         sync: false
     # Uncomment ONLY on a paid plan that supports disks (Starter+), then the
     # four storage subdirectories under /app/storage become durable:

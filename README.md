@@ -511,11 +511,15 @@ docker compose up -d
 # UI: http://localhost:8080   API: http://localhost:8080/api/v1/health
 ```
 
-The default stack runs `AUTH_MODE=disabled` (single-tenant dev, SQLite). For a
-public deployment you can switch to **Supabase Auth + PostgreSQL**
-(`AUTH_MODE=supabase`, Supabase JWTs, per-user ownership, Alembic migration
-chain including RLS) — see [`project_docs/supabase.md`](project_docs/supabase.md)
-and [`project_docs/deployment.md`](project_docs/deployment.md).
+The default stack runs `AUTH_MODE=disabled` (single-tenant, SQLite) and the
+hosted prototype uses the same no-auth mode: Vercel serves the React SPA and
+Render runs the FastAPI backend. Keep `VITE_AUTH_MODE=disabled` on Vercel so
+stale Supabase variables cannot turn the login gate back on. For a production
+deployment with untrusted users, switch to **Supabase Auth + PostgreSQL**
+(`AUTH_MODE=supabase` plus `VITE_AUTH_MODE=supabase`, Supabase JWTs, per-user
+ownership, Alembic migration chain including RLS) - see
+[`project_docs/supabase.md`](project_docs/supabase.md) and
+[`project_docs/deployment.md`](project_docs/deployment.md).
 
 Full instructions — environment, migrations, volumes, troubleshooting, and
 production limitations — are in

@@ -45,8 +45,9 @@ root `.env` file. Relevant variables (all documented in `.env.example`):
 | `SUPABASE_URL`      | *(empty)*             | Backend Supabase project URL (needed for JWT issuer/JWKS) |
 | `SUPABASE_JWT_SECRET` | *(empty)*           | Server-only HS256 secret (or set `SUPABASE_JWKS_URL` for RSA) |
 | `SUPABASE_JWKS_URL` | *(empty)*             | Server-only JWKS endpoint when not using the shared secret |
-| `VITE_SUPABASE_URL` | *(empty)*             | Frontend Supabase URL (build-time, public) |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | *(empty)* | Frontend publishable key (build-time, public) |
+| `VITE_AUTH_MODE`    | `disabled`            | Frontend login gate: `disabled` (prototype) or `supabase` |
+| `VITE_SUPABASE_URL` | *(empty)*             | Frontend Supabase URL (only when `VITE_AUTH_MODE=supabase`) |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | *(empty)* | Frontend publishable key (only when `VITE_AUTH_MODE=supabase`) |
 | `VITE_API_BASE_URL` | `/api/v1`             | Frontend API base (build-time)             |
 | `VITE_WS_BASE_URL`  | `/api/v1`             | Frontend WebSocket base (build-time)       |
 | `VITE_DEMO_MODE`    | `false`               | `true` uses the in-browser mock data layer |
@@ -206,10 +207,12 @@ docker compose up -d
   frontend image and that `SUPABASE_URL` (plus a JWT secret or JWKS URL) are
   set on the backend.
 
-## 12. Hosted production deployment (Vercel + Render + Supabase)
+## 12. Hosted prototype deployment (Vercel + Render)
 
-The recommended public topology runs the same application on managed
-infrastructure — no self-hosted Postgres or storage:
+The repo is configured as a **split deployment**: Vercel hosts the static React
+SPA and Render hosts the FastAPI backend. It is **not** a Vercel-only
+deployment (Vercel cannot run this Docker/uvicorn backend from the current
+config).
 
 ```
 Browser
@@ -218,42 +221,57 @@ Browser
   │                                     vercel.json rewrites all routes to
   │                                     /index.html (React Router HTML5 history)
   │
-  ├── ► https://<render-app>.onrender.com/api/v1/**   Render (Web Service)
-  ├── ► wss://<render-app>.onrender.com/api/v1/ws/**   single uvicorn on $PORT
-  │                                     Dockerfile; persistent disk -> /app/storage
-  └── ► Supabase Auth + PostgreSQL        JWT (email/password) + DATABASE_URL
+  └── ► https://<render-app>.onrender.com/api/v1/**   Render (Web Service)
+      ► wss://<render-app>.onrender.com/api/v1/ws/**   single uvicorn on $PORT
+                                          Dockerfile; SQLite + local storage
 ```
+
+This is a **no-auth prototype** configuration:
+
+- `AUTH_MODE=disabled` on the backend: no login, no JWT, no Supabase.
+- `VITE_AUTH_MODE=disabled` in the frontend: no login gate, even if stale
+  Supabase variables exist in the Vercel project.
+- SQLite is used by default; no database service is required.
+- The API is single-tenant and open. Do not upload or serve sensitive data.
 
 Configuration lives in the repo:
 
 - `render.yaml` — Render Blueprint for the backend (Free-plan tuned). The
-  service binds `AUTH_MODE=supabase` and `SEED_SAMPLE_DATASETS=1`: the bundled
-  sample `data/` CSVs are shipped in the image (see `.dockerignore`) and
-  re-seeded on every fresh start. Render **Free** instances cannot attach
-  persistent disks, so storage under `/app/storage/*` is ephemeral; `render.yaml`
-  carries a commented `disks:` block with the exact upgrade (Starter+) that
-  makes it durable. `healthCheckPath: /api/v1/health` matches the app's own
-  no-auth, no-ML health probe (DB `SELECT 1` + storage writability + deps).
+  service sets `AUTH_MODE=disabled` and `SEED_SAMPLE_DATASETS=1`; bundled sample
+  CSVs ship in the image (see `.dockerignore`) and are re-seeded on every fresh
+  start. Render **Free** instances cannot attach persistent disks, so storage
+  under `/app/storage/*` and the SQLite file are ephemeral; `render.yaml` carries
+  a commented `disks:` block with the exact upgrade (Starter+) that makes them
+  durable. `healthCheckPath: /api/v1/health` matches the app's own no-auth,
+  no-ML health probe (DB `SELECT 1` + storage writability + deps).
 - `frontend/vercel.json` — catch-all rewrite so deep links like `/runs/...`
   load the SPA instead of 404ing. Vercel project **Root Directory** must be
   `frontend/` (the repo root has no package.json).
+
+Deploy order:
+
+1. Push the repo to GitHub, then create a Render **Blueprint** from
+   `render.yaml`. The backend builds from `./Dockerfile` and exposes
+   `/api/v1/health`.
+2. Copy the Render service URL (e.g.
+   `https://phronesisml-backend.onrender.com`).
+3. In Vercel, import the same repo, set **Root Directory** to `frontend/`, and
+   add the build-time variables below. Redeploy so Vite bakes them in.
+4. Set Render's `CORS_ORIGINS` to the Vercel production domain and let the
+   service restart.
 
 ### Environment for the hosted backend (Render environment variables)
 
 | Variable | Example / note |
 | --- | --- |
-| `AUTH_MODE` | `supabase` |
-| `DATABASE_URL` | Supabase **project database** `postgresql://<user>:<pass>@<host>:5432/<db>`. The bare `postgresql://` scheme is rewritten to the `psycopg` driver automatically (`backend/app/config.py::normalize_database_url`), so use the URL exactly as Supabase shows it — do **not** add `+psycopg` yourself. |
-| `SUPABASE_URL` | Supabase project URL (also drives issuer/JWKS) |
-| `SUPABASE_JWT_SECRET` or `SUPABASE_JWKS_URL` | Server-only token verification (keep out of any frontend env) |
-| `CORS_ORIGINS` | Comma-separated, **including the `https://` Vercel domain** (e.g. `https://phronesisml.vercel.app`). Wildcards are not used with authenticated requests; omit only if the SPA and API are same-origin. |
-| `SEED_SAMPLE_DATASETS` | `0` (set by `render.yaml`) |
-| storage dirs | Optional overrides (e.g. `DATA_STORAGE_DIR`...). Defaults resolve under the disk mount at `/app/storage/*`. |
+| `AUTH_MODE` | `disabled` (set by `render.yaml`) |
+| `CORS_ORIGINS` | Comma-separated, **including the `https://` Vercel domain** (e.g. `https://phronesisml.vercel.app`). Set this in the Render dashboard after the Vercel domain is known. |
+| `SEED_SAMPLE_DATASETS` | `1` (set by `render.yaml`) |
+| `DATABASE_URL` | Optional. Leave unset for the default SQLite file at `/app/data/phronesisml.db`. A PostgreSQL URL is only useful with durable storage/paid infrastructure. |
+| `SUPABASE_*` | Not required in prototype mode. See `project_docs/supabase.md` only if enabling auth later. |
 
-The `sync: false` entries in `render.yaml` (`DATABASE_URL`, `SUPABASE_URL`,
-`SUPABASE_JWT_SECRET`, `SUPABASE_JWKS_URL`, `CORS_ORIGINS`) are placeholders so
-secrets never live in the repo — finalize their values in the Render dashboard
-after the first deploy.
+`CORS_ORIGINS` is the only dashboard value the prototype needs. No secrets are
+required for the no-auth deployment.
 
 ### Frontend build-time variables (Vercel)
 
@@ -263,19 +281,22 @@ Baked into the SPA bundle by Vite (all public):
 | --- | --- |
 | `VITE_API_BASE_URL` | `https://<render-app>.onrender.com/api/v1` |
 | `VITE_WS_BASE_URL` | `https://<render-app>.onrender.com/api/v1` (the client converts `http->ws`/`https->wss` automatically) |
-| `VITE_SUPABASE_URL` | Same project URL as the backend |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | `sb_publishable_...` |
+| `VITE_AUTH_MODE` | `disabled` |
 | `VITE_DEMO_MODE` | `false` |
 
-Server-only values (`DATABASE_URL`, `SUPABASE_JWT_SECRET`, Supabase service-role
-key) must never be added as Vercel variables.
+Do **not** set `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` for the
+prototype. Even if they are left over from an earlier deployment,
+`VITE_AUTH_MODE=disabled` keeps the login gate off. Server-only values
+(`DATABASE_URL`, JWT secrets, service-role keys) must never be added as Vercel
+variables.
 
-### Migration on the hosted backend
+### Optional: migration on a hosted PostgreSQL backend
 
-Run Alembic once against the hosted database from the repo (after the backend
-image's first deploy, `init_db` creates schema only if absent — an explicit
-migration is still required to guarantee `0003_rls_policies` RLS on
-PostgreSQL):
+The prototype uses SQLite, so no migration step is required. If you later
+switch to PostgreSQL (including Supabase), run Alembic once against that
+database (after the backend image's first deploy, `init_db` creates schema only
+if absent — an explicit migration is still required to guarantee
+`0003_rls_policies` RLS on PostgreSQL):
 
 ```bash
 DATABASE_URL=postgresql://<user>:<password>@<host>:5432/<db> \
@@ -316,9 +337,10 @@ Documented behaviour of the *current* application — Docker does not remove
 these:
 
 - **Authentication depends on `AUTH_MODE`.** With the default
-  `AUTH_MODE=disabled` the FastAPI surface is single-tenant and open (suitable
-  for local/dev); do **not** expose that published port to the public internet
-  without an auth gateway. For a public deployment set `AUTH_MODE=supabase`
+  `AUTH_MODE=disabled` the FastAPI surface is single-tenant and open. The
+  hosted prototype intentionally runs this way: anyone with the URL can read
+  and write the same datasets/runs. Do not upload sensitive data. For a
+  production deployment with untrusted users, set `AUTH_MODE=supabase`
   (Supabase Auth + PostgreSQL) so every endpoint and WebSocket validates a JWT
   and enforces per-user ownership (see `project_docs/supabase.md`).
 - **SQLite / single node.** One process, one SQLite file, in-process write
