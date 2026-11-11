@@ -5,7 +5,8 @@
 #
 #   - AUTH_MODE=disabled: no login, no Supabase, no JWT. Every request uses
 #     the single-tenant local-dev identity. Do not expose private data.
-#   - SQLite is used by default at /app/data/phronesisml.db (no DATABASE_URL).
+#   - DATABASE_URL is pinned to SQLite so a stale Supabase/Postgres URL left
+#     in the Render dashboard cannot break startup.
 #   - plan: free  (Free instances cannot attach persistent disks)
 #   - storage is EPHEMERAL - uploads/models are wiped whenever the instance
 #     spins down or redeploys. Bundled sample datasets ship in the image (see
@@ -26,6 +27,8 @@ services:
     envVars:
       - key: AUTH_MODE
         value: disabled
+      - key: DATABASE_URL
+        value: sqlite:////app/data/phronesisml.db
       - key: SEED_SAMPLE_DATASETS
         value: "1"
       # Comma-separated browser origins that may call this API - set to the

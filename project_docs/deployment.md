@@ -252,7 +252,9 @@ Deploy order:
 
 1. Push the repo to GitHub, then create a Render **Blueprint** from
    `render.yaml`. The backend builds from `./Dockerfile` and exposes
-   `/api/v1/health`.
+   `/api/v1/health`. If the service already existed, remove any old
+   `DATABASE_URL`/`SUPABASE_*` overrides from the Render dashboard; the
+   blueprint pins `DATABASE_URL` to SQLite for the prototype.
 2. Copy the Render service URL (e.g.
    `https://phronesisml-backend.onrender.com`).
 3. In Vercel, import the same repo, set **Root Directory** to `frontend/`, and
@@ -267,7 +269,7 @@ Deploy order:
 | `AUTH_MODE` | `disabled` (set by `render.yaml`) |
 | `CORS_ORIGINS` | Comma-separated, **including the `https://` Vercel domain** (e.g. `https://phronesisml.vercel.app`). Set this in the Render dashboard after the Vercel domain is known. |
 | `SEED_SAMPLE_DATASETS` | `1` (set by `render.yaml`) |
-| `DATABASE_URL` | Optional. Leave unset for the default SQLite file at `/app/data/phronesisml.db`. A PostgreSQL URL is only useful with durable storage/paid infrastructure. |
+| `DATABASE_URL` | `sqlite:////app/data/phronesisml.db` (set by `render.yaml`). This intentionally overrides any stale Supabase/Postgres URL left in the dashboard. |
 | `SUPABASE_*` | Not required in prototype mode. See `project_docs/supabase.md` only if enabling auth later. |
 
 `CORS_ORIGINS` is the only dashboard value the prototype needs. No secrets are
