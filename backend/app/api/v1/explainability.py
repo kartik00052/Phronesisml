@@ -16,9 +16,7 @@ router = APIRouter()
 
 
 @router.get("/{run_id}/explainability", response_model=ExplainabilityView)
-def get_explainability(
-    run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]
-) -> dict:
+def get_explainability(run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]) -> dict:
     require_owned_run(run_id, user.user_id)
     result = explainability_service.get(run_id)
     if result is None:

@@ -19,9 +19,7 @@ router = APIRouter()
 
 
 @router.get("/{run_id}/pipeline", response_model=PipelineOverview)
-def overview(
-    run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]
-) -> dict:
+def overview(run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]) -> dict:
     require_owned_run(run_id, user.user_id)
     result = pipeline_service.overview(run_id)
     if result is None:
@@ -30,9 +28,7 @@ def overview(
 
 
 @router.get("/{run_id}/pipeline/stages", response_model=list[StageDetail])
-def list_stages(
-    run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]
-) -> list[dict]:
+def list_stages(run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]) -> list[dict]:
     require_owned_run(run_id, user.user_id)
     result = pipeline_service.list_stages(run_id)
     if result is None:
@@ -41,9 +37,7 @@ def list_stages(
 
 
 @router.get("/{run_id}/pipeline/progress", response_model=PipelineProgress)
-def progress(
-    run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]
-) -> dict:
+def progress(run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]) -> dict:
     require_owned_run(run_id, user.user_id)
     result = pipeline_service.progress(run_id)
     if result is None:

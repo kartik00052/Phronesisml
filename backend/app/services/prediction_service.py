@@ -94,9 +94,7 @@ def _predict_rows(saved: Any, samples: list[dict[str, Any]]) -> list[dict[str, A
                 entry["probability"] = [round(float(p), 6) for p in proba]
             except Exception:  # noqa: BLE001
                 pass
-        entry["features"] = {
-            str(k): _json_scalar(v) for k, v in samples[idx].items()
-        }
+        entry["features"] = {str(k): _json_scalar(v) for k, v in samples[idx].items()}
         predictions.append(entry)
     return predictions
 

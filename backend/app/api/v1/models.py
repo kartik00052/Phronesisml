@@ -15,9 +15,7 @@ router = APIRouter()
 
 
 @router.get("/{run_id}/models", response_model=list[ModelRankingRow])
-def list_models(
-    run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]
-) -> list[dict]:
+def list_models(run_id: str, user: Annotated[AuthUser, Depends(get_current_user)]) -> list[dict]:
     require_owned_run(run_id, user.user_id)
     result = model_service.list_models(run_id)
     if result is None:
