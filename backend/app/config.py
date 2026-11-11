@@ -12,6 +12,7 @@ Paths & limits follow the target contract:
 - ``REPORT_STORAGE_DIR=./storage/reports``
 - ``MAX_UPLOAD_SIZE_MB=2048``
 - ``CORS_ORIGINS=http://localhost:5173``
+- ``CORS_ORIGIN_REGEX`` (optional, e.g. for Vercel preview URLs)
 """
 
 from __future__ import annotations
@@ -97,13 +98,17 @@ class Settings:
     )
     cors_origins: tuple[str, ...] = field(
         default_factory=lambda: tuple(
-            o.strip()
+            o.strip().rstrip("/")
             for o in os.environ.get(
                 "CORS_ORIGINS",
                 "http://localhost:5173,http://127.0.0.1:5173",
             ).split(",")
             if o.strip()
         )
+    )
+    # Optional regex for dynamic frontend origins (e.g. Vercel preview URLs).
+    cors_origin_regex: str = field(
+        default_factory=lambda: os.environ.get("CORS_ORIGIN_REGEX", "").strip()
     )
     request_log: bool = field(default_factory=lambda: os.environ.get("REQUEST_LOG", "1") != "0")
     app_name: str = field(default_factory=lambda: os.environ.get("VITE_APP_NAME", "PhronesisML"))

@@ -6,7 +6,8 @@ Output shapes follow ``frontend/src/types/health.ts`` and
 
 from __future__ import annotations
 
-import importlib
+import importlib.metadata
+import importlib.util
 import sys
 from typing import Any
 
@@ -18,15 +19,29 @@ _OPTIONAL = ("polars", "pyspark", "xgboost", "lightgbm", "catboost", "shap", "ph
 _TASK_TYPES = ("classification", "regression", "clustering", "anomaly_detection")
 _ENGINES = ("pandas", "polars", "spark")
 
+# Import names that differ from their distribution name.
+_DISTRIBUTION_NAMES = {"sklearn": "scikit-learn"}
+
 __all__ = ["health", "capabilities", "engine_capabilities", "engine_recommend"]
 
 
 def _probe(name: str) -> tuple[bool, str | None]:
+    """Check availability without importing heavy optional packages.
+
+    Render's HTTP health check has a 5-second timeout. Importing ``shap``
+    alone can consume most of that budget on a Free instance, so probe the
+    installed distribution metadata instead.
+    """
     try:
-        mod = importlib.import_module(name)
-        return True, getattr(mod, "__version__", None)
-    except Exception:  # noqa: BLE001
+        if importlib.util.find_spec(name) is None:
+            return False, None
+    except (ImportError, ValueError):
         return False, None
+    distribution = _DISTRIBUTION_NAMES.get(name, name)
+    try:
+        return True, importlib.metadata.version(distribution)
+    except Exception:  # noqa: BLE001 - health must never raise
+        return True, None
 
 
 def _sdk_version() -> str:

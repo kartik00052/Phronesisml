@@ -27,6 +27,7 @@ the React frontend.
 | `REPORT_STORAGE_DIR`  | `<root>/storage/reports`                 |
 | `MAX_UPLOAD_SIZE_MB`  | `2048`                                   |
 | `CORS_ORIGINS`        | `http://localhost:5173`                  |
+| `CORS_ORIGIN_REGEX`   | *(empty)*; e.g. Vercel preview origins   |
 | `REQUEST_LOG`         | `1`                                      |
 
 ## API surface (`/api/v1`)

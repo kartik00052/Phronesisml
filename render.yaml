@@ -11,7 +11,7 @@
 #   - plan: free  (Free instances cannot attach persistent disks)
 #   - storage is EPHEMERAL - uploads/models are wiped whenever the instance
 #     spins down or redeploys. Bundled sample datasets ship in the image (see
-#     .dockerignore) and are re-seeded on every fresh start.
+#     Dockerfile) and are re-seeded on every fresh start.
 #   - healthCheckPath keeps Render's health monitor pinned to the real route.
 #
 # Companion files: frontend/vercel.json (Vercel), project_docs/deployment.md.
@@ -21,6 +21,7 @@ services:
     name: phronesisml-backend
     runtime: docker
     repo: https://github.com/kartik00052/Phronesisml.git
+    branch: main
     plan: free
     dockerfilePath: ./Dockerfile
     autoDeploy: true
@@ -37,6 +38,10 @@ services:
       # the dashboard; never guess the URL here.
       - key: CORS_ORIGINS
         sync: false
+      # Allows Vercel production *and* preview URLs without editing CORS for
+      # every preview. Add custom domains to CORS_ORIGINS instead.
+      - key: CORS_ORIGIN_REGEX
+        value: 'https://[a-z0-9-]+\.vercel\.app'
     # Uncomment ONLY on a paid plan that supports disks (Starter+), then the
     # four storage subdirectories under /app/storage become durable:
     # disks:

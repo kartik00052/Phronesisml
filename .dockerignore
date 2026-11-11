@@ -46,6 +46,9 @@ storage/
 *.db-shm
 *.db-wal
 *.sqlite3
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
 # Environment files
 .env

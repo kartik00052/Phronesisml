@@ -45,3 +45,25 @@ def test_missing_database_url_defaults_to_sqlite(monkeypatch: pytest.MonkeyPatch
     settings = Settings()
 
     assert settings.database_url.startswith("sqlite:///")
+
+
+def test_cors_origins_are_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(
+        "CORS_ORIGINS",
+        "https://app.vercel.app/, http://localhost:5173/",
+    )
+
+    settings = Settings()
+
+    assert settings.cors_origins == (
+        "https://app.vercel.app",
+        "http://localhost:5173",
+    )
+
+
+def test_cors_origin_regex_is_optional(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CORS_ORIGIN_REGEX", r"https://[a-z0-9-]+\.vercel\.app")
+
+    settings = Settings()
+
+    assert settings.cors_origin_regex == r"https://[a-z0-9-]+\.vercel\.app"

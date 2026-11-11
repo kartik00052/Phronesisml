@@ -37,7 +37,8 @@ root `.env` file. Relevant variables (all documented in `.env.example`):
 | Variable            | Default               | Meaning                                    |
 | ------------------- | --------------------- | ------------------------------------------ |
 | `FRONTEND_PORT`     | `8080`                | Host port for the web UI (Nginx :80)       |
-| `CORS_ORIGINS`      | *(empty)*             | Allowed origins; empty = same-origin only  |
+| `CORS_ORIGINS`      | *(empty)*             | Allowed origins; trailing slashes stripped |
+| `CORS_ORIGIN_REGEX` | *(empty)*             | Optional regex for dynamic origins (Vercel previews) |
 | `MAX_UPLOAD_SIZE_MB`| `2048`                | Matches Nginx `client_max_body_size`       |
 | `SEED_SAMPLE_DATASETS` | `1`                 | Seed bundled sample datasets at startup    |
 | `DATABASE_URL`      | `sqlite:////app/data/phronesisml.db` | SQLite path on the data volume (set to a `postgresql://` URL for Supabase) |
@@ -237,13 +238,13 @@ This is a **no-auth prototype** configuration:
 Configuration lives in the repo:
 
 - `render.yaml` — Render Blueprint for the backend (Free-plan tuned). The
-  service sets `AUTH_MODE=disabled` and `SEED_SAMPLE_DATASETS=1`; bundled sample
-  CSVs ship in the image (see `.dockerignore`) and are re-seeded on every fresh
-  start. Render **Free** instances cannot attach persistent disks, so storage
-  under `/app/storage/*` and the SQLite file are ephemeral; `render.yaml` carries
-  a commented `disks:` block with the exact upgrade (Starter+) that makes them
-  durable. `healthCheckPath: /api/v1/health` matches the app's own no-auth,
-  no-ML health probe (DB `SELECT 1` + storage writability + deps).
+  service sets `AUTH_MODE=disabled` and `SEED_SAMPLE_DATASETS=1`; the Dockerfile
+  copies the bundled sample CSVs into `/app/data`, and startup re-seeds them into
+  `/app/storage`. Render **Free** instances cannot attach persistent disks, so
+  storage under `/app/storage/*` and the SQLite file are ephemeral; `render.yaml`
+  carries a commented `disks:` block with the exact upgrade (Starter+) that makes
+  them durable. `healthCheckPath: /api/v1/health` matches the app's own no-auth,
+  no-ML health probe (DB `SELECT 1` + storage writability + installed deps).
 - `frontend/vercel.json` — catch-all rewrite so deep links like `/runs/...`
   load the SPA instead of 404ing. Vercel project **Root Directory** must be
   `frontend/` (the repo root has no package.json).
@@ -258,7 +259,8 @@ Deploy order:
 2. Copy the Render service URL (e.g.
    `https://phronesisml-backend.onrender.com`).
 3. In Vercel, import the same repo, set **Root Directory** to `frontend/`, and
-   add the build-time variables below. Redeploy so Vite bakes them in.
+   add the build-time variables below to **Production and Preview**. Redeploy
+   so Vite bakes them in.
 4. Set Render's `CORS_ORIGINS` to the Vercel production domain and let the
    service restart.
 
@@ -267,9 +269,10 @@ Deploy order:
 | Variable | Example / note |
 | --- | --- |
 | `AUTH_MODE` | `disabled` (set by `render.yaml`) |
-| `CORS_ORIGINS` | Comma-separated, **including the `https://` Vercel domain** (e.g. `https://phronesisml.vercel.app`). Set this in the Render dashboard after the Vercel domain is known. |
+| `CORS_ORIGINS` | Comma-separated, **including the `https://` Vercel domain** (e.g. `https://phronesisml.vercel.app`). Trailing slashes are stripped. Set this in the Render dashboard after the Vercel domain is known. |
+| `CORS_ORIGIN_REGEX` | `https://[a-z0-9-]+\.vercel\.app` (set by `render.yaml`) to allow Vercel preview URLs. Custom domains still go in `CORS_ORIGINS`. |
 | `SEED_SAMPLE_DATASETS` | `1` (set by `render.yaml`) |
-| `DATABASE_URL` | `sqlite:////app/data/phronesisml.db` (set by `render.yaml`). This intentionally overrides any stale Supabase/Postgres URL left in the dashboard. |
+| `DATABASE_URL` | `sqlite:////app/data/phronesisml.db` (set by `render.yaml` after a Blueprint Manual Sync). The backend also ignores a stale Supabase/Postgres URL while `AUTH_MODE=disabled`, so an old dashboard value cannot break startup. |
 | `SUPABASE_*` | Not required in prototype mode. See `project_docs/supabase.md` only if enabling auth later. |
 
 `CORS_ORIGINS` is the only dashboard value the prototype needs. No secrets are
@@ -285,6 +288,10 @@ Baked into the SPA bundle by Vite (all public):
 | `VITE_WS_BASE_URL` | `https://<render-app>.onrender.com/api/v1` (the client converts `http->ws`/`https->wss` automatically) |
 | `VITE_AUTH_MODE` | `disabled` |
 | `VITE_DEMO_MODE` | `false` |
+
+The Vite config fails a Vercel production build if either base URL is missing,
+is not an absolute `https`/`wss` URL, still points at localhost, or omits the
+`/api/v1` path, instead of silently shipping a broken bundle.
 
 Do **not** set `VITE_SUPABASE_URL` or `VITE_SUPABASE_PUBLISHABLE_KEY` for the
 prototype. Even if they are left over from an earlier deployment,

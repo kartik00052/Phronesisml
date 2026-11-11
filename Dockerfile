@@ -29,7 +29,11 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 
-RUN groupadd --system phronesis \
+# libgomp is required by the scikit-learn/shap wheels at import time.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system phronesis \
     && useradd --system --gid phronesis --create-home phronesis
 
 WORKDIR /app
@@ -41,6 +45,10 @@ COPY --from=builder /app/.venv /app/.venv
 COPY pyproject.toml uv.lock alembic.ini ./
 COPY backend/ ./backend/
 COPY phronesisml/ ./phronesisml/
+
+# Bundled sample datasets must be present in the image: Render Free has no
+# persistent disk, so startup re-seeds these files into /app/storage.
+COPY data/ ./data/
 
 # Persistent application directories (mounted as volumes in Compose).
 RUN mkdir -p /app/data \

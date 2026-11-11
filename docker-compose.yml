@@ -23,6 +23,7 @@ services:
       # Same-origin via Nginx, so CORS can stay closed. Set to your origin
       # (comma-separated) if the browser hits the API from elsewhere.
       CORS_ORIGINS: ${CORS_ORIGINS:-}
+      CORS_ORIGIN_REGEX: ${CORS_ORIGIN_REGEX:-}
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-2048}
       SEED_SAMPLE_DATASETS: ${SEED_SAMPLE_DATASETS:-1}
       # Auth mode: `disabled` (SQLite/self-hosted) or `supabase` (JWT).

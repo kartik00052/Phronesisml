@@ -90,7 +90,7 @@ def _log_db_debug() -> None:
     import logging
 
     logger = logging.getLogger(__name__)
-    url = os.getenv("DATABASE_URL", "")
+    url = get_settings().database_url
     try:
         authority = url.split("://", 1)[1].split("/", 1)[0] if "://" in url else ""
         path_and_query = (
