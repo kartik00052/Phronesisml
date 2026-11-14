@@ -23,10 +23,14 @@ Brief description of the changes in this PR.
 Describe the tests you ran to verify your changes:
 
 ```bash
-pytest tests/ -q
-ruff check phronesisml/ --no-fix
-ruff format --check phronesisml/
+# SDK + backend (pyproject testpaths = tests + backend/tests)
+pytest -q
+ruff check phronesisml/ backend/ tests/ --no-fix
+ruff format --check phronesisml/ backend/
 mypy phronesisml/ --ignore-missing-imports
+
+# Frontend (if changed)
+cd frontend && pnpm typecheck && pnpm lint && pnpm test
 ```
 
 ## Screenshots / Output

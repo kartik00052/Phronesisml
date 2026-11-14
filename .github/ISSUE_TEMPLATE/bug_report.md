@@ -26,10 +26,12 @@ What you expected to happen.
 What actually happened. Include full traceback if applicable.
 
 **Environment**
+- Component: [e.g., SDK, CLI, Web API, Frontend]
 - OS: [e.g., Windows 11, Ubuntu 22.04]
 - Python version: [e.g., 3.13.3]
-- PhronesisML version: [e.g., 0.2.1]
-- Installation method: [e.g., pip, source]
+- Node version (frontend only): [e.g., 22.11.0]
+- PhronesisML version: [e.g., 0.3.1]
+- Installation method: [e.g., pip, uv, Docker Compose]
 
 **Dataset info**
 - File format: [e.g., CSV, Parquet]

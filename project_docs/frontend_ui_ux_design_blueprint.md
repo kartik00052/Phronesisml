@@ -1,9 +1,16 @@
 # PhronesisML Frontend — UI/UX Research & Design Discovery
 
-**Status:** Research / Design Blueprint (no implementation in this phase)
+> **Status update — implemented.** This document began as a research/design
+> blueprint when `frontend/` was empty and the SDK had no HTTP layer. The web
+> console now exists in `frontend/` (React + Vite + TanStack Query + React Flow +
+> ECharts) backed by `backend/` (FastAPI `/api/v1` REST + WebSocket). The design
+> rationale below is retained; treat "Proposed" / "no HTTP API" wording as
+> historical.
+
+**Status:** Historical design blueprint (implemented in `frontend/` + `backend/`)
 **Package audited:** `phronesisml` v0.3.1 (Python >=3.11,<3.14)
-**Deliverable:** Design specification + implementation blueprint for the eventual PhronesisML web dashboard
-**Scope:** Research only. No frontend code, no backend/API changes, no dependency installs.
+**Deliverable:** Design specification + implementation blueprint for the PhronesisML web console
+**Scope:** Original research phase (design only). The resulting UI and API are now implemented in `frontend/` and `backend/`.
 
 ---
 
@@ -32,11 +39,12 @@
 
 ## 1. Executive summary
 
-PhronesisML is a LangGraph-based, agent-driven AutoML **Python SDK** (v0.3.1). It
-has no web frontend today (`frontend/` is empty) and no HTTP layer (the previous
-REST API was deliberately decommissioned in v0.3.0 in favor of an SDK-first
-architecture). Every piece of data the UI needs already exists as structured
-Python objects and JSON artifacts on disk.
+PhronesisML is a LangGraph-based, agent-driven AutoML **Python SDK** (v0.3.1).
+At the time of this blueprint it had no web frontend (`frontend/` was empty) and
+no HTTP layer (the previous REST API had been decommissioned in v0.3.0 in favor
+of an SDK-first architecture). Since then the web console and FastAPI adapter
+have been implemented in `frontend/` and `backend/`. Every piece of data the UI
+needs already exists as structured Python objects and JSON artifacts on disk.
 
 This document is a design discovery that turns that backend reality into a
 frontend blueprint. Key conclusions:
@@ -207,12 +215,12 @@ Beeswarm + force-plot style visualizations should be re-rendered client-side fro
 message, and the captured logs.txt) plus a **system health screen** driven by
 `health()`. Degraded optional features must be visually distinguishable.
 
-### 2.9 No HTTP layer
+### 2.9 No HTTP layer (historical)
 
-`project_docs/rest_api_inventory.md` + `rest_api_removal_report.md` confirm the
-REST API was removed in v0.3.0. All of §11 is therefore **Proposed**, designed as a
-thin adapter around the SDK (which runs in-process; the server itself owns the
-Phronesis engine or orchestrates `run_pipeline`).
+At the time of this blueprint the REST API had been removed in v0.3.0, so all of
+§11 was **Proposed**. It has since been implemented in `backend/` as a thin
+adapter around the SDK (which runs in-process; the server owns run orchestration
+and drives the SDK graph).
 
 ---
 
@@ -582,13 +590,14 @@ derived from real events, or an indeterminate "running" state, is more honest.
 
 ## 11. Backend ↔ Frontend contract
 
-**Important framing:** there is **no HTTP API** today (REST removed in v0.3.0,
-SDK-first). Everything below is **Proposed** — a thin local server (FastAPI +
-uvicorn serving the SDK in-process, static-served frontend beside it) that future
-sessions would implement. Each row names the **existing SDK capability** that
-backs the proposal, so implementation cost is largely a wrapper.
+**Important framing (historical):** at the time of writing there was **no HTTP
+API** (REST removed in v0.3.0, SDK-first), so everything below was **Proposed** —
+a thin local server (FastAPI + uvicorn serving the SDK in-process, static-served
+frontend beside it). That adapter now exists in `backend/`. Each row names the
+**existing SDK capability** behind the proposal, so implementation is largely a
+wrapper.
 
-### 11.1 REST resources (all Proposed)
+### 11.1 REST resources (now implemented in `backend/app/api/v1`)
 
 | Method | Endpoint | Existing capability that backs it | Notes |
 |---|---|---|---|

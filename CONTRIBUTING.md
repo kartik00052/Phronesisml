@@ -31,6 +31,47 @@ Thank you for your interest in contributing to PhronesisML! This guide will help
    pre-commit install
    ```
 
+For backend/web work, add the `web` extra (or install everything with
+`uv sync --all-extras`):
+
+```bash
+pip install -e ".[dev,web]"
+```
+
+## Backend (FastAPI)
+
+The optional web adapter lives in `backend/` and serves the SDK over
+`/api/v1` (REST + WebSocket).
+
+```bash
+uvicorn backend.app.main:app --reload --port 8000
+# API docs: http://localhost:8000/docs
+```
+
+Backend tests are included in the default `pytest` run (`testpaths` in
+`pyproject.toml`):
+
+```bash
+pytest backend/tests                 # contract tests (no model training)
+pytest backend/tests -m integration  # real-pipeline tests (opt-in, slow)
+python backend/tests/e2e_smoke.py    # standalone HTTP smoke test
+```
+
+## Frontend (React)
+
+Requires Node 22+ and pnpm (`corepack enable`).
+
+```bash
+cd frontend
+pnpm install
+pnpm dev        # http://localhost:5173
+pnpm typecheck
+pnpm lint
+pnpm test       # Vitest
+pnpm build
+pnpm test:e2e   # Playwright
+```
+
 ## Code Quality
 
 ### Linting

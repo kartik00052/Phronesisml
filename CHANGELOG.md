@@ -10,6 +10,49 @@ All notable changes to PhronesisML will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Full-stack web console** — a self-hosted React SPA (`frontend/`) over a
+  FastAPI adapter (`backend/app/`). The adapter exposes the SDK over
+  `/api/v1` (REST + WebSocket) without re-implementing any ML logic:
+  dataset upload/list/preview/schema/EDA, engine recommendation, run creation
+  (queued → running → completed/failed/cancelled), live `pipeline.stage` /
+  `run.*` / `artifact.created` events with replay, model leaderboards,
+  evaluation, explainability, reports, artifacts, logs, prediction, and
+  dashboard stats. Health/capabilities probes cover the SDK, database, and
+  storage.
+- **`[web]` optional extra** — `fastapi`, `uvicorn[standard]`, `sqlalchemy`,
+  `alembic`, `python-multipart`, `websockets`, `pyjwt`, `httpx`, and
+  `psycopg[binary]`; included in `[all]`.
+- **Optional Supabase authentication + PostgreSQL** — `AUTH_MODE=supabase`
+  verifies JWTs and enforces per-user ownership; migrations
+  `0002_user_ownership` and `0003_rls_policies` add ownership columns,
+  indexes, and PostgreSQL RLS. `AUTH_MODE=disabled` remains the
+  single-tenant local/dev default.
+- **Container and hosted deployment** — `Dockerfile`, `docker-compose.yml`,
+  `nginx/`, `render.yaml`, and `frontend/vercel.json` for a single-node
+  stack (Nginx + FastAPI + SQLite/filesystem) or a split Vercel + Render
+  prototype.
+- **Bundled sample datasets** — `data/iris.csv` and
+  `data/credit_card_clients.csv` are re-seeded on startup when
+  `SEED_SAMPLE_DATASETS=1`.
+
+### Changed
+
+- **HTTP layer reintroduced as a thin adapter.** v0.3.0 removed the old
+  in-package REST subsystem; the new `backend/` app is a separate,
+  deployment-oriented adapter that delegates all ML decisions to the SDK.
+  The SDK and CLI remain the canonical interfaces.
+
+### Documentation
+
+- New `backend/README.md` (API surface), `project_docs/deployment.md`
+  (Docker + hosted), `project_docs/supabase.md` (auth/PostgreSQL/RLS), plus
+  the frontend UX blueprint and the full-stack integration/verification
+  reports.
+
 ## [0.3.1] - 2026-08-06
 
 ### Fixed

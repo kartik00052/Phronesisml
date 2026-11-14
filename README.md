@@ -87,7 +87,7 @@
 
 > **In short:** PhronesisML recommends; it does not obscure. Every stage of the pipeline is a discrete, testable, reusable unit of code operating on a shared, typed `WorkflowState`.
 
-PhronesisML is an **SDK-first and CLI-first offline Machine Learning Engineering SDK**. The Python SDK — and the CLI built on it — are the canonical interfaces; any future GUI would be a thin client over the same SDK a data scientist would `import` directly. There is exactly **one source of truth** for ML logic.
+PhronesisML is an **SDK-first and CLI-first offline Machine Learning Engineering SDK**. The Python SDK — and the CLI built on it — are the canonical interfaces, and there is exactly **one source of truth** for ML logic. An optional self-hosted **web console** (React SPA + FastAPI adapter) is a thin client over that same SDK: it renders run state and artifacts but never re-implements AutoML. It is an interface layer, not a second engine.
 
 ---
 
@@ -147,6 +147,8 @@ PhronesisML is built around five commitments that shape every design decision in
 | **Reporting** | Structured, versionable output artifacts for every stage | ✅ |
 | **Offline-First** | Core pipeline stages run without network access | ✅ |
 | **SDK-First** | Every interface is a client of the SDK | ✅ |
+| **Web Console** | Self-hosted React dashboard + FastAPI REST/WebSocket adapter over the SDK | ✅ |
+| **Authentication** | Optional Supabase JWT auth with per-user ownership isolation | ✅ |
 | **Plugin System** | Extension points for custom agents, models, engines, storage | 🔜 Planned |
 
 ---
@@ -178,6 +180,8 @@ graph TD
 | **Services** | Stateless, reusable domain logic | Called by agents |
 | **Data Engines** | Pandas, Polars, PySpark implementations | Called by services |
 | **Reports / Storage** | Persists run artifacts | Written to by agents |
+
+> **Optional web layer.** `backend/` (FastAPI) and `frontend/` (React) sit on top of the SDK as an adapter + presentation layer. The backend owns HTTP, WebSocket, persistence, and job scheduling; every ML decision still comes from the SDK. See [`backend/README.md`](backend/README.md) and [`project_docs/deployment.md`](project_docs/deployment.md).
 
 ### Design Principles
 
@@ -270,8 +274,16 @@ Selection is automatic by default but can always be forced explicitly — see [Q
 ![Pydantic](https://img.shields.io/badge/Pydantic-E92063?style=flat-square&logo=pydantic&logoColor=white)
 ![Typer](https://img.shields.io/badge/Typer-000000?style=flat-square&logo=python&logoColor=white)
 ![pytest](https://img.shields.io/badge/pytest-0A9EDC?style=flat-square&logo=pytest&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+![React](https://img.shields.io/badge/React-61DAFB?style=flat-square&logo=react&logoColor=black)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=flat-square&logo=sqlalchemy&logoColor=white)
 
 </div>
+
+The optional web console adds FastAPI + Uvicorn, SQLAlchemy + Alembic, and
+SQLite (or PostgreSQL via Supabase) on the backend, and React + Vite +
+TypeScript, TanStack Query, React Flow, ECharts, and Tailwind CSS on the
+frontend.
 
 ---
 
@@ -287,9 +299,10 @@ PhronesisML's engine abstraction exists specifically so the pipeline can move fr
 
 | Requirement | Minimum | Notes |
 |---|---|---|
-| Python | 3.11+ | Required for the package and all extras |
+| Python | 3.11 – 3.13 | `requires-python >=3.11,<3.14` (package and all extras) |
 | pip | Latest | `python -m pip install --upgrade pip` recommended |
 | OS | Linux, macOS, Windows | Core pipeline is platform-independent |
+| Node.js + pnpm | Node 22+ | Only needed to build/develop the web console frontend |
 
 ### Standard (recommended)
 
@@ -302,20 +315,21 @@ pip install phronesisml
 | Format | Supported | Dependency |
 |---|:---:|---|
 | CSV / TSV | ✅ | `pandas` (core) |
-| Excel (.xlsx) | ✅ | `openpyxl` (`[excel]` extra) |
-| Parquet | ✅ | `pyarrow` (core) |
-| JSON / JSONL | ✅ | `pandas` (core) |
+| Excel (.xlsx / .xls) | ✅ | `openpyxl` (`[excel]` extra) |
+| Parquet (.parquet / .pq) | ✅ | `pyarrow` (core) |
+| JSON / JSONL / NDJSON | ✅ | `pandas` (core) |
 | Feather / Arrow | ✅ | `pyarrow` (core) |
 
 ### Optional extras
 
 | Extra | Install | What it adds |
 |---|---|---|
-| `all` | `pip install phronesisml[all]` | Everything below |
+| `all` | `pip install phronesisml[all]` | All runtime + docs extras below (excludes `dev`) |
 | `cli` | `pip install phronesisml[cli]` | CLI commands |
 | `excel` | `pip install phronesisml[excel]` | Excel (.xlsx) support via `openpyxl` |
 | `mlflow` | `pip install phronesisml[mlflow]` | MLflow tracking |
 | `spark` | `pip install phronesisml[spark]` | PySpark engine |
+| `web` | `pip install phronesisml[web]` | FastAPI backend, SQLAlchemy/Alembic, WebSocket, Supabase JWT + PostgreSQL |
 | `docs` | `pip install phronesisml[docs]` | Build the project docs (mkdocs + mkdocstrings) |
 | `dev` | `pip install phronesisml[dev]` | pytest (+ xdist), ruff, mypy, coverage, build, twine |
 
@@ -354,6 +368,14 @@ print(ml.report())
 phronesisml run data/customers.csv
 phronesisml run data/customers.csv --engine polars
 phronesisml info
+```
+
+### Web console
+
+```bash
+docker compose build
+docker compose up -d
+# UI: http://localhost:8080   API: http://localhost:8080/api/v1/health
 ```
 
 ---
@@ -473,29 +495,40 @@ asyncio.run(main())
 
 ## SDK Interfaces
 
-PhronesisML is **SDK-first and CLI-first**: the CLI is a thin client that calls the same SDK you `import` directly.
+PhronesisML is **SDK-first and CLI-first**: the CLI and the optional web console are thin clients that call the same SDK you `import` directly.
 
 | Interface | Install | Description |
 |---|---|---|
 | **Python SDK** | `pip install phronesisml` | `from phronesisml import Phronesis` |
 | **CLI** | `pip install phronesisml[cli]` | `phronesisml run data.csv` |
+| **Web console** | `docker compose up -d` | React SPA + FastAPI `/api/v1` REST/WebSocket adapter at `http://localhost:8080` |
 
 ---
 
 ## Project Structure
 
 ```
-phronesisml/
-  __init__.py          # Public SDK surface
+phronesisml/           # Python SDK (single source of ML logic)
+  __init__.py          # Public SDK surface + __version__
   exceptions.py        # Exception hierarchy
+  results.py           # Typed result dataclasses
+  sdk.py               # OOP Phronesis facade
+  simple.py            # One-liner / async API
   agents/              # Pipeline agents (11 total)
   configs/             # Pydantic configuration
-  data/                # Data loading, validation, profiling
+  data/                # Loaders, validation, profiling
   engines/             # Pandas/Polars/Spark abstraction
-  interfaces/           # CLI (Typer)
-  ml/                   # Model definitions, training, metrics
-  rag/                   # RAG infrastructure
-  workflow/             # LangGraph workflow orchestration
+  interfaces/cli/      # CLI (Typer)
+  ml/                  # Training, evaluation, explainability, reports
+  services/            # Shared services (storage, data resolution)
+  utils/               # Shared helpers
+  workflow/            # LangGraph orchestration + WorkflowState
+backend/               # FastAPI REST + WebSocket adapter ([web] extra)
+frontend/              # React + Vite web console
+nginx/                 # Reverse proxy config for the container stack
+tests/                 # SDK test suite
+project_docs/          # Deployment, Supabase, design & audit docs
+scripts/               # Developer utilities (e.g. demo-data download)
 ```
 
 ---
@@ -548,7 +581,7 @@ PhronesisML's core pipeline — validation, profiling, ETL, EDA, feature enginee
 <div align="center">
 
 ![Status](https://img.shields.io/badge/status-active%20development-brightgreen?style=flat-square)
-![Version](https://img.shields.io/badge/version-0.3.0-6366F1?style=flat-square)
+![Version](https://img.shields.io/badge/version-0.3.1-6366F1?style=flat-square)
 
 </div>
 
@@ -561,6 +594,9 @@ PhronesisML's core pipeline — validation, profiling, ETL, EDA, feature enginee
 - [x] HTML report generation
 - [x] Clustering and anomaly detection flows (unsupervised)
 - [x] Full test suites
+- [x] Full-stack web console (FastAPI `/api/v1` REST + WebSocket, React SPA)
+- [x] Optional Supabase auth with PostgreSQL ownership isolation + RLS
+- [x] Docker Compose, Vercel, and Render deployment configs
 
 **Planned**
 - [ ] Plugin system with entry-points discovery

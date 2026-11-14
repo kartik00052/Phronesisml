@@ -1,5 +1,12 @@
 # PhronesisML Full-Stack Integration Gap Report
 
+> **Historical document — retained as an audit record.** This report captures the
+> pre-implementation state and the verification passes (Phases 3–5) of
+> 2026-09-20. Items it labels "absent", "no HTTP layer", or "target architecture"
+> are now implemented in `backend/` and `frontend/`. For the current interfaces
+> use [`README.md`](../README.md), [`backend/README.md`](../backend/README.md),
+> and [`deployment.md`](deployment.md).
+
 **Phase 3 — Pre-implementation audit.** Date: 2026-09-20.
 Scope: map every broken boundary between the PhronesisML SDK (backend ML core),
 a to-be-built web API layer, and the existing React frontend, and specify the

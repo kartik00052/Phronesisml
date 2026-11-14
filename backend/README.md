@@ -9,6 +9,7 @@ the React frontend.
 
 ```bash
 # from the repository root
+pip install -e ".[web]"   # or: uv sync --extra web
 .venv/bin/uvicorn backend.app.main:app --reload --port 8000
 ```
 
@@ -29,6 +30,17 @@ the React frontend.
 | `CORS_ORIGINS`        | `http://localhost:5173`                  |
 | `CORS_ORIGIN_REGEX`   | *(empty)*; e.g. Vercel preview origins   |
 | `REQUEST_LOG`         | `1`                                      |
+| `SEED_SAMPLE_DATASETS`| `1`                                      |
+| `AUTH_MODE`           | `disabled` or `supabase`                 |
+| `SUPABASE_URL`        | *(empty)*; required when `AUTH_MODE=supabase` |
+| `SUPABASE_JWT_SECRET` | *(empty)*; HS256 secret (or set `SUPABASE_JWKS_URL`) |
+| `SUPABASE_JWKS_URL`   | *(empty)*; JWKS endpoint for RSA/EdDSA projects |
+| `SUPABASE_JWT_ISSUER` / `SUPABASE_JWT_AUDIENCE` | optional overrides; audience default `authenticated` |
+
+With `AUTH_MODE=disabled` the API is single-tenant and open (local/dev). With
+`AUTH_MODE=supabase` every endpoint and run WebSocket requires a verified JWT,
+resources are isolated per user, and foreign resources return 404. See
+[`project_docs/supabase.md`](../project_docs/supabase.md).
 
 ## API surface (`/api/v1`)
 
@@ -47,6 +59,7 @@ the React frontend.
 
 **Engines**
 - `POST /engine/recommend` `{ bytes, rows?, cols? }` → `EngineRecommendation`.
+- `GET /engine/capabilities` → `EngineReport` (installed engines/dependencies).
 
 **Runs**
 - `POST /runs` (wizard payload, `RunRequest`) → `Run` (201).
