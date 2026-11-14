@@ -259,7 +259,7 @@ def _build_validation_section(state: Any) -> str:
 
     lines = []
     if isinstance(report, dict):
-        checks = report.get("checks", [])
+        checks = report.get("checks")
         if checks:
             lines.append(f"**{len(checks)} validation checks performed:**\n")
             for check in checks:
@@ -269,7 +269,21 @@ def _build_validation_section(state: Any) -> str:
                     status_icon = "PASS" if passed else "FAIL"
                     lines.append(f"- [{status_icon}] {name}")
         else:
-            lines.append("_No validation checks recorded._")
+            passed = report.get("passed")
+            if passed is not None:
+                lines.append(f"- **Overall:** {'PASS' if passed else 'FAIL'}")
+            shape = report.get("shape") or {}
+            if shape:
+                lines.append(f"- **Rows / Columns:** {shape.get('rows')} / {shape.get('columns')}")
+            duplicate_rows = report.get("duplicate_rows")
+            if duplicate_rows is not None:
+                lines.append(f"- **Duplicate rows:** {duplicate_rows}")
+            null_columns = report.get("null_columns")
+            if null_columns is not None:
+                lines.append(f"- **Columns with nulls:** {len(null_columns)}")
+            empty_columns = report.get("empty_columns")
+            if empty_columns:
+                lines.append(f"- **Empty columns:** {len(empty_columns)}")
     else:
         lines.append(f"Validation report type: {type(report).__name__}")
 
@@ -284,12 +298,21 @@ def _build_eda_section(state: Any) -> str:
 
     lines = []
     if isinstance(profile, dict):
-        n_rows = profile.get("n_rows")
-        n_cols = profile.get("n_cols")
+        shape = profile.get("shape") or {}
+        n_rows = profile.get("n_rows", shape.get("rows"))
+        n_cols = profile.get("n_cols", shape.get("columns"))
         if n_rows is not None:
             lines.append(f"- **Rows:** {n_rows}")
         if n_cols is not None:
             lines.append(f"- **Columns:** {n_cols}")
+
+        numeric = profile.get("numeric_columns")
+        categorical = profile.get("categorical_columns")
+        if numeric is not None or categorical is not None:
+            lines.append(
+                f"- **Numeric columns:** {len(numeric or [])}"
+                f"  |  **Categorical columns:** {len(categorical or [])}"
+            )
 
         null_pct = profile.get("null_percentage")
         if null_pct is not None:
@@ -353,8 +376,8 @@ def _build_model_selection_section(state: Any) -> str:
         lines.append(f"**{len(candidates)} candidate models evaluated:**\n")
         for i, c in enumerate(candidates[:5], 1):
             if isinstance(c, dict):
-                name = c.get("model_type", f"Candidate {i}")
-                score = c.get("mean_cv_score")
+                name = c.get("model_type") or c.get("name") or f"Candidate {i}"
+                score = c.get("mean_cv_score", c.get("score"))
                 if score is not None:
                     lines.append(f"{i}. {name} (CV score: {score:.4f})")
                 else:

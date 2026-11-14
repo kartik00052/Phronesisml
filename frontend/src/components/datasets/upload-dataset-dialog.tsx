@@ -17,7 +17,7 @@ import { useUploadDataset } from "@/hooks/use-datasets";
 import { toApiError } from "@/api/client";
 import { isDemoMode } from "@/mocks";
 
-const ACCEPT = ".csv,.tsv,.txt,.xlsx,.xls,.parquet,.json,.jsonl";
+const ACCEPT = ".csv,.tsv,.xlsx,.xls,.parquet,.json,.jsonl";
 
 interface UploadDatasetDialogProps {
   open: boolean;

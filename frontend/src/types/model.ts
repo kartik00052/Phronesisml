@@ -100,7 +100,7 @@ export interface ModelRankingRow {
   truncated: boolean;
   estimated_training_cost: string;
   best: boolean;
-  status: "ready" | "running" | "failed";
+  status: "ready" | "running" | "candidate" | "failed";
 }
 
 /** Model detail (leaderboard + evaluation + params). */
