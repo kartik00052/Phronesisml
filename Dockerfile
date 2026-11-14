@@ -21,7 +21,7 @@ COPY pyproject.toml uv.lock .python-version ./
 COPY README.md ./
 COPY phronesisml/ ./phronesisml/
 
-RUN uv sync --extra web --frozen --no-dev
+RUN uv sync --extra web --extra excel --frozen --no-dev
 
 # ─── Runtime stage: FastAPI + SDK, non-root, no reload, no debug ──────────
 FROM python:3.12-slim AS runtime
