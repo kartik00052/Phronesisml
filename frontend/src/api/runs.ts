@@ -12,7 +12,14 @@ import {
   demoRecentRuns,
 } from "@/mocks/handlers";
 import type { ListQuery, Page } from "@/types/api";
-import type { Run, RunSummary, RunRequest, DashboardStats, RecentRunActivity } from "@/types/run";
+import type {
+  Run,
+  RunSummary,
+  RunRequest,
+  DashboardStats,
+  RecentRunActivity,
+  PredictionResponse,
+} from "@/types/run";
 
 export async function listRuns(query: ListQuery = {}): Promise<Page<RunSummary>> {
   if (isDemoMode()) return demoListRuns(query);
@@ -62,4 +69,14 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 export async function getRecentRuns(): Promise<RecentRunActivity[]> {
   if (isDemoMode()) return demoRecentRuns();
   return apiRequest<RecentRunActivity[]>("/runs/recent");
+}
+
+export async function predictRun(
+  runId: string,
+  samples: Record<string, unknown>[],
+): Promise<PredictionResponse> {
+  return apiRequest<PredictionResponse>(`/runs/${encodeURIComponent(runId)}/predict`, {
+    method: "POST",
+    body: JSON.stringify({ samples }),
+  });
 }

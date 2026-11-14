@@ -301,7 +301,10 @@ async def run_pipeline(
             sampling_config=effective_sampling_config,
             engine=engine_instance,
         )
-        initial_state = WorkflowState(data_path=data_path)
+        initial_state = WorkflowState(
+            data_path=data_path,
+            max_file_size_bytes=config.data.max_file_size_bytes,
+        )
     except WorkflowError:
         raise
     except ConfigurationError as exc:

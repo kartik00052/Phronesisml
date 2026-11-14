@@ -176,7 +176,7 @@ class ResourceEstimator:
         for col, summary in profile_categorical.items():
             if col == target_column:
                 continue
-            n_unique = summary.get("n_unique", 0)
+            n_unique = summary.get("n_unique", summary.get("cardinality", 0))
             estimated_new_features += min(n_unique, max_cardinality)
 
         estimated_encoded_features = max(

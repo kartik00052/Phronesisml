@@ -9,10 +9,11 @@ import {
   getRun,
   getRunLogs,
   listRuns,
+  predictRun,
   restoreRun,
 } from "@/api/runs";
 import type { ListQuery } from "@/types/api";
-import type { RunRequest } from "@/types/run";
+import type { PredictionResponse, RunRequest } from "@/types/run";
 import { isDemoMode } from "@/mocks";
 
 export const queryKeys = {
@@ -113,4 +114,10 @@ export function useDeleteRun() {
     (runId) => deleteRun(runId),
     (runId) => queryKeys.run(runId),
   );
+}
+
+export function usePredictRun(runId: string) {
+  return useMutation<PredictionResponse, unknown, Record<string, unknown>[]>({
+    mutationFn: (samples) => predictRun(runId, samples),
+  });
 }

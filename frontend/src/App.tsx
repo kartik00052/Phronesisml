@@ -25,6 +25,7 @@ const RunDataTab = lazy(() => import("@/pages/runs/[id]/data"));
 const RunModelsTab = lazy(() => import("@/pages/runs/[id]/models"));
 const RunExplainabilityTab = lazy(() => import("@/pages/runs/[id]/explainability"));
 const RunReportsTab = lazy(() => import("@/pages/runs/[id]/reports"));
+const RunPredictTab = lazy(() => import("@/pages/runs/[id]/predict"));
 const RunArtifactsTab = lazy(() => import("@/pages/runs/[id]/artifacts"));
 const RunLogsTab = lazy(() => import("@/pages/runs/[id]/logs"));
 const DatasetsPage = lazy(() => import("@/pages/datasets"));
@@ -110,6 +111,10 @@ const router = createBrowserRouter([
               {
                 path: "reports",
                 element: <Suspense fallback={<PageSkeleton />}>{lazyPage(RunReportsTab)}</Suspense>,
+              },
+              {
+                path: "predict",
+                element: <Suspense fallback={<PageSkeleton />}>{lazyPage(RunPredictTab)}</Suspense>,
               },
               {
                 path: "artifacts",

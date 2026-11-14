@@ -90,6 +90,9 @@ def _profile_numeric(collected_df: Any, columns: list[str]) -> dict[str, Any]:
                 val = stats.loc[stat_name, col]
                 col_stats[stat_name] = float(val) if hasattr(val, "item") else val
         col_stats["null_count"] = int(collected_df[col].isnull().sum())
+        n_unique = int(collected_df[col].nunique())
+        col_stats["n_unique"] = n_unique
+        col_stats["cardinality"] = n_unique
         result[col] = col_stats
 
     return result
@@ -110,8 +113,10 @@ def _profile_categorical(collected_df: Any, columns: list[str]) -> dict[str, Any
         series = collected_df[col]
         value_counts = series.value_counts()
         top_values = {str(val): int(count) for val, count in value_counts.head(10).items()}
+        n_unique = int(series.nunique())
         result[col] = {
-            "cardinality": int(series.nunique()),
+            "n_unique": n_unique,
+            "cardinality": n_unique,
             "null_count": int(series.isnull().sum()),
             "top_values": top_values,
         }

@@ -255,7 +255,7 @@ def _build_validation_section(state: Any) -> str:
     """Build the validation section from validation_report."""
     report = getattr(state, "validation_report", None)
     if report is None:
-        return "_Validation data not available._"
+        return "_No validation report available._\n"
 
     lines = []
     if isinstance(report, dict):
@@ -264,11 +264,12 @@ def _build_validation_section(state: Any) -> str:
             lines.append(f"**{len(checks)} validation checks performed:**\n")
             for check in checks:
                 if isinstance(check, dict):
-                    name = check.get("name", "unknown")
+                    name = check.get("name", "Unknown check")
                     passed = check.get("passed", False)
                     status_icon = "PASS" if passed else "FAIL"
                     lines.append(f"- [{status_icon}] {name}")
         else:
+            # Real validate_dataframe keys
             passed = report.get("passed")
             if passed is not None:
                 lines.append(f"- **Overall:** {'PASS' if passed else 'FAIL'}")
@@ -287,14 +288,15 @@ def _build_validation_section(state: Any) -> str:
     else:
         lines.append(f"Validation report type: {type(report).__name__}")
 
-    return "\n".join(lines) if lines else "_Validation data not available._"
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _build_eda_section(state: Any) -> str:
     """Build the EDA section from data_profile."""
     profile = getattr(state, "data_profile", None)
     if profile is None:
-        return "_EDA data not available._"
+        return "_No EDA profile available._\n"
 
     lines = []
     if isinstance(profile, dict):
@@ -320,11 +322,16 @@ def _build_eda_section(state: Any) -> str:
 
         dtypes = profile.get("dtypes", {})
         if dtypes:
-            lines.append(f"- **Column Types:** {len(dtypes)} columns")
+            lines.append(f"\n**Column Types ({len(dtypes)} columns):**\n")
+            for col, dt in list(dtypes.items())[:20]:
+                lines.append(f"- `{col}`: {dt}")
+            if len(dtypes) > 20:
+                lines.append(f"- ... and {len(dtypes) - 20} more columns")
     else:
         lines.append(f"Profile type: {type(profile).__name__}")
 
-    return "\n".join(lines) if lines else "_EDA data not available._"
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _build_target_detection_section(state: Any) -> str:
@@ -368,9 +375,6 @@ def _build_model_selection_section(state: Any) -> str:
     candidates = getattr(state, "candidate_models", None)
     best = getattr(state, "best_pipeline", None)
 
-    if candidates is None and best is None:
-        return "_Model selection data not available._"
-
     lines = []
     if candidates and isinstance(candidates, list):
         lines.append(f"**{len(candidates)} candidate models evaluated:**\n")
@@ -382,17 +386,28 @@ def _build_model_selection_section(state: Any) -> str:
                     lines.append(f"{i}. {name} (CV score: {score:.4f})")
                 else:
                     lines.append(f"{i}. {name}")
+            else:
+                lines.append(f"{i}. {c}")
+        if len(candidates) > 5:
+            lines.append(f"\n... and {len(candidates) - 5} more candidates")
+        lines.append("")
 
-    if best is not None:
-        model_type = (
-            getattr(best, "model_type", None)
-            if not isinstance(best, dict)
-            else best.get("model_type")
-        )
-        if model_type is not None:
-            lines.append(f"\n**Selected Model:** {model_type}")
+    if best and isinstance(best, dict):
+        best_name = best.get("model_type", best.get("name", "Unknown"))
+        lines.append(f"**Selected Best Model:** {best_name}\n")
+        best_score = best.get("score", best.get("mean_cv_score"))
+        if best_score is not None:
+            lines.append(f"- Validation Score: {best_score:.4f}")
+        params = best.get("params") or best.get("hyperparameters", {})
+        if params and isinstance(params, dict):
+            lines.append("- Key Hyperparameters:")
+            for k, v in list(params.items())[:10]:
+                lines.append(f"  - `{k}`: {v}")
+    elif not candidates:
+        lines.append("_No model selection records available._")
 
-    return "\n".join(lines) if lines else "_Model selection data not available._"
+    lines.append("")
+    return "\n".join(lines)
 
 
 def _build_evaluation_section(state: Any) -> str:

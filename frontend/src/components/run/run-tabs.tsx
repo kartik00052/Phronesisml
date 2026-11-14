@@ -9,6 +9,7 @@ const TABS: { to: string; label: string; end?: boolean }[] = [
   { to: "models", label: "Models" },
   { to: "explainability", label: "Explainability" },
   { to: "reports", label: "Reports" },
+  { to: "predict", label: "Predict" },
   { to: "artifacts", label: "Artifacts" },
   { to: "logs", label: "Logs" },
 ];

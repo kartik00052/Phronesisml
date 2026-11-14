@@ -75,6 +75,10 @@ class WorkflowState(BaseModel):
         default=None,
         description="[input] Path or URI to the source dataset.",
     )
+    max_file_size_bytes: int | None = Field(
+        default=None,
+        description="[upload] Maximum allowed file size in bytes.",
+    )
     raw_data: Any = Field(
         default=None,
         description="[upload] Raw DataFrame loaded from data_path.",

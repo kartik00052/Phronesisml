@@ -67,6 +67,9 @@ def handle_nulls(
     if strategy == "drop":
         result = df.dropna(subset=target_cols)
     elif strategy == "fill":
+        if fill_value is None:
+            msg = "Must specify a non-None 'fill_value' when strategy='fill'."
+            raise DataTransformError(msg)
         result = df.copy() if copy else df
         result[target_cols] = result[target_cols].fillna(fill_value)
     elif strategy == "flag":

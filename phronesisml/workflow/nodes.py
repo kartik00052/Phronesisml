@@ -82,11 +82,16 @@ def make_node(agent: BaseAgent) -> Any:
             # Propagate pre-flight warnings/blockers to top-level state
             # so routers can make informed decisions.
             preflight = result.metadata.get("preflight")
-            if preflight is not None:
+            if isinstance(preflight, dict):
                 if preflight.get("blockers"):
                     state_update["preflight_blockers"] = preflight["blockers"]
                 if preflight.get("warnings"):
                     state_update["preflight_warnings"] = preflight["warnings"]
+            # Also check top-level keys for direct agent compatibility
+            if result.metadata.get("preflight_blockers"):
+                state_update["preflight_blockers"] = result.metadata["preflight_blockers"]
+            if result.metadata.get("preflight_warnings"):
+                state_update["preflight_warnings"] = result.metadata["preflight_warnings"]
 
         logger.info("Agent '%s' completed successfully.", agent.name)
         return state_update

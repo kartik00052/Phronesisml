@@ -428,7 +428,7 @@ def validate_target_safety(
     for col, summary in profile_categorical.items():
         if col == target_column:
             continue
-        n_unique = summary.get("n_unique", 0)
+        n_unique = summary.get("n_unique", summary.get("cardinality", 0))
         if n_unique > _MAX_CATEGORICAL_CARDINALITY:
             high_card_cats.append((col, n_unique))
 
@@ -441,7 +441,9 @@ def validate_target_safety(
 
     # ── Check 3: Target cardinality vs row count ─────────────────────
     if target_column in profile_categorical:
-        target_nunique = profile_categorical[target_column].get("n_unique", 0)
+        target_nunique = profile_categorical[target_column].get(
+            "n_unique", profile_categorical[target_column].get("cardinality", 0)
+        )
         if target_nunique > n_rows * 0.95:
             blockers.append(
                 f"Target column '{target_column}' has {target_nunique} unique values "
@@ -455,7 +457,9 @@ def validate_target_safety(
                 f"Consider if this is the correct target."
             )
     elif target_column in profile_numeric:
-        target_nunique = profile_numeric[target_column].get("n_unique", 0)
+        target_nunique = profile_numeric[target_column].get(
+            "n_unique", profile_numeric[target_column].get("cardinality", 0)
+        )
         if target_nunique > n_rows * 0.95:
             blockers.append(
                 f"Target column '{target_column}' has {target_nunique} unique values "
@@ -486,7 +490,7 @@ def validate_target_safety(
     for col, summary in profile_categorical.items():
         if col == target_column:
             continue
-        n_unique = summary.get("n_unique", 0)
+        n_unique = summary.get("n_unique", summary.get("cardinality", 0))
         # Cap at 100 to avoid over-counting (high-card cats are dropped)
         estimated_new_cols += min(n_unique, 100)
 

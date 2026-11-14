@@ -28,10 +28,20 @@ export interface RunEventsOptions {
 }
 
 export function getWsBaseUrl(): string {
-  const configured = import.meta.env.VITE_WS_BASE_URL as string | undefined;
-  const httpBase = (configured ?? "ws://localhost:8000/api/v1").replace(/\/+$/, "");
-  if (httpBase.startsWith("ws://") || httpBase.startsWith("wss://")) return httpBase;
-  return httpBase.replace(/^http/, "ws");
+  const configuredWs = import.meta.env.VITE_WS_BASE_URL as string | undefined;
+  if (configuredWs && configuredWs.trim() !== "") {
+    const trimmed = configuredWs.trim().replace(/\/+$/, "");
+    if (trimmed.startsWith("ws://") || trimmed.startsWith("wss://")) return trimmed;
+    return trimmed.replace(/^http/, "ws");
+  }
+
+  const configuredApi = import.meta.env.VITE_API_BASE_URL as string | undefined;
+  if (configuredApi && configuredApi.trim() !== "") {
+    const trimmed = configuredApi.trim().replace(/\/+$/, "");
+    return trimmed.replace(/^http/, "ws");
+  }
+
+  return "ws://localhost:8000/api/v1";
 }
 
 export function connectRunEvents(runId: string, options: RunEventsOptions = {}): () => void {

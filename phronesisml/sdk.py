@@ -468,7 +468,10 @@ class Phronesis:
         self._data_path = data_path
         self._config = config or PhronesisConfig()
         self._agent_overrides = agent_overrides
-        self._state = WorkflowState(data_path=data_path)
+        self._state = WorkflowState(
+            data_path=data_path,
+            max_file_size_bytes=self._config.data.max_file_size_bytes,
+        )
         self._engine: Any = None
         self._agents: dict[str, Any] = {}
         self._executed_stages: set[str] = set()
