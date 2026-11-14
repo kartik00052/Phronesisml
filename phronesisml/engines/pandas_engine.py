@@ -53,6 +53,10 @@ class PandasEngine(BaseEngine):
             raise EngineError(msg)
         try:
             return reader(path, **kwargs)
+        except UnicodeDecodeError:
+            if suffix not in {".csv", ".tsv"} or "encoding" in kwargs:
+                raise
+            return reader(path, encoding="cp1252", encoding_errors="replace", **kwargs)
         except ImportError as exc:
             extra_map = {
                 ".xlsx": "openpyxl — install with: pip install phronesisml[excel]",

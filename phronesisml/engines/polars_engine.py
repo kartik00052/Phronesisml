@@ -12,13 +12,14 @@ Polars query planner before execution.
 
 from __future__ import annotations
 
+import io
 from pathlib import Path
 from typing import Any, Literal, TypeAlias
 
 import pandas as pd
 import polars as pl
 
-from phronesisml.engines.base_engine import BaseEngine, EngineType
+from phronesisml.engines.base_engine import BaseEngine, EngineType, decode_text
 from phronesisml.exceptions import EngineError
 
 # Polars join "how" parameter literal type.
@@ -35,8 +36,11 @@ class PolarsEngine(BaseEngine):
     def read(self, path: str | Path, **kwargs: Any) -> pl.DataFrame:
         path = Path(path)
         suffix = path.suffix.lower()
+        if suffix in {".csv", ".tsv"}:
+            if suffix == ".tsv":
+                kwargs.setdefault("separator", "\t")
+            return self._read_delimited(path, **kwargs)
         read_ops: dict[str, Any] = {
-            ".csv": pl.read_csv,
             ".parquet": pl.read_parquet,
             ".json": pl.read_ndjson,
             ".jsonl": pl.read_ndjson,
@@ -48,6 +52,15 @@ class PolarsEngine(BaseEngine):
             raise EngineError(msg)
         result: pl.DataFrame = reader(path, **kwargs)
         return result
+
+    @staticmethod
+    def _read_delimited(path: Path, **kwargs: Any) -> pl.DataFrame:
+        """Read a CSV/TSV, retrying with decoded text for non-UTF-8 files."""
+        try:
+            return pl.read_csv(path, **kwargs)
+        except (pl.exceptions.ComputeError, UnicodeDecodeError):
+            text = decode_text(path.read_bytes())
+            return pl.read_csv(io.BytesIO(text.encode("utf-8")), **kwargs)
 
     def write(self, df: pl.DataFrame, path: str | Path, **kwargs: Any) -> None:
         path = Path(path)

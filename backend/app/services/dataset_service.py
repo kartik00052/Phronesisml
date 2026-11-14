@@ -30,6 +30,8 @@ _MAX_PREVIEW_CELLS = 500
 BUNDLED_SAMPLES: tuple[tuple[str, str], ...] = (
     ("iris.csv", "data/iris.csv"),
     ("credit_card_clients.csv", "data/credit_card_clients.csv"),
+    ("wine.csv", "data/wine.csv"),
+    ("diabetes.csv", "data/diabetes.csv"),
 )
 
 

@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
-__all__ = ["BaseEngine", "EngineType", "NUMERIC_DTYPES"]
+__all__ = ["BaseEngine", "EngineType", "NUMERIC_DTYPES", "decode_text"]
 from enum import StrEnum
 from pathlib import Path
 from typing import Any
@@ -28,6 +28,21 @@ from typing import Any
 import pandas as pd
 
 from phronesisml.utils.dtypes import NUMERIC_DTYPES  # noqa: F401 — backward-compat re-export
+
+
+def decode_text(raw: bytes) -> str:
+    """Decode file bytes to text, tolerating non-UTF-8 encodings.
+
+    Files are assumed UTF-8. When that fails — common for Windows-1252 /
+    Latin-1 exports containing ``£`` or accented characters — fall back to
+    ``cp1252`` then ``latin-1`` (the latter never fails to decode).
+    """
+    for encoding in ("utf-8", "cp1252", "latin-1"):
+        try:
+            return raw.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return raw.decode("utf-8", errors="replace")  # pragma: no cover - latin-1 never fails
 
 
 class EngineType(StrEnum):
