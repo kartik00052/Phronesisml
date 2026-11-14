@@ -126,7 +126,10 @@ async def upload_dataset(
     except UploadRejectedError as exc:
         code = getattr(exc, "code", "UploadRejectedError")
         status = 415 if code in {"UnsupportedFormat", "UnsupportedColumnType"} else 422
-        raise HTTPException(status_code=status, detail=code) from exc
+        raise HTTPException(
+            status_code=status,
+            detail={"code": code, "message": str(exc)},
+        ) from exc
     return {"dataset": dataset}
 
 

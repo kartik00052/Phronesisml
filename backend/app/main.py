@@ -76,6 +76,16 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, _validation_error_handler)
     app.include_router(api_router, prefix="/api/v1")
 
+    @app.get("/", include_in_schema=False)
+    async def _root() -> dict[str, Any]:
+        return {
+            "name": settings.app_name,
+            "version": _app_version(),
+            "status": "online",
+            "docs": "/docs",
+            "health": "/api/v1/health",
+        }
+
     @app.api_route(
         "/{full_path:path}",
         methods=["GET", "POST", "PUT", "DELETE", "PATCH"],

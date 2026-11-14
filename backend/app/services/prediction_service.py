@@ -81,7 +81,11 @@ def _predict_rows(saved: Any, samples: list[dict[str, Any]]) -> list[dict[str, A
 
         features = apply_transform_recipe(frame, transform)
     else:
-        features = frame[list(saved.feature_names or frame.columns)]
+        expected_cols = list(saved.feature_names or frame.columns)
+        for col in expected_cols:
+            if col not in frame.columns:
+                frame[col] = 0.0
+        features = frame[expected_cols]
 
     raw_predictions = list(saved.model.predict(features))
     module = getattr(saved.model, "predict_proba", None)
