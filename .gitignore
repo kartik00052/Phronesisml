@@ -66,3 +66,8 @@ storage/
 BankChurners.csv
 diabetes_prediction_dataset.csv
 heart.csv
+
+# Local-only scratch (never commit)
+MASTER_PROMPT.md
+AUDIT_FINDINGS.md
+data/Online Retail.xlsx
